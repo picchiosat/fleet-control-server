@@ -292,9 +292,11 @@ def on_message(client, userdata, msg):
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
+                net_id = parts[3].upper() # Identificatore univoco (es. NETWORK 1)
                 
+                # Inizializza il mapping e un contenitore nascosto "_nets" per l'inventario
                 if cid not in network_mapping:
-                    network_mapping[cid] = {"ts1": "", "ts2": ""}
+                    network_mapping[cid] = {"ts1": "", "ts2": "", "_nets": {}}
                 
                 if str(data.get("Enabled")) == "1":
                     net_name = data.get("Name", "Net").upper()
@@ -304,16 +306,43 @@ def on_message(client, userdata, msg):
                     keys_to_check = ["PassAllTG", "PassAllPC", "TGRewrite", "PCRewrite", "TypeRewrite", "SrcRewrite"]
                     for k in keys_to_check:
                         val = str(data.get(k, "")).strip()
-                        if val.startswith("1"): is_ts1 = True
-                        if val.startswith("2"): is_ts2 = True
+                        # Controlla in modo sicuro sia stringhe pure che eventuali array convertiti in stringa
+                        if val.startswith("1") or "[1" in val: is_ts1 = True
+                        if val.startswith("2") or "[2" in val: is_ts2 = True
                         
-                    if is_ts1: network_mapping[cid]["ts1"] = net_name
-                    if is_ts2: network_mapping[cid]["ts2"] = net_name
-                    socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+                    # Registra la rete nell'inventario del nodo
+                    network_mapping[cid]["_nets"][net_id] = {
+                        "name": net_name,
+                        "ts1": is_ts1,
+                        "ts2": is_ts2
+                    }
+                else:
+                    # Se la rete viene disabilitata, rimuovila dall'inventario
+                    if net_id in network_mapping.get(cid, {}).get("_nets", {}):
+                        del network_mapping[cid]["_nets"][net_id]
+                        
+                # --- LOGICA SMART: Ricalcola TS1 e TS2 in base a quante reti sono attive ---
+                nets = network_mapping[cid].get("_nets", {})
+                
+                if len(nets) == 1:
+                    # Caso "Singolo Network": La singola rete gestisce automaticamente tutto
+                    only_net = list(nets.values())[0]
+                    network_mapping[cid]["ts1"] = only_net["name"]
+                    network_mapping[cid]["ts2"] = only_net["name"]
+                else:
+                    # Caso "Multi-Network" (es. BM + FreeDMR): Assegnazione rigorosa basata sulle regole
+                    t1, t2 = "", ""
+                    for n in nets.values():
+                        if n["ts1"]: t1 = n["name"]
+                        if n["ts2"]: t2 = n["name"]
+                    network_mapping[cid]["ts1"] = t1
+                    network_mapping[cid]["ts2"] = t2
+
+                socketio.emit('dati_aggiornati')  # <--- INVIA AL FRONTEND
                         
             except Exception as e:
                 logger.error(f"Error parsing DMRGateway for {cid}: {e}")
-
+        
         # --- MMDVMHOST INFO MANAGEMENT (FREQUENZE & LOCATION) ---
         elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvmhost' and parts[3].lower() == 'info':
             try:
