@@ -535,7 +535,9 @@
     }
     
     function confirmReboot(id) { sendCommand(id, 'REBOOT', `🔄 ${t('titleBoot')}`, `${t('confBoot')}<b>${id.toUpperCase()}</b>?`, "var(--danger)"); }
-    
+    function confirmUpdateAgent(id) { sendCommand(id, 'UPDATE_AGENT', `⬇️ UPDATE OTA`, `Confermi l'aggiornamento dello script tramite git pull sul nodo <b>${id.toUpperCase()}</b>?`, "#2563eb"); 
+    }    
+
     function confirmHatReset(id) { 
         currentResetHatId = id;
         document.getElementById('reset-hat-desc').innerText = `${t('confHat')}${id.toUpperCase()}?`;
@@ -666,7 +668,10 @@
                                 <button class="btn-cmd" style="background: #ea580c; padding: 8px 4px;" title="${t('ttHat')}" onclick="confirmHatReset('${c.id}')">${t('btnHat')}</button>
                                 <button class="btn-cmd" style="background: var(--danger); padding: 8px 4px;" title="${t('ttBoot')}" onclick="confirmReboot('${c.id}')">${t('btnBoot')}</button>
                             </div>
-                            ` : ''}
+                            <div style="width: 100%; display: flex; gap: 8px;">
+                                <button class="btn-cmd" style="background: #2563eb; padding: 8px 4px;" title="Scarica l'ultima versione da Gitea" onclick="confirmUpdateAgent('${c.id}')">⬇️ UPDATE OTA</button>
+                            </div>
+                     ` : ''}
                         </div>
                     </div>`;
             }).join('');

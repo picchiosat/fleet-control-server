@@ -136,7 +136,7 @@ def save_to_sqlite(client_id, data, protocol="DMR"):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?)",
-              (client_id, protocol, str(data.get('source_id', '---')), str(data.get('destination_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('source_ext', ''))))
+              (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', ''))))
     conn.commit()
     conn.close()
     socketio.emit('dati_aggiornati')
@@ -315,7 +315,7 @@ def on_message(client, userdata, msg):
                 logger.error(f"Error parsing DMRGateway for {cid}: {e}")
 
         # --- MMDVMHOST INFO MANAGEMENT (FREQUENZE & LOCATION) ---
-        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvmhost' and parts[3].lower() == 'info':
+        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvm' and parts[3].lower() == 'info':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
@@ -344,7 +344,7 @@ def on_message(client, userdata, msg):
                 logger.error(f"Error parsing MMDVMHost info for {cid}: {e}")
 
         # --- MMDVMHOST GENERAL MANAGEMENT (CALLSIGN & ID & DUPLEX) ---
-        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvmhost' and parts[3].lower() == 'general':
+        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvm' and parts[3].lower() == 'general':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
@@ -378,7 +378,7 @@ def on_message(client, userdata, msg):
                 elif action == 'unlinking': last_seen_reflector[f"{cid}_{proto}"] = "---"
                 m = f"{'Link' if action=='linking' else 'Unlinked'} {dest}"
             
-            if m: save_to_sqlite(cid, {'source_id': "🌐 " + m, 'destination_id': 'NET'}, protocol=proto)
+            if m: save_to_sqlite(cid, {'src_id': "🌐 " + m, 'dst_id': 'NET'}, protocol=proto)
 
         # --- MMDVM AND TRAFFIC MANAGEMENT ---
         elif parts[0] == 'mmdvm':
@@ -399,15 +399,15 @@ def on_message(client, userdata, msg):
                 act = d.get('action')
                 sk = f"ts{d.get('slot', 1)}"
                 if act in ['start', 'late_entry']:
-                    src = get_call(d.get('source_id'))
-                    dst = str(d.get('destination_id'))
+                    src = get_call(d.get('src_id'))
+                    dst = str(d.get('dst_id'))
                     active_calls[cid][sk] = {'src': src, 'dst': dst}
                     client_telemetry[cid]["alt"] = ""
                     client_telemetry[cid][sk] = f"🎙️ {src} ➔ TG {dst}"
                     socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
                 elif act in ['end', 'lost']:
                     info = active_calls[cid].get(sk, {'src': '---', 'dst': '---'})
-                    d['source_id'], d['destination_id'] = info['src'], info['dst']
+                    d['src_id'], d['dst_id'] = info['src'], info['dst']
                     save_to_sqlite(cid, d, protocol="DMR")
                     client_telemetry[cid][sk] = f"{'✅' if act=='end' else '⚠️'} {info['src']}"
                     save_cache(client_telemetry)
@@ -420,11 +420,11 @@ def on_message(client, userdata, msg):
                         act = p.get('action')
                         
                         if act == 'start':
-                            if k == 'NXDN': src = get_call(p.get('source_id', '---'), 'NXDN')
-                            elif k == 'P25': src = get_call(p.get('source_id', '---'), 'DMR')
-                            else: src = str(p.get('Callsign', p.get('source_cs', p.get('source_info', p.get('source_id', '---')))))
+                            if k == 'NXDN': src = get_call(p.get('src_id', '---'), 'NXDN')
+                            elif k == 'P25': src = get_call(p.get('src_id', '---'), 'DMR')
+                            else: src = str(p.get('Callsign', p.get('src_callsign', p.get('src_info', p.get('src_id', '---')))))
                             
-                            t_list = [p.get('reflector'), p.get('destination_cs'), p.get('destination_id')]
+                            t_list = [p.get('reflector'), p.get('dst_callsign'), p.get('dst_id')]
                             current_target = next((str(x).strip() for x in t_list if x and str(x).strip() not in ['', '---', '0', 'CQCQCQ']), None)
                             
                             if not current_target or current_target == cid.upper():
@@ -432,13 +432,13 @@ def on_message(client, userdata, msg):
                             else:
                                 target = current_target
 
-                            active_calls[cid][k] = {'src': src, 'dst': target, 'ext': str(p.get('source_ext', ''))}
+                            active_calls[cid][k] = {'src': src, 'dst': target, 'ext': str(p.get('src_ext', ''))}
                             client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target}"})
                             socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
                         
                         elif act in ['end', 'lost']:
                             info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'ext': ''})
-                            p.update({'source_id': info['src'], 'destination_id': info['dst'], 'source_ext': info['ext']})
+                            p.update({'src_id': info['src'], 'dst_id': info['dst'], 'src_ext': info['ext']})
                             save_to_sqlite(cid, p, protocol=name)
                             client_telemetry[cid]["alt"] = f"{'✅' if act=='end' else '⚠️'} {name}: {info['src']}"
                             save_cache(client_telemetry)
