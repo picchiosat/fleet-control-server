@@ -9,6 +9,10 @@ monitor.db-journal
 monitor.db-shm
 monitor.db-wal
 
+# Ignora gli ambienti virtuali di Python
+venv/
+env/
+
 # Ignora i file di configurazione reali (pubblicherai solo i .example.json)
 config.json
 clients.json
