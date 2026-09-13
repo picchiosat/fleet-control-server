@@ -653,9 +653,9 @@
                             <span style="font-size: 0.85rem;" data-i18n="warnDaemon">${t('warnDaemon')}</span>
                         </div>
 
-                        <div id="prof-btns-${c.id}" style="width: 100%; display: flex; gap: 10px; display: none;"></div>
                             
                             ${canControl ? `
+                            <div id="prof-btns-${c.id}" style="width: 100%; display: flex; gap: 10px; display: none;"></div>
                             <div style="width: 100%; display: flex; gap: 10px; margin-bottom: 8px;">
                                 <button class="btn-cmd" style="background: var(--success);" title="${t('ttTgOn')}" onclick="sendTgCommand('${c.id}', 'TG:ON')">🔔 Telegram ON</button>
                                 <button class="btn-cmd" style="background: var(--text-muted);" title="${t('ttTgOff')}" onclick="sendTgCommand('${c.id}', 'TG:OFF')">🔇 Telegram OFF</button>
