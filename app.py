@@ -8,6 +8,11 @@ import urllib.request
 import threading
 import time
 import logging
+import re
+import queue
+import hashlib
+import secrets
+from contextlib import closing
 from pywebpush import webpush, WebPushException
 from logging.handlers import RotatingFileHandler
 from flask_socketio import SocketIO, emit
@@ -39,8 +44,43 @@ logger = logging.getLogger("FleetHub")
 # Silence HTTP request spam (GET /api/states 200 OK)
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
+# --- CONFIG (caricata subito: serve a secret_key, CORS, utente di default, ecc.) ---
+config_lock = threading.Lock()
+
+def read_config():
+    with open(CONFIG_PATH, 'r') as f:
+        return json.load(f)
+
+def write_config(cfg):
+    """Scrittura atomica di config.json (file temporaneo + replace), mantenendo i permessi."""
+    tmp = CONFIG_PATH + '.tmp'
+    with config_lock:
+        with open(tmp, 'w') as f:
+            json.dump(cfg, f, indent=4)
+        try:
+            os.chmod(tmp, os.stat(CONFIG_PATH).st_mode & 0o777)
+        except OSError:
+            pass
+        os.replace(tmp, CONFIG_PATH)
+
+config = read_config()
+web_cfg = config.get('web', {})   # opzionale: secret_key, cookie_secure, session_hours, cors_origins, trust_proxy
+
+def get_secret_key():
+    """Chiave di sessione: da FLEET_SECRET_KEY, da config.json oppure generata e salvata."""
+    key = os.environ.get('FLEET_SECRET_KEY') or config.get('secret_key')
+    if not key or key == 'ari_fvg_secret_ultra_secure':
+        key = secrets.token_hex(32)
+        config['secret_key'] = key
+        try:
+            write_config(config)
+            logger.warning("🔑 Nuova secret_key generata e salvata in config.json (le sessioni esistenti sono state invalidate).")
+        except Exception as e:
+            logger.error(f"Impossibile salvare la secret_key in config.json ({e}): sarà valida solo fino al riavvio.")
+    return key
+
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
 
     c.execute('PRAGMA journal_mode=WAL;') # <-- MAGIC: Enable simultaneous read/write!
@@ -50,11 +90,11 @@ def init_db():
                   source_id TEXT, target TEXT, slot INTEGER, duration REAL, ber REAL, loss REAL)''')
     try:
         c.execute("ALTER TABLE radio_logs ADD COLUMN protocol TEXT DEFAULT 'DMR'")
-    except: pass 
+    except sqlite3.OperationalError: pass
 
     try:
         c.execute("ALTER TABLE radio_logs ADD COLUMN source_ext TEXT DEFAULT ''")
-    except: pass
+    except sqlite3.OperationalError: pass
 
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, 
@@ -67,25 +107,27 @@ def init_db():
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME, username TEXT, 
                   client_id TEXT, command TEXT)''')
 
+    c.execute("CREATE INDEX IF NOT EXISTS idx_radio_logs_ts ON radio_logs(timestamp)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_radio_logs_client_ts ON radio_logs(client_id, timestamp)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_ts ON audit_logs(timestamp)")
+
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
-        #  Default value if missing config file
-         def_user = "admin"
-         def_pass = "admin123"
-        
-        # Try read config.json
-         try:
-             with open(CONFIG_PATH, 'r') as f:
-                 cfg = json.load(f)
-                 def_user = cfg.get("web_admin", {}).get("default_user", "admin")
-                 def_pass = cfg.get("web_admin", {}).get("default_pass", "admin123")
-         except Exception:
-             pass
+        adm_cfg = config.get("web_admin", {})
+        def_user = adm_cfg.get("default_user", "admin")
+        def_pass = adm_cfg.get("default_pass", "")
+        generated = False
+        if not def_pass or def_pass == "admin123":
+            # niente password di default note: ne generiamo una casuale
+            def_pass = secrets.token_urlsafe(9)
+            generated = True
 
-         h = generate_password_hash(def_pass)
-         c.execute("INSERT INTO users (username, password_hash, role, allowed_nodes) VALUES (?,?,?,?)",
-                   (def_user, h, 'admin', 'all'))
-         logger.info(f">>> DEFAULT USER CREATED - User: {def_user} | Pass: {def_pass} <<<")
+        c.execute("INSERT INTO users (username, password_hash, role, allowed_nodes) VALUES (?,?,?,?)",
+                  (def_user, generate_password_hash(def_pass), 'admin', 'all'))
+        if generated:
+            logger.warning(f">>> DEFAULT USER CREATED - User: {def_user} | Temporary password: {def_pass} | CHANGE IT NOW <<<")
+        else:
+            logger.info(f">>> DEFAULT USER CREATED - User: {def_user} (password from config.json) <<<")
 
     conn.commit()
     conn.close()
@@ -98,8 +140,7 @@ nxdn_db = {}
 
 def load_ids():
     global user_db, nxdn_db
-    user_db.clear()
-    nxdn_db.clear()
+    new_dmr, new_nxdn = {}, {}
 
     if os.path.exists(DMR_IDS_PATH):
         with open(DMR_IDS_PATH, 'r', encoding='utf-8', errors='ignore') as f:
@@ -109,17 +150,21 @@ def load_ids():
                 elif '\t' in l: p = l.strip().split('\t')
                 elif ';' in l: p = l.strip().split(';')
                 else: p = l.strip().split() # Cerca gli spazi normali
-                
-                if len(p) >= 2 and p[0].strip().isdigit(): 
-                    user_db[p[0].strip()] = p[1].strip()
-                    
+
+                if len(p) >= 2 and p[0].strip().isdigit():
+                    new_dmr[p[0].strip()] = p[1].strip()
+
     if os.path.exists(NXDN_IDS_PATH):
         with open(NXDN_IDS_PATH, 'r', encoding='utf-8', errors='ignore') as f:
             for l in f:
                 sep = '\t' if '\t' in l else (',' if ',' in l else ';')
                 p = l.strip().split(sep)
                 if len(p) >= 2 and p[0].strip().isdigit():
-                    nxdn_db[p[0].strip()] = p[1].strip()
+                    new_nxdn[p[0].strip()] = p[1].strip()
+
+    # Un file vuoto/corrotto non deve cancellare un database valido già in memoria
+    if new_dmr: user_db = new_dmr
+    if new_nxdn: nxdn_db = new_nxdn
 
 load_ids()
 
@@ -129,21 +174,57 @@ def get_call(id, proto="DMR"):
     return user_db.get(sid, sid)
 
 def save_cache(data):
-    with open(CACHE_FILE, 'w') as f: json.dump(data, f)
-    socketio.emit('dati_aggiornati')
+    try:
+        tmp = CACHE_FILE + '.tmp'
+        with open(tmp, 'w') as f: json.dump(data, f)
+        os.replace(tmp, CACHE_FILE)
+    except Exception as e:
+        logger.error(f"Errore salvataggio cache telemetria: {e}")
+    notify_update()
 
 def save_to_sqlite(client_id, data, protocol="DMR"):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
     c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?)",
               (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', ''))))
     conn.commit()
     conn.close()
-    socketio.emit('dati_aggiornati')
+    notify_update('log_aggiornato')
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
-app.secret_key = 'ari_fvg_secret_ultra_secure'
+socketio = SocketIO(app, cors_allowed_origins=web_cfg.get('cors_origins', '*'))
+app.secret_key = get_secret_key()
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=bool(web_cfg.get('cookie_secure', False)),   # metti true se servi la dashboard solo in HTTPS
+    PERMANENT_SESSION_LIFETIME=int(web_cfg.get('session_hours', 12)) * 3600,
+)
+
+# --- NOTIFICHE WEBSOCKET "COALESCED" ---
+# Molti messaggi MQTT ravvicinati generano UN solo evento ogni NOTIFY_DELAY secondi
+# (altrimenti ogni browser farebbe 3 richieste HTTP per ogni messaggio).
+NOTIFY_DELAY = 0.3
+_notify_lock = threading.Lock()
+_notify_pending = set()
+
+def notify_update(event='dati_aggiornati'):
+    with _notify_lock:
+        if event in _notify_pending:
+            return
+        _notify_pending.add(event)
+
+    def _fire():
+        with _notify_lock:
+            _notify_pending.discard(event)
+        try:
+            socketio.emit(event)
+        except Exception as e:
+            logger.error(f"Errore emit WebSocket '{event}': {e}")
+
+    timer = threading.Timer(NOTIFY_DELAY, _fire)
+    timer.daemon = True
+    timer.start()
 client_states = {}
 device_configs = {}
 client_telemetry = {}
@@ -160,7 +241,42 @@ if os.path.exists(CACHE_FILE):
     except: client_telemetry = {}
 
 active_calls = {}
-with open(CONFIG_PATH) as f: config = json.load(f)
+
+# --- DIAGNOSTICA: ultimo messaggio MQTT ricevuto, per nodo e per tipo ---
+#   mmdvm   -> mmdvm/<id>/json                       (eventi radio: TX, cambio modo...)
+#   gateway -> dmr/nxdn/ysf/p25/dstar-gateway/<id>/json
+#   health  -> devices/<id>/services                 (heartbeat dell'agent sul nodo)
+START_TIME = time.time()
+last_seen = {}
+last_seen_lock = threading.Lock()
+
+def touch_seen(cid, kind):
+    with last_seen_lock:
+        last_seen.setdefault(cid, {})[kind] = time.time()
+
+def seen_ages():
+    """Età (in secondi) dell'ultimo messaggio per nodo/tipo, calcolata sul server (niente problemi di orologio)."""
+    now = time.time()
+    with last_seen_lock:
+        return {cid: {k: round(now - ts, 1) for k, ts in kinds.items()} for cid, kinds in last_seen.items()}
+
+def seed_last_seen():
+    """Dopo un riavvio del server si riparte dall'ultimo evento radio registrato nel DB (dato reale)."""
+    try:
+        with closing(sqlite3.connect(DB_PATH, timeout=10)) as conn:
+            rows = conn.execute("""SELECT LOWER(client_id), MAX(timestamp) FROM radio_logs
+                                   WHERE source_id NOT LIKE '🌐%' GROUP BY LOWER(client_id)""").fetchall()
+        for cid, ts in rows:
+            try:
+                parsed = time.mktime(time.strptime(ts, '%Y-%m-%d %H:%M:%S'))
+            except (TypeError, ValueError):
+                continue
+            with last_seen_lock:
+                last_seen.setdefault(cid, {}).setdefault('mmdvm', parsed)
+    except Exception as e:
+        logger.error(f"seed_last_seen: {e}")
+
+seed_last_seen()
 
 # --- MQTT CALLBACKS ---
 mqtt_connected_status = False
@@ -177,7 +293,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         default_topics = [
             "servizi/+/stat", "dmr-gateway/+/json", "devices/+/services",
             "nxdn-gateway/+/json", "ysf-gateway/+/json", "p25-gateway/+/json",
-            "dstar-gateway/+/json", "mmdvm/+/json", "devices/#", "data/#"
+            "dstar-gateway/+/json", "mmdvm/+/json", "data/#"
         ]
         
         # Cerca la lista "topics" nel config.json, se non la trova usa quella di default
@@ -220,6 +336,14 @@ def on_message(client, userdata, msg):
         p0 = parts[0].lower().replace('-', '')
         p2 = parts[2].lower().replace('-', '') if len(parts) > 2 else ""
 
+        # --- DIAGNOSTICA: registra l'arrivo dell'ultimo messaggio per tipo ---
+        if p0 == 'mmdvm':
+            touch_seen(cid, 'mmdvm')
+        elif p0 in ('dmrgateway', 'nxdngateway', 'ysfgateway', 'p25gateway', 'dstargateway'):
+            touch_seen(cid, 'gateway')
+        elif p0 == 'devices' and p2 == 'services':
+            touch_seen(cid, 'health')
+
         # --- CAPTURE FULL CONFIGURATIONS ---
         if p0 == 'data' and len(parts) >= 4 and parts[3].lower() == 'full_config':
             cid_conf = parts[1].lower()
@@ -235,16 +359,16 @@ def on_message(client, userdata, msg):
         # --- NODE AND SERVICE STATE MANAGEMENT ---
         elif p0 == 'servizi':
             client_states[cid] = payload
-            socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+            notify_update()  # <--- WEBSOCKET
             
             # --- PUSH TRIGGER: NODE STATE ---
             if payload.upper() == 'OFFLINE':
                 if last_notified_errors.get(f"{cid}_NODE") != 'OFFLINE':
-                    broadcast_push_notification(f"💀 NODE OFFLINE: {cid.upper()}", "Connection lost with broker.")
+                    broadcast_push_notification(f"💀 NODE OFFLINE: {cid.upper()}", "Connection lost with broker.", cid=cid)
                     last_notified_errors[f"{cid}_NODE"] = 'OFFLINE'
             elif payload.upper() == 'ONLINE':
                 if last_notified_errors.get(f"{cid}_NODE") == 'OFFLINE':
-                    broadcast_push_notification(f"🌤️ NODE ONLINE: {cid.upper()}", "Node is back online.")
+                    broadcast_push_notification(f"🌤️ NODE ONLINE: {cid.upper()}", "Node is back online.", cid=cid)
                     del last_notified_errors[f"{cid}_NODE"]
                     
             if payload.upper() not in ['OFF', 'OFFLINE', '']:
@@ -257,7 +381,7 @@ def on_message(client, userdata, msg):
         elif p0 == 'devices' and len(parts) >= 3 and p2 == 'services':
             try:
                 data = json.loads(payload)
-                device_health[cid] = {
+                new_health = {
                     "cpu": round(data.get("cpu_usage_percent", 0), 1),
                     "temp": round(data.get("cpu_temp", 0), 1),
                     "ram": round(data.get("memory_usage_percent", 0), 1),
@@ -266,7 +390,10 @@ def on_message(client, userdata, msg):
                     "files": data.get("files", data.get("config_files", [])),
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"})
                 }
-                socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+                health_changed = device_health.get(cid) != new_health
+                device_health[cid] = new_health
+                if health_changed:
+                    notify_update()  # <--- WEBSOCKET
 
                 # --- PUSH TRIGGER: SERVICE ERRORS ---
                 processes = data.get("processes", {})
@@ -277,10 +404,10 @@ def on_message(client, userdata, msg):
                         if last_notified_errors.get(status_key) != s_lower:
                             msg_err = f"Service {svc_name} KO ({svc_status})"
                             if s_lower == "error": msg_err += " - Auto-healing failed! ⚠️"
-                            broadcast_push_notification(f"🚨 ALARM: {cid.upper()}", msg_err)
+                            broadcast_push_notification(f"🚨 ALARM: {cid.upper()}", msg_err, cid=cid)
                             last_notified_errors[status_key] = s_lower
                     elif s_lower == "online" and status_key in last_notified_errors:
-                        broadcast_push_notification(f"✅ RESTORED: {cid.upper()}", f"Service {svc_name} back ONLINE.")
+                        broadcast_push_notification(f"✅ RESTORED: {cid.upper()}", f"Service {svc_name} back ONLINE.", cid=cid)
                         del last_notified_errors[status_key]
                 # -----------------------------------------
 
@@ -309,7 +436,7 @@ def on_message(client, userdata, msg):
                         
                     if is_ts1: network_mapping[cid]["ts1"] = net_name
                     if is_ts2: network_mapping[cid]["ts2"] = net_name
-                    socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+                    notify_update()  # <--- WEBSOCKET
                         
             except Exception as e:
                 logger.error(f"Error parsing DMRGateway for {cid}: {e}")
@@ -339,7 +466,7 @@ def on_message(client, userdata, msg):
                     "lon": lon,
                     "loc": loc
                 }
-                socketio.emit('dati_aggiornati')
+                notify_update()
             except Exception as e:
                 logger.error(f"Error parsing MMDVMHost info for {cid}: {e}")
 
@@ -354,7 +481,7 @@ def on_message(client, userdata, msg):
                 
                 if callsign:
                     node_general[cid] = {"callsign": callsign, "radio_id": radio_id, "duplex": str(duplex)}
-                    socketio.emit('dati_aggiornati')
+                    notify_update()
             except Exception as e:
                 logger.error(f"Error parsing MMDVMHost general for {cid}: {e}")
 
@@ -404,7 +531,7 @@ def on_message(client, userdata, msg):
                     active_calls[cid][sk] = {'src': src, 'dst': dst}
                     client_telemetry[cid]["alt"] = ""
                     client_telemetry[cid][sk] = f"🎙️ {src} ➔ TG {dst}"
-                    socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+                    notify_update()  # <--- WEBSOCKET
                 elif act in ['end', 'lost']:
                     info = active_calls[cid].get(sk, {'src': '---', 'dst': '---'})
                     d['src_id'], d['dst_id'] = info['src'], info['dst']
@@ -434,7 +561,7 @@ def on_message(client, userdata, msg):
 
                             active_calls[cid][k] = {'src': src, 'dst': target, 'ext': str(p.get('src_ext', ''))}
                             client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target}"})
-                            socketio.emit('dati_aggiornati')  # <--- WEBSOCKET
+                            notify_update()  # <--- WEBSOCKET
                         
                         elif act in ['end', 'lost']:
                             info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'ext': ''})
@@ -463,6 +590,30 @@ try:
 except Exception as e:
     logger.error(f"Errore critico nell'inizializzazione MQTT: {e}")
 
+def mqtt_publish(topic, payload, qos=1):
+    """Pubblica solo se il broker è raggiungibile (niente comandi 'vecchi' accodati e consegnati dopo)."""
+    if not mqtt_connected_status:
+        logger.warning(f"MQTT offline: pubblicazione su {topic} annullata")
+        return False
+    try:
+        info = mqtt_backend.publish(topic, payload, qos=qos)
+        if info.rc != mqtt_client.MQTT_ERR_SUCCESS:
+            logger.warning(f"MQTT publish fallita su {topic} (rc={info.rc})")
+            return False
+        return True
+    except Exception as e:
+        logger.error(f"MQTT publish error su {topic}: {e}")
+        return False
+
+@app.after_request
+def add_security_headers(resp):
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Referrer-Policy', 'same-origin')
+    if request.path.startswith('/api/'):
+        resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
 @app.route('/')
 def index(): return render_template('index.html')
 
@@ -489,7 +640,9 @@ def get_states():
         "health": device_health,
         "networks": network_mapping,
         "info": node_info,
-        "general": node_general
+        "general": node_general,
+        "last_seen": seen_ages(),
+        "uptime": int(time.time() - START_TIME)
     })
 
 @app.route('/api/stats')
@@ -497,7 +650,7 @@ def get_stats():
     # Leggiamo il parametro 'node' (di default 'all')
     node = request.args.get('node', 'all').lower()
     
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
     
     # Prepariamo il filtro aggiuntivo se è stato selezionato un nodo
@@ -510,26 +663,26 @@ def get_stats():
     # 1. Top 5 TalkGroups di OGGI
     c.execute(f"""SELECT target, COUNT(*) as cnt FROM radio_logs 
                  WHERE target NOT IN ('---', 'NET', '') 
-                 AND date(timestamp) = date('now', 'localtime'){node_filter} 
+                 AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY target ORDER BY cnt DESC LIMIT 5""", params)
     top_tgs = [{"target": row[0], "count": row[1]} for row in c.fetchall()]
     
     # 2. Top 5 Callsign di OGGI
     c.execute(f"""SELECT source_id, COUNT(*) as cnt FROM radio_logs 
                  WHERE source_id NOT LIKE '🌐%' 
-                 AND date(timestamp) = date('now', 'localtime'){node_filter} 
+                 AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY source_id ORDER BY cnt DESC LIMIT 5""", params)
     top_calls = [{"call": row[0], "count": row[1]} for row in c.fetchall()]
     
     # 3. Tempo medio dei transiti di OGGI
     c.execute(f"""SELECT AVG(duration) FROM radio_logs 
                  WHERE duration > 0.5 
-                 AND date(timestamp) = date('now', 'localtime'){node_filter}""", params)
+                 AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter}""", params)
     avg_dur = c.fetchone()[0]
     avg_dur = round(avg_dur, 1) if avg_dur else 0
     
     # 4. Totale transiti di OGGI
-    c.execute(f"SELECT COUNT(*) FROM radio_logs WHERE date(timestamp) = date('now', 'localtime'){node_filter}", params)
+    c.execute(f"SELECT COUNT(*) FROM radio_logs WHERE timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter}", params)
     today_tx = c.fetchone()[0]
     
     conn.close()
@@ -540,251 +693,499 @@ def get_stats():
         "today_tx": today_tx
     })
 
-@app.route('/api/service_control', methods=['POST'])
-def service_control():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    d = request.json
-    cid = d.get('clientId').lower()
-    action = d.get('action')
-    service = d.get('service')
-    mqtt_backend.publish(f"devices/{cid}/control", f"{action}:{service}")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO audit_logs (timestamp, username, client_id, command) VALUES (datetime('now','localtime'), ?, ?, ?)",
-              (session.get('user'), cid, f"SVC_{action.upper()}_{service}"))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
+# =====================================================================
+#  AUTENTICAZIONE / VALIDAZIONE
+# =====================================================================
+VALID_ROLES = ('admin', 'operator')
+USERNAME_RE = re.compile(r'^[A-Za-z0-9_.@\-]{3,32}$')
+CID_RE = re.compile(r'^[a-z0-9][a-z0-9_\-]{0,63}$')
+SERVICE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.@\-]{0,63}$')
+PROFILE_KEY_RE = re.compile(r'^[A-Za-z0-9_\-]{1,32}$')
+TIME_RE = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
+MIN_PASSWORD_LEN = 8
 
+# Comandi inviabili a un nodo (topic servizi/<id>/cmnd)
+SIMPLE_COMMANDS = {'TG:ON', 'TG:OFF'}
+PRIVILEGED_COMMANDS = {'REBOOT', 'RESET_HAT', 'UPDATE_AGENT'}   # solo admin
+SERVICE_ACTIONS = {'start', 'stop', 'restart'}
+
+
+def db_connect(row=False):
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    if row:
+        conn.row_factory = sqlite3.Row
+    return conn
+
+
+def json_body():
+    d = request.get_json(silent=True)
+    return d if isinstance(d, dict) else {}
+
+
+def err(msg, code=400):
+    return jsonify({"success": False, "error": msg}), code
+
+
+def pw_fingerprint(password_hash):
+    """Impronta dell'hash: cambiando password le vecchie sessioni diventano invalide."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+def get_auth():
+    """Utente della sessione, riletto dal DB a ogni richiesta (ruolo/nodi sempre aggiornati)."""
+    username = session.get('user')
+    if not session.get('logged_in') or not username:
+        return None
+    with closing(db_connect(row=True)) as conn:
+        row = conn.execute("SELECT username, password_hash, role, allowed_nodes FROM users WHERE username = ?",
+                           (username,)).fetchone()
+    if not row or session.get('pv') != pw_fingerprint(row['password_hash']):
+        session.clear()   # utente cancellato o password cambiata
+        return None
+    return {"username": row['username'], "role": row['role'], "allowed_nodes": row['allowed_nodes'] or ''}
+
+
+def node_allowed(role, allowed_nodes, cid):
+    if role == 'admin':
+        return True
+    allowed = (allowed_nodes or '').strip().lower()
+    if allowed == 'all':
+        return True
+    return cid in [x.strip().lower() for x in allowed.split(',') if x.strip()]
+
+
+def known_profile_keys(cid=None):
+    """Chiavi di profilo valide (A/B + quelle annunciate dai nodi)."""
+    keys = {'A', 'B'}
+    healths = [device_health.get(cid)] if cid else list(device_health.values())
+    for h in healths:
+        profiles = (h or {}).get('profiles') or {}
+        if isinstance(profiles, dict):
+            keys.update(str(k) for k in profiles.keys() if PROFILE_KEY_RE.match(str(k)))
+    return keys - PRIVILEGED_COMMANDS - SIMPLE_COMMANDS
+
+
+def audit(username, client_id, command):
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute("INSERT INTO audit_logs (timestamp, username, client_id, command) VALUES (datetime('now','localtime'), ?, ?, ?)",
+                         (username, client_id, command))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Audit log error: {e}")
+
+
+def count_admins(cursor, exclude_id=None):
+    if exclude_id is None:
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+    else:
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin' AND id != ?", (exclude_id,))
+    return cursor.fetchone()[0]
+
+
+def normalize_nodes(value):
+    value = (value or '').strip().lower()
+    if not value or value == 'all':
+        return 'all'
+    return ','.join(x.strip() for x in value.split(',') if x.strip())
+
+
+# --- Limitazione tentativi di login (per IP, in memoria) ---
+LOGIN_MAX_FAILS = 5
+LOGIN_WINDOW_SEC = 300
+login_attempts = {}
+login_lock = threading.Lock()
+
+
+def client_ip():
+    # X-Forwarded-For si fida solo se esplicitamente abilitato ("web": {"trust_proxy": true})
+    if config.get('web', {}).get('trust_proxy'):
+        fwd = request.headers.get('X-Forwarded-For', '')
+        if fwd:
+            return fwd.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def login_blocked(ip):
+    now = time.time()
+    with login_lock:
+        fails = [x for x in login_attempts.get(ip, []) if now - x < LOGIN_WINDOW_SEC]
+        if fails:
+            login_attempts[ip] = fails
+        else:
+            login_attempts.pop(ip, None)
+        return len(fails) >= LOGIN_MAX_FAILS
+
+
+def login_register_fail(ip):
+    with login_lock:
+        login_attempts.setdefault(ip, []).append(time.time())
+
+
+def login_reset(ip):
+    with login_lock:
+        login_attempts.pop(ip, None)
+
+
+# =====================================================================
+#  ROUTE: SESSIONE
+# =====================================================================
 @app.route('/api/login', methods=['POST'])
 def login():
-    d = request.json
+    d = json_body()
     username, password = d.get('user'), d.get('pass')
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = c.fetchone()
-    conn.close()
+    if not isinstance(username, str) or not isinstance(password, str) or not username or not password:
+        return err("Missing credentials", 400)
+
+    ip = client_ip()
+    if login_blocked(ip):
+        logger.warning(f"Login bloccato (troppi tentativi) da {ip}")
+        return err("Too many failed attempts. Try again in a few minutes.", 429)
+
+    with closing(db_connect(row=True)) as conn:
+        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+
     if user and check_password_hash(user['password_hash'], password):
+        login_reset(ip)
+        session.clear()
+        session.permanent = True
         session['logged_in'] = True
         session['user'] = user['username']
-        session['role'] = user['role']
-        session['allowed_nodes'] = user['allowed_nodes']
+        session['pv'] = pw_fingerprint(user['password_hash'])
+        logger.info(f"Login OK: {user['username']} da {ip}")
         return jsonify({"success": True, "role": user['role'], "allowed_nodes": user['allowed_nodes']})
+
+    login_register_fail(ip)
+    logger.warning(f"Login fallito per {username[:32]!r} da {ip}")
     return jsonify({"success": False}), 401
 
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"success": True})
+
+
+@app.route('/api/me')
+def me():
+    auth = get_auth()
+    if not auth:
+        return jsonify({"logged_in": False})
+    return jsonify({"logged_in": True, "user": auth['username'], "role": auth['role'],
+                    "allowed_nodes": auth['allowed_nodes']})
+
+
+# =====================================================================
+#  ROUTE: COMANDI AI NODI
+# =====================================================================
 @app.route('/api/command', methods=['POST'])
 def cmd():
-    if not session.get('logged_in'): return jsonify({"success": False, "error": "Not authenticated"}), 403
-    d = request.json
-    cid = d['clientId'].lower()
-    cmd_type = d['type']
-    username = session.get('user')
-    role = session.get('role')
-    allowed = session.get('allowed_nodes', '')
-    is_allowed = (role == 'admin' or allowed == 'all' or cid in [x.strip() for x in allowed.split(',')])
-    if cmd_type == 'REBOOT' and role != 'admin':
-        return jsonify({"success": False, "error": "Only Admins can reboot."}), 403
-    if is_allowed:
-        mqtt_backend.publish(f"servizi/{cid}/cmnd", cmd_type)
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("INSERT INTO audit_logs (timestamp, username, client_id, command) VALUES (datetime('now','localtime'), ?, ?, ?)",
-                  (username, cid, cmd_type))
-        conn.commit()
-        conn.close()
-        client_telemetry[cid] = {"ts1": "🔄 Sent...", "ts2": "🔄 Sent...", "alt": ""}
-        return jsonify({"success": True})
-    return jsonify({"success": False, "error": "You do not have permission for this node."}), 403
+    auth = get_auth()
+    if not auth:
+        return err("Not authenticated", 403)
 
-@app.route('/api/update_nodes', methods=['POST'])
-def update_nodes():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    mqtt_backend.publish("devices/control/request", "update")
+    d = json_body()
+    cid = str(d.get('clientId', '')).strip().lower()
+    cmd_type = str(d.get('type', '')).strip()
+
+    if not CID_RE.match(cid):
+        return err("Invalid node id")
+    if not node_allowed(auth['role'], auth['allowed_nodes'], cid):
+        return err("You do not have permission for this node.", 403)
+
+    if cmd_type in PRIVILEGED_COMMANDS:
+        if auth['role'] != 'admin':
+            return err("Only Admins can run this command.", 403)
+    elif cmd_type in SIMPLE_COMMANDS:
+        pass
+    elif cmd_type in known_profile_keys(cid):
+        pass
+    else:
+        logger.warning(f"Comando non ammesso da {auth['username']}: {cmd_type[:40]!r} -> {cid}")
+        return err("Unknown command")
+
+    if not mqtt_publish(f"servizi/{cid}/cmnd", cmd_type):
+        return err("MQTT broker offline - command not sent", 503)
+
+    audit(auth['username'], cid, cmd_type)
+    client_telemetry[cid] = {"ts1": "🔄 Sent...", "ts2": "🔄 Sent...", "alt": ""}
     return jsonify({"success": True})
 
-    # Mandiamo il comando "update" direttamente nel topic privato di ciascun nodo
-    for client in clients_list:
-        cid = client['id'].lower()
-        mqtt_backend.publish(f"devices/{cid}/control", "update", qos=1)
-        
-    logger.info("📢 Inviato comando REQ CONFIG diretto a tutti i nodi della flotta.")
-    return jsonify({"success": True})
-
-@app.route('/api/users', methods=['GET'])
-def get_users():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute("SELECT id, username, role, allowed_nodes FROM users")
-    users = [dict(row) for row in c.fetchall()]
-    conn.close()
-    return jsonify(users)
-
-@app.route('/api/users', methods=['POST'])
-def add_user():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    d = request.json
-    username = d.get('username')
-    password = d.get('password')
-    role = d.get('role', 'operator')
-    allowed = d.get('allowed_nodes', '')
-    if not username or not password:
-        return jsonify({"success": False, "error": "Missing data"})
-    h = generate_password_hash(password)
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("INSERT INTO users (username, password_hash, role, allowed_nodes) VALUES (?,?,?,?)",
-                  (username, h, role, allowed))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    except sqlite3.IntegrityError:
-        return jsonify({"success": False, "error": "Username already exists"})
-
-@app.route('/api/users/<int:user_id>', methods=['DELETE'])
-def delete_user(user_id):
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT username FROM users WHERE id = ?", (user_id,))
-    u = c.fetchone()
-    if u and u[0] == session.get('user'):
-        conn.close()
-        return jsonify({"success": False, "error": "You cannot delete yourself!"})
-    c.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
-@app.route('/api/users/<int:user_id>', methods=['PUT'])
-def update_user(user_id):
-    if session.get('role') != 'admin': 
-        return jsonify({"error": "Unauthorized"}), 403
-        
-    data = request.json
-    role = data.get('role', 'operator')
-    allowed = data.get('allowed_nodes', 'all')
-    password = data.get('password')
-
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        
-        if password and password.strip() != "":
-            h = generate_password_hash(password)
-            c.execute("UPDATE users SET password_hash=?, role=?, allowed_nodes=? WHERE id=?", 
-                      (h, role, allowed, user_id))
-        else:
-            c.execute("UPDATE users SET role=?, allowed_nodes=? WHERE id=?", 
-                      (role, allowed, user_id))
-            
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-
-@app.route('/api/change_password', methods=['POST'])
-def change_password():
-    if not session.get('logged_in'): 
-        return jsonify({"success": False, "error": "Not authenticated"}), 403
-    d = request.json
-    new_pass = d.get('new_password')
-    user_to_change = d.get('username')
-    if session.get('role') != 'admin' and session.get('user') != user_to_change:
-        return jsonify({"success": False, "error": "Unauthorized"}), 403
-    if not new_pass:
-        return jsonify({"success": False, "error": "Password cannot be empty"}), 400
-    h = generate_password_hash(new_pass)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("UPDATE users SET password_hash = ? WHERE username = ?", (h, user_to_change))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
 
 @app.route('/api/global_command', methods=['POST'])
 def global_cmd():
-    if session.get('role') != 'admin': 
-        return jsonify({"success": False, "error": "Admin action only!"}), 403
-    d = request.json
-    cmd_type = d.get('type') 
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Admin action only!", 403)
+
+    cmd_type = str(json_body().get('type', '')).strip()
+    if cmd_type not in known_profile_keys():
+        return err("Unknown profile")
+
     clients_list = []
     if os.path.exists(CLIENTS_PATH):
         with open(CLIENTS_PATH, 'r') as f:
             clients_list = json.load(f)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+
+    sent, failed = 0, 0
     for client in clients_list:
-        cid = client['id'].lower()
-        mqtt_backend.publish(f"servizi/{cid}/cmnd", cmd_type)
-        c.execute("INSERT INTO audit_logs (timestamp, username, client_id, command) VALUES (datetime('now','localtime'), ?, ?, ?)",
-                  (session.get('user'), cid, f"GLOBAL_OVERRIDE_{cmd_type}"))
-    conn.commit()
-    conn.close()
+        cid = str(client.get('id', '')).lower()
+        if not CID_RE.match(cid):
+            continue
+        if mqtt_publish(f"servizi/{cid}/cmnd", cmd_type):
+            audit(auth['username'], cid, f"GLOBAL_OVERRIDE_{cmd_type}")
+            sent += 1
+        else:
+            failed += 1
+    if failed and not sent:
+        return err("MQTT broker offline - command not sent", 503)
+    return jsonify({"success": True, "sent": sent, "failed": failed})
+
+
+@app.route('/api/service_control', methods=['POST'])
+def service_control():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    d = json_body()
+    cid = str(d.get('clientId', '')).strip().lower()
+    action = str(d.get('action', '')).strip().lower()
+    service = str(d.get('service', '')).strip()
+    if not CID_RE.match(cid):
+        return err("Invalid node id")
+    if action not in SERVICE_ACTIONS:
+        return err("Invalid action")
+    if not SERVICE_RE.match(service):
+        return err("Invalid service name")
+
+    if not mqtt_publish(f"devices/{cid}/control", f"{action}:{service}"):
+        return err("MQTT broker offline - command not sent", 503)
+    audit(auth['username'], cid, f"SVC_{action.upper()}_{service}")
     return jsonify({"success": True})
 
+
+@app.route('/api/update_nodes', methods=['POST'])
+def update_nodes():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+    if not mqtt_publish("devices/control/request", "update"):
+        return err("MQTT broker offline - command not sent", 503)
+    logger.info(f"📢 REQ CONFIG inviata a tutta la flotta da {auth['username']}")
+    audit(auth['username'], '*', 'REQ_CONFIG_ALL')
+    return jsonify({"success": True})
+
+
+# =====================================================================
+#  ROUTE: UTENTI
+# =====================================================================
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+    with closing(db_connect(row=True)) as conn:
+        users = [dict(r) for r in conn.execute("SELECT id, username, role, allowed_nodes FROM users")]
+    return jsonify(users)
+
+
+@app.route('/api/users', methods=['POST'])
+def add_user():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    d = json_body()
+    username = str(d.get('username', '')).strip()
+    password = d.get('password')
+    role = d.get('role', 'operator')
+    allowed = normalize_nodes(d.get('allowed_nodes', 'all'))
+
+    if not username or not password:
+        return err("Missing data")
+    if not USERNAME_RE.match(username):
+        return err("Invalid username (3-32 chars: letters, digits, . _ @ -)")
+    if not isinstance(password, str) or len(password) < MIN_PASSWORD_LEN:
+        return err(f"Password must be at least {MIN_PASSWORD_LEN} characters")
+    if role not in VALID_ROLES:
+        return err("Invalid role")
+
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute("INSERT INTO users (username, password_hash, role, allowed_nodes) VALUES (?,?,?,?)",
+                         (username, generate_password_hash(password), role, allowed))
+            conn.commit()
+    except sqlite3.IntegrityError:
+        return err("Username already exists")
+    audit(auth['username'], '-', f"USER_ADD_{username}_{role}")
+    return jsonify({"success": True})
+
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    with closing(db_connect()) as conn:
+        c = conn.cursor()
+        c.execute("SELECT username, role FROM users WHERE id = ?", (user_id,))
+        u = c.fetchone()
+        if not u:
+            return err("User not found", 404)
+        if u[0] == auth['username']:
+            return err("You cannot delete yourself!")
+        if u[1] == 'admin' and count_admins(c, exclude_id=user_id) == 0:
+            return err("You cannot delete the last admin!")
+        c.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        c.execute("DELETE FROM push_subscriptions WHERE username = ?", (u[0],))
+        conn.commit()
+    audit(auth['username'], '-', f"USER_DEL_{u[0]}")
+    return jsonify({"success": True})
+
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    d = json_body()
+    password = d.get('password')
+    if password is not None and not isinstance(password, str):
+        return err("Invalid password")
+
+    with closing(db_connect()) as conn:
+        c = conn.cursor()
+        c.execute("SELECT username, role, allowed_nodes FROM users WHERE id = ?", (user_id,))
+        existing = c.fetchone()
+        if not existing:
+            return err("User not found", 404)
+
+        role = d.get('role', existing[1])
+        allowed = normalize_nodes(d.get('allowed_nodes', existing[2]))
+        if role not in VALID_ROLES:
+            return err("Invalid role")
+        if existing[1] == 'admin' and role != 'admin' and count_admins(c, exclude_id=user_id) == 0:
+            return err("You cannot demote the last admin!")
+
+        if password and password.strip() != "":
+            if len(password) < MIN_PASSWORD_LEN:
+                return err(f"Password must be at least {MIN_PASSWORD_LEN} characters")
+            c.execute("UPDATE users SET password_hash=?, role=?, allowed_nodes=? WHERE id=?",
+                      (generate_password_hash(password), role, allowed, user_id))
+        else:
+            c.execute("UPDATE users SET role=?, allowed_nodes=? WHERE id=?", (role, allowed, user_id))
+        conn.commit()
+    audit(auth['username'], '-', f"USER_EDIT_{existing[0]}")
+    return jsonify({"success": True})
+
+
+@app.route('/api/change_password', methods=['POST'])
+def change_password():
+    auth = get_auth()
+    if not auth:
+        return err("Not authenticated", 403)
+
+    d = json_body()
+    new_pass = d.get('new_password')
+    user_to_change = d.get('username') or auth['username']
+    if auth['role'] != 'admin' and auth['username'] != user_to_change:
+        return err("Unauthorized", 403)
+    if not new_pass or not isinstance(new_pass, str):
+        return err("Password cannot be empty")
+    if len(new_pass) < MIN_PASSWORD_LEN:
+        return err(f"Password must be at least {MIN_PASSWORD_LEN} characters")
+
+    with closing(db_connect()) as conn:
+        cur = conn.execute("UPDATE users SET password_hash = ? WHERE username = ?",
+                           (generate_password_hash(new_pass), user_to_change))
+        conn.commit()
+        if cur.rowcount == 0:
+            return err("User not found", 404)
+    audit(auth['username'], '-', f"PASSWORD_CHANGE_{user_to_change}")
+    return jsonify({"success": True})
+
+
+# =====================================================================
+#  AGGIORNAMENTO DATABASE ID + PULIZIA DB
+# =====================================================================
+def download_file(url, dest):
+    """Scarica in un file temporaneo e sostituisce l'originale solo a download riuscito."""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=60) as response:
+        data = response.read()
+    if len(data) < 1024:
+        raise ValueError(f"file scaricato troppo piccolo ({len(data)} byte) da {url}")
+    tmp = dest + '.tmp'
+    with open(tmp, 'wb') as out_file:
+        out_file.write(data)
+    os.replace(tmp, dest)
+
+
+def prune_old_data():
+    """Retention: radio_logs (default 90 gg) e audit_logs (default 365 gg)."""
+    try:
+        cfg = read_config()
+        radio_days = int(cfg.get("retention_days", 90))
+        audit_days = int(cfg.get("audit_retention_days", 365))
+        with closing(db_connect()) as conn:
+            c = conn.cursor()
+            c.execute("DELETE FROM radio_logs WHERE timestamp < datetime('now', 'localtime', ?)", (f"-{radio_days} days",))
+            n1 = c.rowcount
+            c.execute("DELETE FROM audit_logs WHERE timestamp < datetime('now', 'localtime', ?)", (f"-{audit_days} days",))
+            n2 = c.rowcount
+            conn.commit()
+        if n1 or n2:
+            logger.info(f"🧹 Pulizia DB: {n1} ascolti e {n2} audit rimossi.")
+    except Exception as e:
+        logger.error(f"❌ Errore pulizia DB: {e}")
+
+
 def auto_update_ids():
-    """Versione corretta: controlla all'avvio e poi ogni notte."""
-    
+    """Controlla all'avvio e poi ogni notte all'orario configurato."""
+
     def download_logic():
         try:
-            # Usiamo esattamente i nomi e le URL definiti nel tuo config/codice
-            with open(CONFIG_PATH, 'r') as f:
-                current_cfg = json.load(f)
-            
-            urls = current_cfg.get("id_urls", {
-                "dmr": "https://radioid.net/static/users.csv",
-                "nxdn": "https://radioid.net/static/nxdn.csv"
-            })
-            
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            urls = read_config().get("id_urls") or {}
+            url_dmr = urls.get("dmr") or "https://radioid.net/static/users.csv"
+            url_nxdn = urls.get("nxdn") or "https://radioid.net/static/nxdn.csv"
             logger.info("📡 Inizio download database ID (DMR e NXDN)...")
-            
-            # Download DMR -> dmrid.dat
-            req_dmr = urllib.request.Request(urls["dmr"], headers=headers)
-            with urllib.request.urlopen(req_dmr) as response, open(DMR_IDS_PATH, 'wb') as out_file:
-                out_file.write(response.read())
-                
-            # Download NXDN -> nxdn.csv
-            req_nxdn = urllib.request.Request(urls["nxdn"], headers=headers)
-            with urllib.request.urlopen(req_nxdn) as response, open(NXDN_IDS_PATH, 'wb') as out_file:
-                out_file.write(response.read())
-                
+            download_file(url_dmr, DMR_IDS_PATH)
+            download_file(url_nxdn, NXDN_IDS_PATH)
             load_ids()
-            logger.info("✅ Aggiornamento completato con successo.")
+            logger.info(f"✅ Aggiornamento completato ({len(user_db)} ID DMR, {len(nxdn_db)} ID NXDN).")
         except Exception as e:
             logger.error(f"❌ Errore durante il download: {e}")
 
-    # --- CONTROLLO INIZIALE ALL'AVVIO ---
     if not os.path.exists(DMR_IDS_PATH) or not os.path.exists(NXDN_IDS_PATH):
         logger.info("🔍 File ID mancanti. Avvio download immediato...")
         download_logic()
+    prune_old_data()
 
-    # --- CICLO NOTTURNO ---
     while True:
         try:
             now = time.strftime("%H:%M")
-            with open(CONFIG_PATH, 'r') as f:
-                target_time = json.load(f).get("update_schedule", "03:00")
-            
+            target_time = read_config().get("update_schedule", "03:00")
             if now == target_time:
                 logger.info(f"⏰ Orario programmato ({target_time}) raggiunto. Aggiorno...")
                 download_logic()
+                prune_old_data()
                 time.sleep(65)
         except Exception as e:
             logger.error(f"⚠️ Errore nel thread update: {e}")
         time.sleep(30)
 
+
+# =====================================================================
+#  ROUTE: CONFIGURAZIONE
+# =====================================================================
 @app.route('/api/ui_config', methods=['GET'])
 def get_ui_config():
     try:
-        with open(CONFIG_PATH, 'r') as f:
-            cfg = json.load(f)
+        cfg = read_config()
         ui_cfg = cfg.get("ui", {
             "profileA_Name": "PROFILE A",
             "profileA_Color": "#3498db",
@@ -793,115 +1194,196 @@ def get_ui_config():
         })
         return jsonify(ui_cfg)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"ui_config error: {e}")
+        return jsonify({"error": "Configuration unavailable"}), 500
+
 
 @app.route('/api/config', methods=['GET'])
 def get_config_api():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    with open(CONFIG_PATH, 'r') as f:
-        cfg = json.load(f)
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+    cfg = read_config()
     return jsonify({
         "update_schedule": cfg.get("update_schedule", "03:00"),
         "url_dmr": cfg.get("id_urls", {}).get("dmr", ""),
         "url_nxdn": cfg.get("id_urls", {}).get("nxdn", "")
     })
 
+
 @app.route('/api/config', methods=['POST'])
 def save_config_api():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    new_data = request.json
-    with open(CONFIG_PATH, 'r') as f:
-        cfg = json.load(f)
-    cfg["update_schedule"] = new_data.get("update_schedule", "03:00")
-    if "id_urls" not in cfg: cfg["id_urls"] = {}
-    cfg["id_urls"]["dmr"] = new_data.get("url_dmr", "")
-    cfg["id_urls"]["nxdn"] = new_data.get("url_nxdn", "")
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(cfg, f, indent=4)
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    d = json_body()
+    schedule = str(d.get("update_schedule", "03:00")).strip()
+    url_dmr = str(d.get("url_dmr", "")).strip()
+    url_nxdn = str(d.get("url_nxdn", "")).strip()
+    if not TIME_RE.match(schedule):
+        return err("Invalid time (use HH:MM)")
+    for u in (url_dmr, url_nxdn):
+        if not u.lower().startswith(('http://', 'https://')):
+            return err("URLs must start with http:// or https://")
+
+    cfg = read_config()
+    cfg["update_schedule"] = schedule
+    cfg.setdefault("id_urls", {})
+    cfg["id_urls"]["dmr"] = url_dmr
+    cfg["id_urls"]["nxdn"] = url_nxdn
+    write_config(cfg)
+    audit(auth['username'], '-', 'EDIT_SERVER_CONFIG')
     return jsonify({"success": True})
+
 
 @app.route('/api/config_file/<cid>/<service>', methods=['GET'])
 def get_config_file(cid, service):
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
     cid = cid.lower()
     service = service.lower()
+    if not CID_RE.match(cid) or not SERVICE_RE.match(service):
+        return err("Invalid parameters")
     config_data = device_configs.get(cid, {}).get(service)
-    
     if not config_data:
-        return jsonify({"error": "Configuration not received yet. Wait or send an UPDATE command."}), 404
+        return err("Configuration not received yet. Wait or send an UPDATE command.", 404)
     return jsonify({"success": True, "data": config_data})
+
 
 @app.route('/api/config_file', methods=['POST'])
 def save_config_file():
-    if session.get('role') != 'admin': return jsonify({"error": "Unauthorized"}), 403
-    d = request.json
-    cid = d.get('clientId').lower()
-    service = d.get('service').lower()
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+
+    d = json_body()
+    cid = str(d.get('clientId', '')).strip().lower()
+    service = str(d.get('service', '')).strip().lower()
     new_config = d.get('config_data')
-    topic_set = f"devices/{cid}/config_set/{service}"
-    mqtt_backend.publish(topic_set, json.dumps(new_config))
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO audit_logs (timestamp, username, client_id, command) VALUES (datetime('now','localtime'), ?, ?, ?)",
-              (session.get('user'), cid, f"EDIT_CONFIG_{service.upper()}"))
-    conn.commit()
-    conn.close()
+    if not CID_RE.match(cid) or not SERVICE_RE.match(service):
+        return err("Invalid parameters")
+    if not isinstance(new_config, dict) or not isinstance(new_config.get('raw_text'), str):
+        return err("Invalid configuration payload")
+    if len(new_config['raw_text']) > 65536:
+        return err("Configuration too large (max 64 KB)")
+
+    if not mqtt_publish(f"devices/{cid}/config_set/{service}", json.dumps(new_config)):
+        return err("MQTT broker offline - configuration not sent", 503)
+    audit(auth['username'], cid, f"EDIT_CONFIG_{service.upper()}")
     return jsonify({"success": True})
 
+
+# =====================================================================
+#  PWA: MANIFEST / SERVICE WORKER / ICONA
+# =====================================================================
 @app.route('/manifest.json')
 def serve_manifest():
-    return send_from_directory('.', 'manifest.json')
+    return send_from_directory(BASE_DIR, 'manifest.json')
+
 
 @app.route('/sw.js')
 def serve_sw():
-    return send_from_directory('.', 'sw.js')
+    resp = send_from_directory(BASE_DIR, 'sw.js', mimetype='application/javascript')
+    resp.headers['Cache-Control'] = 'no-cache'          # il browser controlla sempre se il SW è cambiato
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
 
 @app.route('/icon-512.png')
 def serve_icon():
-    return send_from_directory('.', 'icon-512.png')
+    return send_from_directory(BASE_DIR, 'icon-512.png')
 
-def broadcast_push_notification(title, body):
+
+# =====================================================================
+#  PUSH NOTIFICATIONS (invio in un thread dedicato: non blocca MQTT)
+# =====================================================================
+push_queue = queue.Queue(maxsize=200)
+
+
+def broadcast_push_notification(title, body, cid=None):
+    if not config.get('webpush'):
+        return
+    try:
+        push_queue.put_nowait((title, body, cid))
+    except queue.Full:
+        logger.warning("Push queue piena: notifica scartata")
+
+
+def _send_push(title, body, cid):
     wp_config = config.get('webpush')
-    if not wp_config: return
-    
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT id, subscription FROM push_subscriptions")
-    subs = c.fetchall()
-    
-    for sub_id, sub_json in subs:
+    if not wp_config:
+        return
+    payload = json.dumps({"title": title, "body": body, "tag": cid or "fleet-alert"})
+    dead = []
+
+    with closing(db_connect()) as conn:
+        rows = conn.execute("""SELECT p.id, p.subscription, u.role, u.allowed_nodes
+                               FROM push_subscriptions p
+                               LEFT JOIN users u ON u.username = p.username""").fetchall()
+        for sub_id, sub_json, role, allowed in rows:
+            if role is None:              # utente cancellato
+                dead.append(sub_id)
+                continue
+            if cid and not node_allowed(role, allowed, cid):
+                continue                  # l'operatore non gestisce questo nodo
+            try:
+                webpush(
+                    subscription_info=json.loads(sub_json),
+                    data=payload,
+                    vapid_private_key=wp_config['vapid_private_key'],
+                    vapid_claims={"sub": wp_config['vapid_claim_email']},
+                    timeout=10
+                )
+            except WebPushException as ex:
+                status = getattr(getattr(ex, 'response', None), 'status_code', None)
+                if status in (404, 410):
+                    dead.append(sub_id)
+                else:
+                    logger.warning(f"Push error (status {status}): {ex}")
+            except Exception as e:
+                logger.error(f"Generic Push Error: {e}")
+        for sub_id in dead:
+            conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub_id,))
+        if dead:
+            conn.commit()
+
+
+def push_worker():
+    while True:
+        title, body, cid = push_queue.get()
         try:
-            webpush(
-                subscription_info=json.loads(sub_json),
-                data=json.dumps({"title": title, "body": body}),
-                vapid_private_key=wp_config['vapid_private_key'],
-                vapid_claims={"sub": wp_config['vapid_claim_email']}
-            )
-        except WebPushException as ex:
-            if ex.response and ex.response.status_code == 410: 
-                c.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub_id,))
-                conn.commit()
+            _send_push(title, body, cid)
         except Exception as e:
-            logger.error(f"Generic Push Error: {e}")
-    conn.close()
+            logger.error(f"Push worker error: {e}")
+
 
 @app.route('/api/vapid_public_key')
 def get_vapid_key():
     return jsonify({"public_key": config.get('webpush', {}).get('vapid_public_key', '')})
 
+
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe_push():
-    if not session.get('logged_in'): return jsonify({"error": "Unauthorized"}), 403
-    sub_data = request.json
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO push_subscriptions (username, subscription) VALUES (?, ?)", 
-              (session.get('user'), json.dumps(sub_data)))
-    conn.commit()
-    conn.close()
+    auth = get_auth()
+    if not auth:
+        return err("Unauthorized", 403)
+    sub_data = json_body()
+    if not sub_data.get('endpoint'):
+        return err("Invalid subscription")
+    with closing(db_connect()) as conn:
+        # Se lo stesso browser si iscrive con un altro utente, la subscription passa al nuovo utente
+        conn.execute("""INSERT INTO push_subscriptions (username, subscription) VALUES (?, ?)
+                        ON CONFLICT(subscription) DO UPDATE SET username = excluded.username""",
+                     (auth['username'], json.dumps(sub_data)))
+        conn.commit()
     return jsonify({"success": True})
 
+
 threading.Thread(target=auto_update_ids, daemon=True).start()
+threading.Thread(target=push_worker, daemon=True).start()
 
 if __name__ == '__main__':
+    # Eseguire con UN SOLO processo: client MQTT, thread e cache sono in memoria.
     socketio.run(app, host='0.0.0.0', port=9000)

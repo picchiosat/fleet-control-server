@@ -53,6 +53,10 @@
         .freq-rx { color: #4ade80; } /* Verde per la RX */
 
         /* Metadati Nodo (Location, Coordinate) */
+        .seen-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin: -6px 0 12px 0; }
+        .seen-item b { font-weight: 700; }
+        .seen-item.ok b { color: var(--success); }
+        .seen-item.warn, .seen-item.warn b { color: #d29922; font-weight: 700; }
         .node-meta { font-size: 0.75rem; color: #8b949e; text-align: center; margin-bottom: 15px; line-height: 1.4; }
         .node-meta-item { display: block; }
 
@@ -364,8 +368,6 @@
     </div>
 </div>
 
-</div>
-
 <div id="reset-hat-modal" class="modal-overlay">
     <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 1px solid var(--danger);">
         <h2 style="margin-top:0; color:var(--danger);">🔌 <span data-i18n="btnHat">RESET HAT</span> 🔌</h2>
@@ -471,9 +473,64 @@
         else if (newPassInput) newPassInput.placeholder = t('phPass');
     }
 
+    // --- HELPER DI SICUREZZA ---
+    // esc(): escape HTML per tutto ciò che arriva da MQTT / database / utenti prima di finire in innerHTML
+    function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    // q(): letterale JS sicuro da usare dentro onclick="...": onclick="fn(${q(valore)})"
+    function q(s) { return esc(JSON.stringify(String(s ?? ''))); }
+    const HANG_TIME_MS = 180000; // tempo massimo in cui la card resta "accesa" dopo l'ultimo TX
+
+    // --- DIAGNOSTICA: "ultimo messaggio ricevuto" per nodo (MMDVM / gateway / agent) ---
+    function fmtAge(sec) {
+        sec = Math.max(0, Math.round(sec));
+        if (sec < 60) return sec + 's';
+        if (sec < 3600) return Math.floor(sec / 60) + 'm';
+        if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+        return Math.floor(sec / 86400) + 'd';
+    }
+    function seenItem(label, age, tip, warn) {
+        const cls = warn ? 'warn' : (age !== undefined && age < 300 ? 'ok' : 'idle');
+        const txt = age === undefined ? '—' : fmtAge(age);
+        return `<span class="seen-item ${cls}" title="${esc(tip)}">${warn ? '⚠ ' : ''}${label} <b>${txt}</b></span>`;
+    }
+    function renderSeen(c, data, isOnline) {
+        const div = document.getElementById(`seen-${c.id}`);
+        if (!div) return;
+        const it = currentLang === 'it';
+        const ages = (data.last_seen && data.last_seen[c.id.toLowerCase()]) || {};
+        const upSec = data.uptime || 0;
+        let html = '';
+
+        // MMDVM: pubblica eventi (TX, cambio modo), quindi su un nodo tranquillo l'età può crescere senza problemi.
+        // Si segnala solo il caso "mai ricevuto nulla" con nodo online e server attivo da un po'.
+        const warnM = ages.mmdvm === undefined && isOnline && upSec > 600;
+        const tipM = it ? `Ultimo evento dal topic mmdvm/${c.id}/json (TX, cambio modo...). Su un nodo tranquillo può passare molto tempo.`
+                        : `Last event from topic mmdvm/${c.id}/json (TX, mode change...). It can be a long time on a quiet node.`;
+        const tipMW = it ? `Nessun evento MMDVM ricevuto da quando il server è attivo (${fmtAge(upSec)}): controlla che MMDVMHost sia connesso al broker.`
+                         : `No MMDVM event received since the server started (${fmtAge(upSec)}): check that MMDVMHost is connected to the broker.`;
+        html += seenItem('MMDVM', ages.mmdvm, warnM ? tipMW : tipM, warnM);
+
+        // Gateway: solo se il nodo ne ha mai pubblicati
+        if (ages.gateway !== undefined) {
+            html += seenItem('GW', ages.gateway, it ? 'Ultimo evento dai gateway (DMR/NXDN/YSF/P25/D-Star)' : 'Last event from the gateways (DMR/NXDN/YSF/P25/D-Star)', false);
+        }
+
+        // Agent: heartbeat periodico, se tace a lungo con nodo "online" qualcosa non va
+        const warnA = isOnline && (ages.health === undefined ? upSec > 300 : ages.health > 180);
+        const tipA = warnA
+            ? (it ? 'L\'agent del nodo non invia più lo stato (devices/<id>/services): connessione bloccata?' : 'The node agent stopped sending its status (devices/<id>/services): stuck connection?')
+            : (it ? 'Ultimo stato ricevuto dall\'agent del nodo (devices/<id>/services)' : 'Last status received from the node agent (devices/<id>/services)');
+        html += seenItem('AGENT', ages.health, tipA, warnA);
+
+        div.innerHTML = html;
+        div.style.display = 'flex';
+    }
+
     // --- GLOBAL VARIABLES ---
     let clients = [];
-    let isAuthenticated = sessionStorage.getItem('is_admin') === 'true';
+    let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; // stato reale della sessione (da /api/me)
+    let isAuthenticated = false;
+    let usersCache = {};
     let globalHealthData = {};
     let editingUserId = null; 
     let currentResetHatId = null; 
@@ -518,7 +575,7 @@
             try {
                 const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId, type }) });
                 const data = await res.json();
-                if(!data.success) { customAlert(t('titleError'), data.error, true); }
+                if(!data.success) { customAlert(t('titleError'), esc(data.error), true); }
                 refreshStates();
             } catch (e) { console.error(e); }
         });
@@ -529,7 +586,7 @@
         let profileName = mode === 'A' ? "PROFILE A" : "PROFILE B";
         if (data && data.profiles && data.profiles[mode]) profileName = data.profiles[mode];
         const title = `🔄 ${t('titleSwitch')}`;
-        const msg = `${t('confSwitch')} <b>${profileName}</b> -> <b>${id.toUpperCase()}</b>?`;
+        const msg = `${t('confSwitch')} <b>${esc(profileName)}</b> -> <b>${id.toUpperCase()}</b>?`;
         const color = mode === 'A' ? "var(--accent)" : "#eab308";
         sendCommand(id, mode, title, msg, color); 
     }
@@ -552,7 +609,7 @@
         try {
             const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId, type: 'RESET_HAT' }) });
             const data = await res.json();
-            if(!data.success) { customAlert(t('titleError'), data.error, true); }
+            if(!data.success) { customAlert(t('titleError'), esc(data.error), true); }
             refreshStates();
         } catch (e) { console.error(e); }
     }
@@ -572,7 +629,7 @@
             try {
                 const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId, type: comando }) });
                 const data = await res.json();
-                if(!data.success) { customAlert(t('titleError'), data.error, true); }
+                if(!data.success) { customAlert(t('titleError'), esc(data.error), true); }
                 refreshStates();
             } catch (e) { console.error(e); }
         });
@@ -582,20 +639,25 @@
     async function initUI() {
         applyTranslations();
         try {
+            try { const meRes = await fetch('/api/me'); if (meRes.ok) me = await meRes.json(); } catch (e) { console.error(e); }
+            isAuthenticated = !!me.logged_in;
+
             const response = await fetch('/api/clients');
             clients = await response.json();
+            // Gli id nodo finiscono in id HTML e onclick: accettiamo solo caratteri sicuri
+            clients = clients.filter(c => /^[A-Za-z0-9_\-]+$/.test(String(c.id)));
 
             const statSelect = document.getElementById('stat-node-filter');
             if (statSelect) {
                 let opts = `<option value="all">🌐 ${t('statAllNodes')}</option>`;
-                clients.forEach(c => { opts += `<option value="${c.id}">${c.name} (${c.id.toUpperCase()})</option>`; });
+                clients.forEach(c => { opts += `<option value="${c.id}">${esc(c.name)} (${c.id.toUpperCase()})</option>`; });
                 statSelect.innerHTML = opts;
             }
 
             const grid = document.getElementById('client-grid');
             const authContainer = document.getElementById('auth-container');
-            const role = sessionStorage.getItem('user_role');
-            const allowed = sessionStorage.getItem('allowed_nodes') || "";
+            const role = me.role || '';
+            const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 
             if (isAuthenticated) {
                 let adminBtn = role === 'admin' ? `
@@ -604,7 +666,7 @@
                     <button onclick="openAdmin()" class="auth-btn" style="background:var(--accent); color:white;" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">${t('btnAdmin')}</button>` : '';
                 
                 authContainer.innerHTML = `${adminBtn}
-                                           <span style="font-weight:800; font-size:0.9rem; margin: 0 10px;">👤 ${sessionStorage.getItem('user_name').toUpperCase()}</span>
+                                           <span style="font-weight:800; font-size:0.9rem; margin: 0 10px;">👤 ${esc(String(me.user).toUpperCase())}</span>
                                            <button onclick="changeMyPassword()" class="auth-btn" style="background:#64748b; color:white;" data-i18n-title="ttPass" title="${t('ttPass')}">${t('btnPass')}</button>
                                            <button onclick="logout()" class="auth-btn" style="background:var(--text-main); color:var(--card-bg);" data-i18n-title="ttLogout" title="${t('ttLogout')}">${t('btnLogout')}</button>`;
             } else {
@@ -612,13 +674,13 @@
             }
 
             grid.innerHTML = clients.map(c => {
-                let canControl = (role === 'admin' || allowed === 'all' || allowed.includes(c.id));
+                let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
                 let showReboot = (role === 'admin'); 
 
                 return `
                         <div class="card" id="card-${c.id}">
                         <div class="card-header">
-                            <span class="client-name" title="${c.name}">${c.name}</span>
+                            <span class="client-name" title="${esc(c.name)}">${esc(c.name)}</span>
                             <div style="display: flex; align-items: center;">
                                 <span class="badge-id">ID: ${c.id.toUpperCase()}</span>
                                 <div id="type-badge-${c.id}" class="type-badge" style="display: none;"></div>
@@ -638,6 +700,7 @@
                             <span>🧠 <span id="ram-${c.id}">--</span>%</span>
                             <span>💾 <span id="disk-${c.id}">--</span>%</span>
                         </div>
+                        <div class="seen-bar" id="seen-${c.id}" style="display: none;"></div>
                         
                         <div class="status-display" id="status-${c.id}">Offline</div>
                         
@@ -655,7 +718,7 @@
 
                             
                             ${canControl ? `
-                            <div id="prof-btns-${c.id}" style="width: 100%; display: flex; gap: 10px; display: none;"></div>
+                            <div id="prof-btns-${c.id}" style="width: 100%; gap: 10px; display: none;"></div>
                             <div style="width: 100%; display: flex; gap: 10px; margin-bottom: 8px;">
                                 <button class="btn-cmd" style="background: var(--success);" title="${t('ttTgOn')}" onclick="sendTgCommand('${c.id}', 'TG:ON')">🔔 Telegram ON</button>
                                 <button class="btn-cmd" style="background: var(--text-muted);" title="${t('ttTgOff')}" onclick="sendTgCommand('${c.id}', 'TG:OFF')">🔇 Telegram OFF</button>
@@ -672,7 +735,6 @@
                                 <button class="btn-cmd" style="background: #2563eb; padding: 8px 4px;" title="Scarica l'ultima versione da Gitea" onclick="confirmUpdateAgent('${c.id}')">⬇️ UPDATE OTA</button>
                             </div>
                      ` : ''}
-                        </div>
                     </div>`;
             }).join('');
 
@@ -690,11 +752,11 @@
         if (!user || !pass) return;
         const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user, pass }) });
         const data = await res.json();
-        if (res.ok) { 
-            sessionStorage.setItem('is_admin', 'true'); sessionStorage.setItem('user_name', user); sessionStorage.setItem('user_role', data.role); sessionStorage.setItem('allowed_nodes', data.allowed_nodes); location.reload(); 
-        } else { customAlert(t('titleError'), t('msgLoginFail'), true); }
+        if (res.ok) { location.reload(); }
+        else if (res.status === 429) { customAlert(t('titleError'), esc(data.error || t('msgLoginFail')), true); }
+        else { customAlert(t('titleError'), t('msgLoginFail'), true); }
     }
-    function logout() { sessionStorage.clear(); location.reload(); }
+    async function logout() { try { await fetch('/api/logout', { method: 'POST' }); } catch (e) { console.error(e); } sessionStorage.clear(); location.reload(); }
 
     async function refreshStates() {
         try {
@@ -707,6 +769,7 @@
                 let stateValue = data.states[c.id.toLowerCase()] || data.states[c.id] || "OFFLINE";
                 stateValue = String(stateValue).trim().toUpperCase(); statusDiv.innerText = stateValue;
                 const isOnline = !stateValue.includes("OFF") && stateValue !== "";
+                renderSeen(c, data, isOnline);
 
                 // 2. POI AGGIORNIAMO NOME E ID DINAMICI
                 let genObj = data.general && data.general[c.id.toLowerCase()];
@@ -783,7 +846,7 @@
                             // Se è simplex, saltiamo del tutto l'aggiornamento grafico del TS1
                             if (isSimplex && idx === 0) return;
 
-                            const val = idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2; const netName = idx === 0 ? netObj.ts1 : netObj.ts2;
+                            const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? ''); const netName = idx === 0 ? netObj.ts1 : netObj.ts2;
                             const fullLabel = netName ? `TS${idx + 1} [${netName}]` : `TS${idx + 1}`;
                             div.innerText = `${fullLabel}: ${val}`;
                             div.style.setProperty('--pulse-color', activeModeColor);
@@ -841,7 +904,7 @@
                             let idx = 0;
                             for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
                                 let col = colors[idx % colors.length];
-                                html += `<button class="btn-cmd" style="background: ${col}; flex: 1;" title="${t('ttSwitchTo')}${pLabel}" onclick="confirmSwitch('${c.id}', '${pKey}')">${pLabel}</button>`;
+                                html += `<button class="btn-cmd" style="background: ${col}; flex: 1;" title="${esc(t('ttSwitchTo') + pLabel)}" onclick="confirmSwitch('${c.id}', ${q(pKey)})">${esc(pLabel)}</button>`;
                                 idx++;
                             }
                             profBtnsDiv.innerHTML = html;
@@ -874,8 +937,8 @@
                     if (isTx) cardDiv.dataset.lastTx = Date.now(); // Memorizza quando è avvenuto l'ultimo TX
                     let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
                     
-                    // Accendi se in TX, OPPURE se in Hang Time (ma spegni a forza dopo 30 secondi di inattività)
-                    let showActiveColor = isTx || (!isIdle && timeSinceTx < 180000); 
+                    // Accendi se in TX, OPPURE se in Hang Time (ma spegni a forza dopo HANG_TIME_MS di inattività)
+                    let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
 
                     cardDiv.style.setProperty('border-top-color', showActiveColor ? activeModeColor : "var(--border-color)", 'important');
                     // --- FINE LOGICA ---
@@ -904,16 +967,17 @@
                 const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
                 const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
                 const rawSlot = row[5]; const source_ext = row[8];
-                if (source_ext && source_ext.trim() !== "") { source = `${source} <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${source_ext}</span>`; }
+                let sourceHtml = esc(source);
+                if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
 
                 const slotDisplay = protocol === "DMR" ? `TS${rawSlot}` : "--";
                 let protoColor = "#3b82f6"; if (protocol === "NXDN") protoColor = "#10b981"; else if (protocol === "YSF") protoColor = "#8b5cf6"; else if (protocol === "D-STAR") protoColor = "#06b6d4"; else if (protocol === "P25") protoColor = "#f59e0b";
                 
                 if (source.includes("🌐")) {
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
-                    networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${time}]</span> <span style="color:${protoColor}; font-weight:bold;">[${protocol}]</span> <span style="color:#cbd5e1;">${source.replace("🌐", "").trim()}</span></div>`;
+                    networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
                 } else {
-                    tableHTML += `<tr><td>${time}</td><td><b style="color:var(--text-main);">${clientId.toUpperCase()}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${protocol}</span></td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${slotDisplay}</td><td style="color:var(--accent); font-weight:800;">${source}</td><td style="font-family:'JetBrains Mono', monospace;">${target.trim()}</td><td>${row[6]}s</td><td>${row[7]}%</td></tr>`;
+                    tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td></tr>`;
                 }
             });
             tbody.innerHTML = tableHTML;
@@ -925,8 +989,8 @@
         try {
             const node = document.getElementById('stat-node-filter').value || 'all';
             const res = await fetch(`/api/stats?node=${node}`); const data = await res.json();
-            document.getElementById('stat-tgs').innerHTML = data.top_tgs.map((t, i) => `<div><b style="color:var(--text-main);">${i+1}. ${t.target}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${t.count} tx</span></div>`).join('') || t('statNoData');
-            document.getElementById('stat-calls').innerHTML = data.top_calls.map((c, i) => `<div><b style="color:var(--text-main);">${i+1}. ${c.call}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${c.count} tx</span></div>`).join('') || t('statNoData');
+            document.getElementById('stat-tgs').innerHTML = data.top_tgs.map((t, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(t.target)}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${t.count} tx</span></div>`).join('') || t('statNoData');
+            document.getElementById('stat-calls').innerHTML = data.top_calls.map((c, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(c.call)}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${c.count} tx</span></div>`).join('') || t('statNoData');
             document.getElementById('stat-avg').innerText = data.avg_duration; document.getElementById('stat-today').innerText = data.today_tx;
         } catch (e) { console.error("Errore statistiche:", e); }
     }
@@ -936,18 +1000,20 @@
     function closeAdmin() { document.getElementById('admin-modal').style.display = 'none'; cancelEdit(); }
     
     async function loadUsers() {
-        const res = await fetch('/api/users'); const users = await res.json();
+        const res = await fetch('/api/users'); if (!res.ok) return; const users = await res.json(); usersCache = {}; users.forEach(u => { usersCache[u.id] = u; });
         document.getElementById('users-table-body').innerHTML = users.map(u => `
             <tr>
-                <td>${u.id}</td><td style="font-weight:bold;">${u.username}</td><td><span style="background:rgba(128,128,128,0.2); padding:2px 8px; border-radius:6px; font-size:0.8rem;">${u.role.toUpperCase()}</span></td><td>${u.allowed_nodes}</td>
+                <td>${u.id}</td><td style="font-weight:bold;">${esc(u.username)}</td><td><span style="background:rgba(128,128,128,0.2); padding:2px 8px; border-radius:6px; font-size:0.8rem;">${esc(String(u.role).toUpperCase())}</span></td><td>${esc(u.allowed_nodes)}</td>
                 <td style="text-align:center;">
-                    <button onclick="startEditUser(${u.id}, '${u.username}', '${u.role}', '${u.allowed_nodes}')" class="btn-cmd" style="background:var(--accent); padding:6px; width:auto; display:inline-block; margin-right:5px;">✏️</button>
+                    <button onclick="startEditUser(${Number(u.id)})" class="btn-cmd" style="background:var(--accent); padding:6px; width:auto; display:inline-block; margin-right:5px;">✏️</button>
                     <button onclick="deleteUser(${u.id})" class="btn-cmd" style="background:var(--danger); padding:6px; width:auto; display:inline-block;">🗑️</button>
                 </td>
             </tr>`).join('');
     }
 
-    function startEditUser(id, username, role, nodes) {
+    function startEditUser(id) {
+        const u = usersCache[id]; if (!u) return;
+        const username = u.username, role = u.role, nodes = u.allowed_nodes;
         editingUserId = id; document.getElementById('new-user').value = username; document.getElementById('new-user').disabled = true; document.getElementById('new-pass').value = ""; document.getElementById('new-pass').placeholder = t('phNewPass'); document.getElementById('new-role').value = role; document.getElementById('new-nodes').value = nodes;
         const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = t('titleSave'); btnSubmit.style.background = "var(--accent)"; document.getElementById('btn-user-cancel').style.display = "block";
     }
@@ -964,15 +1030,15 @@
 
         if (editingUserId) {
             const res = await fetch(`/api/users/${editingUserId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const data = await res.json(); 
-            if (data.success) { cancelEdit(); loadUsers(); } else customAlert(t('titleError'), data.error, true);
+            if (data.success) { cancelEdit(); loadUsers(); } else customAlert(t('titleError'), esc(data.error), true);
         } else {
             if (!password) return customAlert(t('titleError'), t('msgMissPass'), true);
             const res = await fetch('/api/users', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const data = await res.json(); 
-            if (data.success) { cancelEdit(); loadUsers(); } else customAlert(t('titleError'), data.error, true);
+            if (data.success) { cancelEdit(); loadUsers(); } else customAlert(t('titleError'), esc(data.error), true);
         }
     }
 
-    function deleteUser(id) { customConfirm(t('titleDelete'), t('msgDelUser'), "var(--danger)", async () => { await fetch(`/api/users/${id}`, {method: 'DELETE'}); loadUsers(); cancelEdit(); }); }
+    function deleteUser(id) { customConfirm(t('titleDelete'), t('msgDelUser'), "var(--danger)", async () => { const r = await fetch(`/api/users/${id}`, {method: 'DELETE'}); const dd = await r.json().catch(() => ({})); if (!dd.success) customAlert(t('titleError'), esc(dd.error || 'Error'), true); loadUsers(); cancelEdit(); }); }
     
     // --- SETTINGS ---
     function triggerGlobalEmergency() {
@@ -993,7 +1059,7 @@
         
         for (const [k, v] of Object.entries(uniqueProfiles)) {
             let col = colors[idx % colors.length];
-            html += `<button onclick="sendGlobalAction('${k}')" class="btn-cmd" style="background:${col}; padding:15px; font-size:1.1rem; font-weight:bold;">${v}</button>`;
+            html += `<button onclick="sendGlobalAction(${q(k)})" class="btn-cmd" style="background:${col}; padding:15px; font-size:1.1rem; font-weight:bold;">${esc(v)}</button>`;
             idx++;
         }
         
@@ -1010,7 +1076,7 @@
         document.getElementById('override-modal').style.display = 'none';
         customConfirm(t('titleGlobal'), t('promptOvrConfirm'), "var(--danger)", async () => {
             try { const res = await fetch('/api/global_command', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: action}) }); const d = await res.json(); 
-                if(d.success) customAlert(t('titleSuccess'), t('msgOvrOk')); else customAlert(t('titleError'), d.error, true); refreshStates();
+                if(d.success) customAlert(t('titleSuccess'), t('msgOvrOk')); else customAlert(t('titleError'), esc(d.error), true); refreshStates();
             } catch(e) { console.error(e); }
         });
     }
@@ -1019,16 +1085,16 @@
     function closePasswordModal() { document.getElementById('password-modal').style.display = 'none'; }
     async function executePasswordChange() {
         const p = document.getElementById('new-password-input').value; if (!p) return; closePasswordModal();
-        try { const res = await fetch('/api/change_password', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: sessionStorage.getItem('user_name'), new_password: p}) }); 
+        try { const res = await fetch('/api/change_password', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: me.user, new_password: p}) }); 
             if ((await res.json()).success) { customAlert(t('titleSuccess'), t('msgPassOk')); setTimeout(() => logout(), 1500); } else { customAlert(t('titleError'), t('msgPassErr'), true); }
         } catch(e) { console.error(e); }
     }
 
-    async function loadSettings() { try { const res = await fetch('/api/config'); const data = await res.json(); document.getElementById('update-time-input').value = data.update_schedule; document.getElementById('url-dmr-input').value = data.url_dmr; document.getElementById('url-nxdn-input').value = data.url_nxdn; } catch (e) { console.error(e); } }
+    async function loadSettings() { try { const res = await fetch('/api/config'); if (!res.ok) return; const data = await res.json(); document.getElementById('update-time-input').value = data.update_schedule; document.getElementById('url-dmr-input').value = data.url_dmr; document.getElementById('url-nxdn-input').value = data.url_nxdn; } catch (e) { console.error(e); } }
     async function saveSettings() { 
         const payload = { update_schedule: document.getElementById('update-time-input').value, url_dmr: document.getElementById('url-dmr-input').value, url_nxdn: document.getElementById('url-nxdn-input').value }; 
         try { const res = await fetch('/api/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const data = await res.json(); 
-            if (data.success) customAlert(t('titleSuccess'), t('msgConfigSaved')); else customAlert(t('titleError'), t('msgConfigErr'), true); 
+            if (data.success) customAlert(t('titleSuccess'), t('msgConfigSaved')); else customAlert(t('titleError'), esc(data.error || t('msgConfigErr')), true); 
         } catch (e) { console.error(e); } 
     }
 
@@ -1036,7 +1102,7 @@
     function openConfigsModal(clientId) {
         const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('configs-list'); let listaFile = data ? (data.config_files || data.files || []) : [];
         if (listaFile.length === 0) listDiv.innerHTML = `<div style="text-align:center; padding:20px;"><p style="color:var(--text-muted); margin-bottom:15px;">${t('waitData')}</p><button onclick="sendGlobalUpdate(); closeConfigsModal();" class="btn-cmd" style="background:var(--accent);">${t('forceUpdate')}</button></div>`;
-        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(128,128,128,0.1); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${f.toUpperCase()}.ini</span><button onclick="closeConfigsModal(); openEditorModal('${clientId}', '${f}')" class="btn-cmd" style="background:#8e44ad; max-width:120px;">${t('btnEdit')}</button></div>`).join('');
+        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(128,128,128,0.1); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(String(f).toUpperCase())}.ini</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px;">${t('btnEdit')}</button></div>`).join('');
         document.getElementById('configs-modal').style.display = 'flex';
     }
     function closeConfigsModal() { document.getElementById('configs-modal').style.display = 'none'; }
@@ -1050,12 +1116,12 @@
         for (const [name, status] of Object.entries(data.processes)) {
             const isOnline = status.toLowerCase() === 'online'; const statusColor = isOnline ? 'var(--success)' : 'var(--danger)'; 
             html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border-color); background:rgba(128,128,128,0.05); border-radius:12px; margin-bottom:8px; border-left: 5px solid ${statusColor};">
-                        <div><strong style="font-size:1.1rem; display:block; font-family:'JetBrains Mono',monospace;">${name}</strong><span class="${isOnline?'':'blink'}" style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${status.toUpperCase()}</span></div>
+                        <div><strong style="font-size:1.1rem; display:block; font-family:'JetBrains Mono',monospace;">${esc(name)}</strong><span class="${isOnline?'':'blink'}" style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${esc(String(status).toUpperCase())}</span></div>
                         <div style="display:flex; gap:8px;">
-                            ${!isOnline ? `<button onclick="controlService('${clientId}', '${name}', 'start')" class="btn-cmd" style="background:var(--success);">▶</button>` : ''}
-                            <button onclick="controlService('${clientId}', '${name}', 'restart')" class="btn-cmd" style="background:#f59e0b;">🔄</button>
-                            <button onclick="openEditorModal('${clientId}', '${name}')" class="btn-cmd" style="background:#8e44ad;">📝</button>
-                            ${isOnline ? `<button onclick="controlService('${clientId}', '${name}', 'stop')" class="btn-cmd" style="background:var(--danger);">🛑</button>` : ''}
+                            ${!isOnline ? `<button onclick="controlService(${q(clientId)}, ${q(name)}, 'start')" class="btn-cmd" style="background:var(--success);">▶</button>` : ''}
+                            <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="background:#f59e0b;">🔄</button>
+                            <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="background:#8e44ad;">📝</button>
+                            ${isOnline ? `<button onclick="controlService(${q(clientId)}, ${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger);">🛑</button>` : ''}
                         </div>
                     </div>`;
         }
@@ -1063,9 +1129,9 @@
     }
 
     function controlService(clientId, service, action) { 
-        customConfirm(t('titleAction'), `${t('confOp')}<b>${service}</b>?`, "var(--accent)", async () => {
+        customConfirm(t('titleAction'), `${t('confOp')}<b>${esc(service)}</b>?`, "var(--accent)", async () => {
             try { const res = await fetch('/api/service_control', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ clientId, service, action }) }); const data = await res.json(); 
-                if(!data.success) customAlert(t('titleError'), "Error: " + data.error, true); 
+                if(!data.success) customAlert(t('titleError'), "Error: " + esc(data.error), true); 
             } catch(e) { console.error(e); } 
         });
     }
@@ -1076,7 +1142,7 @@
         document.getElementById('editor-title').innerText = `${service.toUpperCase()} @ ${clientId.toUpperCase()}`;
         document.getElementById('config-textarea').value = "Connecting to server..."; document.getElementById('editor-status').innerText = "";
         document.getElementById('editor-modal').style.display = 'flex';
-        try { const res = await fetch(`/api/config_file/${clientId}/${service}`); const data = await res.json(); if (data.success) document.getElementById('config-textarea').value = data.data.raw_text || "Empty file"; else document.getElementById('config-textarea').value = "ERROR:\n" + data.error; } catch(e) { document.getElementById('config-textarea').value = "Connection error."; }
+        try { const res = await fetch(`/api/config_file/${encodeURIComponent(clientId)}/${encodeURIComponent(service)}`); const data = await res.json(); if (data.success) document.getElementById('config-textarea').value = data.data.raw_text || "Empty file"; else document.getElementById('config-textarea').value = "ERROR:\n" + data.error; } catch(e) { document.getElementById('config-textarea').value = "Connection error."; }
     }
     function closeEditorModal() { document.getElementById('editor-modal').style.display = 'none'; }
     
@@ -1087,20 +1153,22 @@
             try {
                 const res = await fetch('/api/config_file', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ clientId: currentEditClient, service: currentEditService, config_data: { "raw_text": textValue } }) });
                 const data = await res.json();
-                if (data.success) { customAlert(t('titleSuccess'), "File updated!"); closeEditorModal(); } else { customAlert(t('titleError'), "Server error: " + data.error, true); statusSpan.innerText = "❌ Error"; }
+                if (data.success) { customAlert(t('titleSuccess'), "File updated!"); closeEditorModal(); } else { customAlert(t('titleError'), "Server error: " + esc(data.error), true); statusSpan.innerText = "❌ Error"; }
             } catch(e) { customAlert(t('titleError'), t('msgNetErr'), true); statusSpan.innerText = "❌ Network Error"; }
         });
     }
 
     // --- PUSH NOTIFICATIONS ---
     async function subscribeToPush() {
-        if (!('serviceWorker' in navigator)) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) { customAlert("Error", "Push notifications are not supported by this browser.", true); return; }
+        if (!me.logged_in) { openLoginModal(); return; }   // le notifiche si attivano solo da loggati
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') { customAlert("Error", "Push notifications permission denied.", true); return; }
         try {
             const reg = await navigator.serviceWorker.ready; const res = await fetch('/api/vapid_public_key'); const { public_key } = await res.json();
             const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(public_key) });
-            await fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subscription) });
+            const subRes = await fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(subscription) });
+            if (!subRes.ok) throw new Error('subscribe failed: HTTP ' + subRes.status);
             customAlert("Success", "Push notifications enabled successfully!"); document.getElementById('push-btn').style.color = 'var(--success)';
         } catch (e) { console.error(e); customAlert("Error", "Failed to enable notifications.", true); }
     }
@@ -1113,14 +1181,26 @@
     initUI();
     checkPushStatus();
 
+    // --- AGGIORNAMENTI PERIODICI ---
+    // Fallback se il WebSocket non è disponibile + spegne l'hang time scaduto anche senza nuovi eventi
+    setInterval(refreshStates, 15000);
+    setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
+
     // --- WEBSOCKET REAL-TIME ---
-    const socket = io();
-    socket.on('mqtt_status', function(data) {
-        const badge = document.getElementById('mqtt-badge');
-        if (badge) { if (data.connected) { badge.innerText = "MQTT: ONLINE"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: OFFLINE"; badge.className = "mqtt-badge mqtt-offline"; } }
-    });
-    socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
-    socket.on('dati_aggiornati', function() { refreshStates(); refreshLogs(); refreshStats(); });
+    function debounce(fn, ms) { let tm = null; return () => { clearTimeout(tm); tm = setTimeout(fn, ms); }; }
+    const refreshStatesSoon = debounce(refreshStates, 300);
+    const refreshLogsSoon = debounce(() => { refreshLogs(); refreshStats(); }, 500);
+
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        socket.on('mqtt_status', function(data) {
+            const badge = document.getElementById('mqtt-badge');
+            if (badge) { if (data.connected) { badge.innerText = "MQTT: ONLINE"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: OFFLINE"; badge.className = "mqtt-badge mqtt-offline"; } }
+        });
+        socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
+        socket.on('dati_aggiornati', refreshStatesSoon);   // stato nodi / telemetria
+        socket.on('log_aggiornato', refreshLogsSoon);      // nuovi ascolti -> lastheard + statistiche
+    }
 </script>
 <script>
     if ('serviceWorker' in navigator) {
