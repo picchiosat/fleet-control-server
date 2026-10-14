@@ -1,3 +1,4 @@
 hook check
 test ok
 test bash
+test hook log
