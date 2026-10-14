@@ -3,3 +3,4 @@ test ok
 test bash
 test hook log
 debug trace
+test syslog
