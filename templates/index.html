@@ -213,6 +213,7 @@
                     <th>Target / TG</th>
                     <th data-i18n="thDur">Duration</th>
                     <th>BER</th>
+                    <th>RSSI</th> <!-- NUOVA COLONNA -->
                 </tr>
             </thead>
             <tbody id="log-body"></tbody>
@@ -970,17 +971,23 @@
                 const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
                 const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
                 const rawSlot = row[5]; const source_ext = row[8];
+                const rawRssi = row[9]; // Estrai il nuovo valore
+                
                 let sourceHtml = esc(source);
                 if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
 
                 const slotDisplay = protocol === "DMR" ? `TS${rawSlot}` : "--";
                 let protoColor = "#3b82f6"; if (protocol === "NXDN") protoColor = "#10b981"; else if (protocol === "YSF") protoColor = "#8b5cf6"; else if (protocol === "D-STAR") protoColor = "#06b6d4"; else if (protocol === "P25") protoColor = "#f59e0b";
                 
+                // Formatta l'RSSI (nascondilo se è 0)
+                const rssiDisplay = rawRssi && rawRssi !== 0 ? `${esc(rawRssi)} dBm` : '---';
+                
                 if (source.includes("🌐")) {
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
                     networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
                 } else {
-                    tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td></tr>`;
+                    // Aggiunto il TD per l'RSSI alla fine
+                    tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td><td style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td></tr>`;
                 }
             });
             tbody.innerHTML = tableHTML;
@@ -1121,10 +1128,10 @@
             html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border-color); background:rgba(128,128,128,0.05); border-radius:12px; margin-bottom:8px; border-left: 5px solid ${statusColor};">
                         <div><strong style="font-size:1.1rem; display:block; font-family:'JetBrains Mono',monospace;">${esc(name)}</strong><span class="${isOnline?'':'blink'}" style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${esc(String(status).toUpperCase())}</span></div>
                         <div style="display:flex; gap:8px;">
-                            ${!isOnline ? `<button onclick="controlService(${q(clientId)}, ${q(name)}, 'start')" class="btn-cmd" style="background:var(--success);">▶</button>` : ''}
+                            ${!isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'start')" class="btn-cmd" style="background:var(--success);">▶</button>` : ''}
                             <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="background:#f59e0b;">🔄</button>
                             <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="background:#8e44ad;">📝</button>
-                            ${isOnline ? `<button onclick="controlService(${q(clientId)}, ${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger);">🛑</button>` : ''}
+                            ${isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger);">🛑</button>` : ''}
                         </div>
                     </div>`;
         }
