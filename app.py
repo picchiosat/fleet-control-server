@@ -95,6 +95,10 @@ def init_db():
     try:
         c.execute("ALTER TABLE radio_logs ADD COLUMN source_ext TEXT DEFAULT ''")
     except sqlite3.OperationalError: pass
+    
+    try:
+        c.execute("ALTER TABLE radio_logs ADD COLUMN rssi REAL DEFAULT 0")
+    except sqlite3.OperationalError: pass
 
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, 
@@ -185,8 +189,15 @@ def save_cache(data):
 def save_to_sqlite(client_id, data, protocol="DMR"):
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
-    c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?)",
-              (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', ''))))
+    
+    rssi_val = 0
+    if 'rssi' in data and isinstance(data['rssi'], dict):
+        rssi_val = data['rssi'].get('ave', 0)
+    elif 'rssi' in data:
+        rssi_val = data['rssi']
+        
+    c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', '')), rssi_val))
     conn.commit()
     conn.close()
     notify_update('log_aggiornato')
@@ -631,7 +642,7 @@ def get_clients():
 def get_logs():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
-    c.execute("SELECT timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext FROM radio_logs ORDER BY id DESC LIMIT 60")
+    c.execute("SELECT timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi FROM radio_logs ORDER BY id DESC LIMIT 60")
     logs = c.fetchall()
     conn.close()
     return jsonify(logs)
