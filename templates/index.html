@@ -979,24 +979,51 @@
                 const slotDisplay = protocol === "DMR" ? `TS${rawSlot}` : "--";
                 let protoColor = "#3b82f6"; if (protocol === "NXDN") protoColor = "#10b981"; else if (protocol === "YSF") protoColor = "#8b5cf6"; else if (protocol === "D-STAR") protoColor = "#06b6d4"; else if (protocol === "P25") protoColor = "#f59e0b";
                 
-                // Formatta l'RSSI con S-Meter grafico (nascondilo se è 0)
+                // Formatta l'RSSI con S-Meter grafico a segmenti
                 let rssiDisplay = '---';
                 if (rawRssi && rawRssi !== 0) {
-                   // Calcola la percentuale su un range utile di 80 dB (da -130 a -50 dBm)
-                   const pct = Math.max(0, Math.min(100, ((rawRssi + 130) / 80) * 100));
-    
-                   // Assegna il colore in stile S-Meter amatoriale
-                   let barColor = "var(--success)";         // Verde (fino a S9 / -93 dBm)
-                   if (rawRssi > -93) barColor = "#f59e0b"; // Giallo (S9+)
-                   if (rawRssi > -73) barColor = "var(--danger)"; // Rosso (S9+20 o superiore)
+                    // Calcolo livello S-Meter (Standard VHF/UHF: S9 = -93 dBm, 6dB per punto S)
+                    let sLabel = "S0";
+                    if (rawRssi >= -93) {
+                        let over = Math.round((rawRssi + 93) / 10) * 10;
+                        sLabel = over > 0 ? `S9<sup style="color: var(--danger); font-weight: 800;">+${over}</sup>` : "S9";
+                    } else {
+                        let sUnits = Math.floor((rawRssi + 141) / 6) + 1;
+                        sLabel = `S${Math.max(1, Math.min(9, sUnits))}`;
+                    }
 
-                   rssiDisplay = `
-                   <div style="display: flex; align-items: center; gap: 8px;" title="${esc(rawRssi)} dBm">
-                       <div style="width: 50px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);">
-                           <div style="width: ${pct}%; height: 100%; background: ${barColor}; transition: width 0.3s ease;"></div>
-                       </div>
-                     <span style="font-size: 0.85em; color: var(--text-muted); min-width: 3ch;">${esc(rawRssi)}</span>
-                   </div>`;
+                    // Calcolo segmenti accesi (9 segmenti totali)
+                    let activeSegs = 1;
+                    if (rawRssi >= -53) activeSegs = 9;
+                    else if (rawRssi >= -63) activeSegs = 8;
+                    else if (rawRssi >= -73) activeSegs = 7;
+                    else if (rawRssi >= -83) activeSegs = 6;
+                    else if (rawRssi >= -93) activeSegs = 5; // S9
+                    else if (rawRssi >= -105) activeSegs = 4;
+                    else if (rawRssi >= -117) activeSegs = 3;
+                    else if (rawRssi >= -129) activeSegs = 2;
+
+                    // Generazione barre HTML
+                    let barsHtml = '';
+                    const heights = [4, 5, 6, 7, 8, 10, 12, 14, 14];
+                    for (let i = 0; i < 9; i++) {
+                        let color = "rgba(255,255,255,0.1)"; // Spento
+                        if (i < activeSegs) {
+                            if (i < 5) color = "var(--success)"; // Verde
+                            else if (i < 7) color = "#f59e0b";   // Giallo
+                            else color = "var(--danger)";        // Rosso
+                        }
+                        barsHtml += `<div style="width: 4px; height: ${heights[i]}px; background: ${color}; border-radius: 1px;"></div>`;
+                    }
+
+                    rssiDisplay = `
+                    <div style="display: flex; align-items: center; gap: 10px;" title="${esc(rawRssi)} dBm">
+                        <div style="min-width: 40px; text-align: right; font-weight: bold; font-family: 'Inter', sans-serif;">${sLabel}</div>
+                        <div style="display: flex; align-items: flex-end; gap: 2px; height: 14px;">
+                            ${barsHtml}
+                        </div>
+                        <span style="font-size: 0.85em; color: var(--text-muted); min-width: 7ch; text-align: right;">${esc(rawRssi)} dBm</span>
+                    </div>`;
                 }
                 
                 if (source.includes("🌐")) {
