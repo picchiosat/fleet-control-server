@@ -28,10 +28,25 @@
         body { font-family: 'Inter', sans-serif; background: var(--bg-gradient); margin: 0; padding: 0; color: var(--text-main); min-height: 100vh; }
         
         /* Barra superiore squadrata e tecnica */
-        #top-bar-container { position: sticky; top: 15px; z-index: 100; padding: 0 20px; display: flex; justify-content: center; }
+        #top-bar-container { 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            padding: 15px 20px; 
+            display: flex; 
+            justify-content: center; 
+            background: var(--bg-gradient); 
+            margin-bottom: 30px; 
+        }
         #top-bar { background: var(--topbar-bg); padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; border: 1px solid var(--border-color); width: 100%; max-width: 1400px; }
         .title-brand { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; }
         
+        /* --- Navigation Tabs --- */
+        .nav-tabs { display: flex; gap: 15px; margin-left: 30px; flex: 1; }
+        .nav-tab { background: transparent; border: none; color: var(--text-muted); font-size: 0.95rem; font-weight: 800; cursor: pointer; padding: 6px 12px; border-bottom: 3px solid transparent; transition: all 0.2s ease; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+        .nav-tab:hover { color: var(--text-main); }
+        .nav-tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
         .theme-switch { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
         .theme-switch:hover { color: var(--text-main); border-color: var(--text-main); }
         
@@ -137,6 +152,7 @@
             #top-bar-container { top: 10px; padding: 0 10px; }
             #top-bar { flex-direction: column; padding: 15px; gap: 12px; border-radius: 8px; }
             .title-brand { font-size: 1.1rem; text-align: center; width: 100%; }
+            .nav-tabs { margin-left: 0; width: 100%; justify-content: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; }
             #top-bar > div { width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px !important; }
             #auth-container { width: 100%; justify-content: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-color); }
             #auth-container > span { width: 100%; text-align: center; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
@@ -153,6 +169,13 @@
 <div id="top-bar-container">
     <div id="top-bar">
         <div class="title-brand">FLEET CONTROL CONSOLE</div>
+        
+        <!-- NUOVO: Menu a schede -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>
+            <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes">NODES</button>
+        </div>
+
         <div style="display: flex; align-items: center; gap: 12px;">
             <span id="mqtt-badge" class="mqtt-badge mqtt-offline">MQTT: CHECKING...</span>
             <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang">🇮🇹 ITA</button>
@@ -162,62 +185,68 @@
     </div>
 </div>
 
-<div class="grid" id="client-grid"></div>
-
-<div style="max-width: 1400px; margin: 0 auto 15px auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-    <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-        <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
-    </h3>
-    <select id="stat-node-filter" onchange="refreshStats()" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: bold; cursor: pointer; outline: none;">
-        <option value="all">🌐 ALL NODES</option>
-    </select>
+<!-- ================= VISTA NODI ================= -->
+<div id="view-nodes" style="display: none;">
+    <div class="grid" id="client-grid"></div>
 </div>
 
-<div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-    <div class="card" style="padding: 15px; border-top-color: var(--accent) !important;">
-        <h4 style="margin: 0 0 10px 0; color: var(--accent); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopTG">🎯 TOP TALKGROUPS</h4>
-        <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+<!-- ================= VISTA HOME ================= -->
+<div id="view-home">
+    <div style="max-width: 1400px; margin: 0 auto 15px auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+            <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
+        </h3>
+        <select id="stat-node-filter" onchange="refreshStats()" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: bold; cursor: pointer; outline: none;">
+            <option value="all">🌐 ALL NODES</option>
+        </select>
     </div>
-    
-    <div class="card" style="padding: 15px; border-top-color: var(--success) !important;">
-        <h4 style="margin: 0 0 10px 0; color: var(--success); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopCall">🗣️ TOP CALLSIGNS</h4>
-        <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
-    </div>
-    
-    <div class="card" style="padding: 15px; border-top-color: var(--primary) !important; display: flex; justify-content: space-around; align-items: center; text-align: center;">
-        <div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statAvgDur">⏱️ AVERAGE DURATION</div>
-        </div>
-        <div style="width: 1px; height: 50px; background: var(--border-color);"></div> 
-        <div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statTodayTx">📡 TRANSITS TODAY</div>
-        </div>
-    </div>
-</div>
 
-<div style="max-width: 1400px; margin: 0 auto;">
-    <h3 style="margin-left: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-        <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
-    </h3>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th data-i18n="thTime">Time</th>
-                    <th data-i18n="thRep">Repeater</th>
-                    <th data-i18n="thMode">Mode</th>
-                    <th style="text-align: center;">Slot</th>
-                    <th data-i18n="thCall">Callsign</th>
-                    <th>Target / TG</th>
-                    <th data-i18n="thDur">Duration</th>
-                    <th>BER</th>
-                    <th>RSSI</th> <!-- NUOVA COLONNA -->
-                </tr>
-            </thead>
-            <tbody id="log-body"></tbody>
-        </table>
+    <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div class="card" style="padding: 15px; border-top-color: var(--accent) !important;">
+            <h4 style="margin: 0 0 10px 0; color: var(--accent); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopTG">🎯 TOP TALKGROUPS</h4>
+            <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+        </div>
+        
+        <div class="card" style="padding: 15px; border-top-color: var(--success) !important;">
+            <h4 style="margin: 0 0 10px 0; color: var(--success); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopCall">🗣️ TOP CALLSIGNS</h4>
+            <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+        </div>
+        
+        <div class="card" style="padding: 15px; border-top-color: var(--primary) !important; display: flex; justify-content: space-around; align-items: center; text-align: center;">
+            <div>
+                <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statAvgDur">⏱️ AVERAGE DURATION</div>
+            </div>
+            <div style="width: 1px; height: 50px; background: var(--border-color);"></div> 
+            <div>
+                <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statTodayTx">📡 TRANSITS TODAY</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="max-width: 1400px; margin: 0 auto;">
+        <h3 style="margin-left: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+            <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
+        </h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th data-i18n="thTime">Time</th>
+                        <th data-i18n="thRep">Repeater</th>
+                        <th data-i18n="thMode">Mode</th>
+                        <th style="text-align: center;">Slot</th>
+                        <th data-i18n="thCall">Callsign</th>
+                        <th>Target / TG</th>
+                        <th data-i18n="thDur">Duration</th>
+                        <th>BER</th>
+                        <th>RSSI</th> <!-- Colonna S-Meter -->
+                    </tr>
+                </thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -475,11 +504,27 @@
     }
 
     // --- HELPER DI SICUREZZA ---
-    // esc(): escape HTML per tutto ciò che arriva da MQTT / database / utenti prima di finire in innerHTML
     function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    // q(): letterale JS sicuro da usare dentro onclick="...": onclick="fn(${q(valore)})"
     function q(s) { return esc(JSON.stringify(String(s ?? ''))); }
-    const HANG_TIME_MS = 180000; // tempo massimo in cui la card resta "accesa" dopo l'ultimo TX
+    const HANG_TIME_MS = 180000;
+
+    // --- GESTIONE SCHEDE (TABS) ---
+    function switchView(viewName) {
+        document.getElementById('view-home').style.display = 'none';
+        document.getElementById('view-nodes').style.display = 'none';
+        document.getElementById('tab-home').classList.remove('active');
+        document.getElementById('tab-nodes').classList.remove('active');
+
+        document.getElementById(`view-${viewName}`).style.display = 'block';
+        document.getElementById(`tab-${viewName}`).classList.add('active');
+
+        localStorage.setItem('fleetDefaultView', viewName);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedView = localStorage.getItem('fleetDefaultView') || 'home';
+        switchView(savedView);
+    });
 
     // --- DIAGNOSTICA: "ultimo messaggio ricevuto" per nodo (MMDVM / gateway / agent) ---
     function fmtAge(sec) {
@@ -502,8 +547,6 @@
         const upSec = data.uptime || 0;
         let html = '';
 
-        // MMDVM: pubblica eventi (TX, cambio modo), quindi su un nodo tranquillo l'età può crescere senza problemi.
-        // Si segnala solo il caso "mai ricevuto nulla" con nodo online e server attivo da un po'.
         const warnM = ages.mmdvm === undefined && isOnline && upSec > 600;
         const tipM = it ? `Ultimo evento dal topic mmdvm/${c.id}/json (TX, cambio modo...). Su un nodo tranquillo può passare molto tempo.`
                         : `Last event from topic mmdvm/${c.id}/json (TX, mode change...). It can be a long time on a quiet node.`;
@@ -511,13 +554,10 @@
                          : `No MMDVM event received since the server started (${fmtAge(upSec)}): check that MMDVMHost is connected to the broker.`;
         html += seenItem('MMDVM', ages.mmdvm, warnM ? tipMW : tipM, warnM);
 
-        // Gateway: solo se il nodo ne ha mai pubblicati
         if (ages.gateway !== undefined) {
             html += seenItem('GW', ages.gateway, it ? 'Ultimo evento dai gateway (DMR/NXDN/YSF/P25/D-Star)' : 'Last event from the gateways (DMR/NXDN/YSF/P25/D-Star)', false);
         }
 
-        // Agent: heartbeat periodico, se tace a lungo con nodo "online" qualcosa non va
-        // Soglia in base all'intervallo di telemetria dichiarato dall'agente (default 60 s): 3 intervalli, minimo 180 s
         const hObj = (data.health && data.health[c.id.toLowerCase()]) || {};
         const iv = Number(hObj.interval) > 0 ? Number(hObj.interval) : 60;
         const warnA = isOnline && (ages.health === undefined ? upSec > Math.max(300, iv * 5) : ages.health > Math.max(180, iv * 3));
@@ -532,7 +572,7 @@
 
     // --- GLOBAL VARIABLES ---
     let clients = [];
-    let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; // stato reale della sessione (da /api/me)
+    let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
     let isAuthenticated = false;
     let usersCache = {};
     let globalHealthData = {};
@@ -596,8 +636,7 @@
     }
     
     function confirmReboot(id) { sendCommand(id, 'REBOOT', `🔄 ${t('titleBoot')}`, `${t('confBoot')}<b>${id.toUpperCase()}</b>?`, "var(--danger)"); }
-    function confirmUpdateAgent(id) { sendCommand(id, 'UPDATE_AGENT', `⬇️ UPDATE OTA`, `Confermi l'aggiornamento dello script tramite git pull sul nodo <b>${id.toUpperCase()}</b>?`, "#2563eb"); 
-    }    
+    function confirmUpdateAgent(id) { sendCommand(id, 'UPDATE_AGENT', `⬇️ UPDATE OTA`, `Confermi l'aggiornamento dello script tramite git pull sul nodo <b>${id.toUpperCase()}</b>?`, "#2563eb"); }    
 
     function confirmHatReset(id) { 
         currentResetHatId = id;
@@ -648,7 +687,6 @@
 
             const response = await fetch('/api/clients');
             clients = await response.json();
-            // Gli id nodo finiscono in id HTML e onclick: accettiamo solo caratteri sicuri
             clients = clients.filter(c => /^[A-Za-z0-9_\-]+$/.test(String(c.id)));
 
             const statSelect = document.getElementById('stat-node-filter');
@@ -769,17 +807,15 @@
                 const statusDiv = document.getElementById(`status-${c.id}`); const cardDiv = document.getElementById(`card-${c.id}`);
                 if (!statusDiv || !cardDiv) return;
 
-                // 1. PRIMA CALCOLIAMO SE È ONLINE
                 let stateValue = data.states[c.id.toLowerCase()] || data.states[c.id] || "OFFLINE";
                 stateValue = String(stateValue).trim().toUpperCase(); statusDiv.innerText = stateValue;
                 const isOnline = !stateValue.includes("OFF") && stateValue !== "";
                 renderSeen(c, data, isOnline);
 
-                // 2. POI AGGIORNIAMO NOME E ID DINAMICI
                 let genObj = data.general && data.general[c.id.toLowerCase()];
                 const nameSpan = cardDiv.querySelector('.client-name');
                 const idBadge = cardDiv.querySelector('.badge-id');
-                const typeBadge = document.getElementById(`type-badge-${c.id}`); // <--- Peschiamo il nostro nuovo badge
+                const typeBadge = document.getElementById(`type-badge-${c.id}`);
 
                 if (genObj && isOnline) {
                     nameSpan.innerText = genObj.callsign;
@@ -788,7 +824,6 @@
                     idBadge.style.color = "#ffffff"; 
                     idBadge.style.borderColor = "var(--primary)"; 
                     
-                    // --- LOGICA BADGE HOTSPOT/REPEATER ---
                     if (typeBadge && genObj.duplex !== undefined) {
                         typeBadge.style.display = 'inline-block';
                         if (genObj.duplex === "1") {
@@ -806,10 +841,9 @@
                     idBadge.style.color = "var(--text-muted)"; 
                     idBadge.style.borderColor = "var(--border-color)";
                     
-                    if (typeBadge) typeBadge.style.display = 'none'; // Nascondilo se il nodo va offline
+                    if (typeBadge) typeBadge.style.display = 'none';
                 }
 
-                // 3. TELEMETRIA E STATO (PULITO DAI DUPLICATI)
                 let telemetryObj = data.telemetry[c.id.toLowerCase()] || data.telemetry[c.id] || { ts1: "...", ts2: "...", alt: "", idle: true };
                 if (typeof telemetryObj === 'string') telemetryObj = { ts1: telemetryObj, ts2: "...", alt: "", idle: true };
 
@@ -840,14 +874,10 @@
                     activeModeColor = "var(--primary)";
                     
                 if (ts1Div && ts2Div) {
-                        // --- LOGICA DUPLEX / SIMPLEX ---
                         let isSimplex = (genObj && genObj.duplex === "0");
-                        
-                        // Nascondiamo il div del TS1 se il nodo è Simplex
                         ts1Div.style.display = isSimplex ? 'none' : 'block';
 
                         [ts1Div, ts2Div].forEach((div, idx) => {
-                            // Se è simplex, saltiamo del tutto l'aggiornamento grafico del TS1
                             if (isSimplex && idx === 0) return;
 
                             const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? ''); const netName = idx === 0 ? netObj.ts1 : netObj.ts2;
@@ -937,15 +967,12 @@
                 if (isOnline) {
                     cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline'); cardDiv.style.opacity = "1"; cardDiv.style.filter = "none";
                     
-                    // --- INIZIO LOGICA SMART HANG-TIME ---
-                    if (isTx) cardDiv.dataset.lastTx = Date.now(); // Memorizza quando è avvenuto l'ultimo TX
+                    if (isTx) cardDiv.dataset.lastTx = Date.now(); 
                     let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
                     
-                    // Accendi se in TX, OPPURE se in Hang Time (ma spegni a forza dopo HANG_TIME_MS di inattività)
                     let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
 
                     cardDiv.style.setProperty('border-top-color', showActiveColor ? activeModeColor : "var(--border-color)", 'important');
-                    // --- FINE LOGICA ---
                     if(isTx) {
                         let shadowRGB = '59, 130, 246'; 
                         if (activeModeColor === '#10b981') shadowRGB = '16, 185, 129'; 
@@ -971,7 +998,7 @@
                 const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
                 const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
                 const rawSlot = row[5]; const source_ext = row[8];
-                const rawRssi = row[9]; // Estrai il nuovo valore
+                const rawRssi = row[9];
                 
                 let sourceHtml = esc(source);
                 if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
@@ -1030,7 +1057,6 @@
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
                     networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
                 } else {
-                    // Aggiunto il TD per l'RSSI alla fine
                     tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td><td style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td></tr>`;
                 }
             });
@@ -1097,7 +1123,6 @@
     // --- SETTINGS ---
     function triggerGlobalEmergency() {
         let uniqueProfiles = {};
-        // Raccoglie tutti i profili unici trovati nei nodi online
         for (const id in globalHealthData) { 
             if (globalHealthData[id] && globalHealthData[id].profiles) { 
                 for (const [k, v] of Object.entries(globalHealthData[id].profiles)) {
@@ -1215,7 +1240,7 @@
     // --- PUSH NOTIFICATIONS ---
     async function subscribeToPush() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) { customAlert("Error", "Push notifications are not supported by this browser.", true); return; }
-        if (!me.logged_in) { openLoginModal(); return; }   // le notifiche si attivano solo da loggati
+        if (!me.logged_in) { openLoginModal(); return; } 
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') { customAlert("Error", "Push notifications permission denied.", true); return; }
         try {
@@ -1236,7 +1261,6 @@
     checkPushStatus();
 
     // --- AGGIORNAMENTI PERIODICI ---
-    // Fallback se il WebSocket non è disponibile + spegne l'hang time scaduto anche senza nuovi eventi
     setInterval(refreshStates, 15000);
     setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
 
@@ -1252,8 +1276,8 @@
             if (badge) { if (data.connected) { badge.innerText = "MQTT: ONLINE"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: OFFLINE"; badge.className = "mqtt-badge mqtt-offline"; } }
         });
         socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
-        socket.on('dati_aggiornati', refreshStatesSoon);   // stato nodi / telemetria
-        socket.on('log_aggiornato', refreshLogsSoon);      // nuovi ascolti -> lastheard + statistiche
+        socket.on('dati_aggiornati', refreshStatesSoon);   
+        socket.on('log_aggiornato', refreshLogsSoon);      
     }
 </script>
 <script>
