@@ -362,16 +362,19 @@ def on_message(client, userdata, msg):
             notify_update()  # <--- WEBSOCKET
             
             # --- PUSH TRIGGER: NODE STATE ---
-            if payload.upper() == 'OFFLINE':
-                if last_notified_errors.get(f"{cid}_NODE") != 'OFFLINE':
+            # L'agente invia "OFFLINE - <ID>" (anche come LWT) e "ONLINE - <profilo>": si confronta il PREFISSO.
+            # I messaggi retained (già sul broker quando il server si avvia) non generano notifiche.
+            state_up = payload.upper()
+            if state_up.startswith('OFFLINE'):
+                if not msg.retain and last_notified_errors.get(f"{cid}_NODE") != 'OFFLINE':
                     broadcast_push_notification(f"💀 NODE OFFLINE: {cid.upper()}", "Connection lost with broker.", cid=cid)
                     last_notified_errors[f"{cid}_NODE"] = 'OFFLINE'
-            elif payload.upper() == 'ONLINE':
+            elif state_up.startswith('ONLINE'):
                 if last_notified_errors.get(f"{cid}_NODE") == 'OFFLINE':
                     broadcast_push_notification(f"🌤️ NODE ONLINE: {cid.upper()}", "Node is back online.", cid=cid)
                     del last_notified_errors[f"{cid}_NODE"]
-                    
-            if payload.upper() not in ['OFF', 'OFFLINE', '']:
+
+            if not state_up.startswith('OFF') and state_up != '':
                 tel = client_telemetry.get(cid, {})
                 if isinstance(tel, dict) and '🔄' in str(tel.get('ts1', '')):
                     client_telemetry[cid] = {"ts1": "Waiting...", "ts2": "Waiting...", "alt": ""}
@@ -388,7 +391,8 @@ def on_message(client, userdata, msg):
                     "disk": round(data.get("disk_usage_percent", 0), 1),
                     "processes": data.get("processes", {}),
                     "files": data.get("files", data.get("config_files", [])),
-                    "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"})
+                    "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
+                    "interval": data.get("update_interval")
                 }
                 health_changed = device_health.get(cid) != new_health
                 device_health[cid] = new_health
@@ -442,7 +446,7 @@ def on_message(client, userdata, msg):
                 logger.error(f"Error parsing DMRGateway for {cid}: {e}")
 
         # --- MMDVMHOST INFO MANAGEMENT (FREQUENZE & LOCATION) ---
-        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvm' and parts[3].lower() == 'info':
+        elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'info':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
@@ -471,7 +475,7 @@ def on_message(client, userdata, msg):
                 logger.error(f"Error parsing MMDVMHost info for {cid}: {e}")
 
         # --- MMDVMHOST GENERAL MANAGEMENT (CALLSIGN & ID & DUPLEX) ---
-        elif len(parts) >= 4 and p0 == 'data' and p2 == 'mmdvm' and parts[3].lower() == 'general':
+        elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'general':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)

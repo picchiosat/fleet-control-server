@@ -516,7 +516,10 @@
         }
 
         // Agent: heartbeat periodico, se tace a lungo con nodo "online" qualcosa non va
-        const warnA = isOnline && (ages.health === undefined ? upSec > 300 : ages.health > 180);
+        // Soglia in base all'intervallo di telemetria dichiarato dall'agente (default 60 s): 3 intervalli, minimo 180 s
+        const hObj = (data.health && data.health[c.id.toLowerCase()]) || {};
+        const iv = Number(hObj.interval) > 0 ? Number(hObj.interval) : 60;
+        const warnA = isOnline && (ages.health === undefined ? upSec > Math.max(300, iv * 5) : ages.health > Math.max(180, iv * 3));
         const tipA = warnA
             ? (it ? 'L\'agent del nodo non invia più lo stato (devices/<id>/services): connessione bloccata?' : 'The node agent stopped sending its status (devices/<id>/services): stuck connection?')
             : (it ? 'Ultimo stato ricevuto dall\'agent del nodo (devices/<id>/services)' : 'Last status received from the node agent (devices/<id>/services)');
