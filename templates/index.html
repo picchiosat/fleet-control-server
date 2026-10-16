@@ -997,9 +997,7 @@
                        </div>
                      <span style="font-size: 0.85em; color: var(--text-muted); min-width: 3ch;">${esc(rawRssi)}</span>
                    </div>`;
-}
-                const rssiDisplay = rawRssi && rawRssi !== 0 ? `${esc(rawRssi)} dBm` : '---';
-                
+     }
                 if (source.includes("🌐")) {
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
                     networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
