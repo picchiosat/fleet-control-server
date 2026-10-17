@@ -1178,10 +1178,20 @@
     }
 
     // --- SERVICES & CONFIGS ---
+    // Etichetta del file: nome in maiuscolo + estensione reale (es. DSTARGATEWAY.cfg); .ini solo come ripiego per agent vecchi
+    function fileLabel(stem, names) {
+        const key = String(stem).toLowerCase();
+        const full = (names || []).find(n => String(n).replace(/\.[^.]*$/, '').toLowerCase() === key);
+        if (full) {
+            const m = String(full).match(/^(.*?)(\.[^.]*)?$/);
+            return String(m[1]).toUpperCase() + (m[2] || '');
+        }
+        return String(stem).toUpperCase() + '.ini';
+    }
     function openConfigsModal(clientId) {
-        const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('configs-list'); let listaFile = data ? (data.config_files || data.files || []) : [];
+        const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('configs-list'); let listaFile = data ? (data.config_files || data.files || []) : []; const fileNames = (data && data.file_names) || [];
         if (listaFile.length === 0) listDiv.innerHTML = `<div style="text-align:center; padding:20px;"><p style="color:var(--text-muted); margin-bottom:15px;">${t('waitData')}</p><button onclick="sendGlobalUpdate(); closeConfigsModal();" class="btn-cmd" style="background:var(--accent);">${t('forceUpdate')}</button></div>`;
-        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(128,128,128,0.1); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(String(f).toUpperCase())}.ini</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px;">${t('btnEdit')}</button></div>`).join('');
+        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(128,128,128,0.1); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(fileLabel(f, fileNames))}</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px;">${t('btnEdit')}</button></div>`).join('');
         document.getElementById('configs-modal').style.display = 'flex';
     }
     function closeConfigsModal() { document.getElementById('configs-modal').style.display = 'none'; }
