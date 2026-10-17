@@ -402,6 +402,7 @@ def on_message(client, userdata, msg):
                     "disk": round(data.get("disk_usage_percent", 0), 1),
                     "processes": data.get("processes", {}),
                     "files": data.get("files", data.get("config_files", [])),
+                    "file_names": data.get("file_names", []),
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
                     "interval": data.get("update_interval")
                 }
