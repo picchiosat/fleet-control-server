@@ -471,8 +471,15 @@ def on_message(client, userdata, msg):
                 loc = data.get("Location", "Sconosciuta")
                 
                 def format_freq(f):
+                    # Hz -> MHz senza arrotondare: almeno 5 decimali (10 Hz), 6 se serve (1 Hz).
+                    # Aritmetica intera: nessun errore di virgola mobile.
                     if str(f).isdigit() and int(f) > 0:
-                        return f"{int(f)/1000000:.3f} MHz"
+                        hz = int(f)
+                        mhz, frac = divmod(hz, 1000000)
+                        dec = f"{frac:06d}"
+                        if dec.endswith("0"):
+                            dec = dec[:-1]
+                        return f"{mhz}.{dec} MHz"
                     return str(f)
                     
                 node_info[cid] = {
