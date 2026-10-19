@@ -235,7 +235,6 @@ client_telemetry = {}
 last_notified_errors = {}
 device_health = {}
 last_seen_reflector = {}
-network_mapping = {}  
 node_info = {}
 node_general = {}
 node_versions = {}
@@ -458,32 +457,6 @@ def on_message(client, userdata, msg):
             except Exception as e: 
                 logger.error(f"Error parsing health data: {e}")
 
-        elif len(parts) >= 4 and p0 == 'data' and p2 == 'dmrgateway' and (parts[3].upper().startswith('NETWORK') or parts[3].upper().startswith('DMR NETWORK')):
-            try:
-                cid = parts[1].lower()
-                data = json.loads(payload)
-                
-                if cid not in network_mapping:
-                    network_mapping[cid] = {"ts1": "", "ts2": ""}
-                
-                if str(data.get("Enabled")) == "1":
-                    net_name = data.get("Name", "Net").upper()
-                    is_ts1 = False
-                    is_ts2 = False
-                    
-                    keys_to_check = ["PassAllTG", "PassAllPC", "TGRewrite", "PCRewrite", "TypeRewrite", "SrcRewrite"]
-                    for k in keys_to_check:
-                        val = str(data.get(k, "")).strip()
-                        if val.startswith("1"): is_ts1 = True
-                        if val.startswith("2"): is_ts2 = True
-                        
-                    if is_ts1: network_mapping[cid]["ts1"] = net_name
-                    if is_ts2: network_mapping[cid]["ts2"] = net_name
-                    notify_update()
-                        
-            except Exception as e:
-                logger.error(f"Error parsing DMRGateway for {cid}: {e}")
-
         elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'info':
             try:
                 cid = parts[1].lower()
@@ -681,7 +654,6 @@ def get_states():
         "states": client_states,
         "telemetry": client_telemetry,
         "health": device_health,
-        "networks": network_mapping,
         "info": node_info,
         "general": node_general,
         "last_seen": seen_ages(),

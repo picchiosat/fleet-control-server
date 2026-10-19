@@ -464,7 +464,7 @@
             ttReqCfg: "Request immediate data update", ttGlobal: "Force profile switch on network", ttAdmin: "User and system management", ttPass: "Change your password", ttLogout: "Log out",
             ttProfA: "Switch to Profile A", ttProfB: "Switch to Profile B", ttTgOn: "Enable Telegram notifications", ttTgOff: "Disable Telegram notifications", ttSvc: "Manage system daemons", ttFile: "Edit .ini configuration files", ttHat: "Send physical reset to modem", ttBoot: "Reboot node operating system",
             ttSwitchTo: "Switch to profile: ", ttSvcStart: "Start service", ttSvcRestart: "Restart service", ttSvcEdit: "Edit configuration", ttSvcStop: "Stop service", ttLang: "Change language",
-            statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITS TODAY", statNoData: "No data",
+            statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITI TODAY", statNoData: "No data",
             statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware"
         },
         it: {
@@ -889,7 +889,6 @@
                     if (altDiv) altDiv.style.display = "none";
                     if (tsContainer) tsContainer.style.display = "flex";
                     
-                    let netObj = data.networks && data.networks[c.id.toLowerCase()] ? data.networks[c.id.toLowerCase()] : {ts1: "", ts2: ""};
                     activeModeColor = "var(--primary)";
                     
                 if (ts1Div && ts2Div) {
@@ -899,8 +898,8 @@
                         [ts1Div, ts2Div].forEach((div, idx) => {
                             if (isSimplex && idx === 0) return;
 
-                            const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? ''); const netName = idx === 0 ? netObj.ts1 : netObj.ts2;
-                            const fullLabel = netName ? `TS${idx + 1} [${netName}]` : `TS${idx + 1}`;
+                            const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? '');
+                            const fullLabel = `TS${idx + 1}`;
                             div.innerText = `${fullLabel}: ${val}`;
                             div.style.setProperty('--pulse-color', activeModeColor);
                             
