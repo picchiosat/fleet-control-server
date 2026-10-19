@@ -170,7 +170,7 @@
     <div id="top-bar">
         <div class="title-brand">FLEET CONTROL CONSOLE</div>
         
-        <!-- NUOVO: Menu a schede -->
+        <!-- Menu a schede -->
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>
             <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes">NODES</button>
@@ -241,7 +241,7 @@
                         <th>Target / TG</th>
                         <th data-i18n="thDur">Duration</th>
                         <th>BER</th>
-                        <th>RSSI</th> <!-- Colonna S-Meter -->
+                        <th>RSSI</th>
                     </tr>
                 </thead>
                 <tbody id="log-body"></tbody>
@@ -420,6 +420,19 @@
     </div>
 </div>
 
+<!-- NUOVO MODALE VERSIONI -->
+<div id="versions-modal" class="modal-overlay">
+    <div class="modal-content" style="width:90%; max-width:450px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--primary);">ℹ️ <span data-i18n="modVersions">Software & Firmware</span></h2>
+            <button onclick="closeVersionsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+        </div>
+        <div id="versions-list" style="background: #010409; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8; color: var(--text-main);">
+            <!-- Dati iniettati via JS -->
+        </div>
+    </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
@@ -452,7 +465,7 @@
             ttProfA: "Switch to Profile A", ttProfB: "Switch to Profile B", ttTgOn: "Enable Telegram notifications", ttTgOff: "Disable Telegram notifications", ttSvc: "Manage system daemons", ttFile: "Edit .ini configuration files", ttHat: "Send physical reset to modem", ttBoot: "Reboot node operating system",
             ttSwitchTo: "Switch to profile: ", ttSvcStart: "Start service", ttSvcRestart: "Restart service", ttSvcEdit: "Edit configuration", ttSvcStop: "Stop service", ttLang: "Change language",
             statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITS TODAY", statNoData: "No data",
-            statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES"
+            statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware"
         },
         it: {
             lastTransits: "Ultimi ascolti", loginTitle: "🔒 Login di Sistema",
@@ -481,7 +494,7 @@
             ttProfA: "Passa al Profilo A", ttProfB: "Passa al Profilo B", ttTgOn: "Abilita notifiche Telegram", ttTgOff: "Disabilita notifiche Telegram", ttSvc: "Gestisci demoni di sistema", ttFile: "Modifica file .ini da remoto", ttHat: "Reset fisico scheda modem", ttBoot: "Riavvia sistema operativo",
             ttSwitchTo: "Passa al profilo: ", ttSvcStart: "Avvia servizio", ttSvcRestart: "Riavvia servizio", ttSvcEdit: "Modifica configurazione", ttSvcStop: "Ferma servizio", ttLang: "Cambia lingua",
             statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Caricamento...", statAvgDur: "⏱️ DURATA MEDIA", statTodayTx: "📡 TRANSITI OGGI", statNoData: "Nessun dato",
-            statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTA LA RETE"
+            statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTA LA RETE", modVersions: "Software & Firmware"
         }
     };
     let currentLang = localStorage.getItem('lang') || 'en'; 
@@ -526,7 +539,7 @@
         switchView(savedView);
     });
 
-    // --- DIAGNOSTICA: "ultimo messaggio ricevuto" per nodo (MMDVM / gateway / agent) ---
+    // --- DIAGNOSTICA ---
     function fmtAge(sec) {
         sec = Math.max(0, Math.round(sec));
         if (sec < 60) return sec + 's';
@@ -576,6 +589,7 @@
     let isAuthenticated = false;
     let usersCache = {};
     let globalHealthData = {};
+    let globalVersionsData = {}; // NUOVA VARIABILE VERSIONI
     let editingUserId = null; 
     let currentResetHatId = null; 
     let confirmActionCallback = null; 
@@ -768,6 +782,7 @@
                             ` : ''}
                             ${showReboot ? `
                             <div style="width: 100%; display: flex; gap: 8px;">
+                                <button class="btn-cmd" style="background: var(--primary); padding: 8px 4px;" title="Mostra Versioni Software" onclick="openVersionsModal('${c.id}')">ℹ️ INFO</button>
                                 <button id="btn-svc-${c.id}" class="btn-cmd" style="background: #334155; padding: 8px 4px;" title="${t('ttSvc')}" onclick="openServicesModal('${c.id}')">${t('btnSvc')}</button>
                                 <button class="btn-cmd" style="background: #8e44ad; padding: 8px 4px;" title="${t('ttFile')}" onclick="openConfigsModal('${c.id}')">${t('btnFile')}</button>
                                 <button class="btn-cmd" style="background: #ea580c; padding: 8px 4px;" title="${t('ttHat')}" onclick="confirmHatReset('${c.id}')">${t('btnHat')}</button>
@@ -803,6 +818,10 @@
     async function refreshStates() {
         try {
             const res = await fetch('/api/states'); const data = await res.json();
+            
+            // AGGIORNAMENTO DATI VERSIONI GLOBALI
+            globalVersionsData = data.versions || {};
+
             clients.forEach(c => {
                 const statusDiv = document.getElementById(`status-${c.id}`); const cardDiv = document.getElementById(`card-${c.id}`);
                 if (!statusDiv || !cardDiv) return;
@@ -1178,7 +1197,6 @@
     }
 
     // --- SERVICES & CONFIGS ---
-    // Etichetta del file: nome in maiuscolo + estensione reale (es. DSTARGATEWAY.cfg); .ini solo come ripiego per agent vecchi
     function fileLabel(stem, names) {
         const key = String(stem).toLowerCase();
         const full = (names || []).find(n => String(n).replace(/\.[^.]*$/, '').toLowerCase() === key);
@@ -1245,6 +1263,28 @@
                 if (data.success) { customAlert(t('titleSuccess'), "File updated!"); closeEditorModal(); } else { customAlert(t('titleError'), "Server error: " + esc(data.error), true); statusSpan.innerText = "❌ Error"; }
             } catch(e) { customAlert(t('titleError'), t('msgNetErr'), true); statusSpan.innerText = "❌ Network Error"; }
         });
+    }
+
+    // --- NUOVE FUNZIONI PER POP-UP VERSIONI ---
+    function openVersionsModal(clientId) {
+        const versions = globalVersionsData[clientId.toLowerCase()];
+        const listDiv = document.getElementById('versions-list');
+        
+        if (!versions || Object.keys(versions).length === 0) {
+            listDiv.innerHTML = "<span style='color: var(--text-muted);'>Nessun dato ancora ricevuto. Usa il tasto 🔄 RESTART sui servizi del nodo per forzare l'invio del log di avvio.</span>";
+        } else {
+            let html = "";
+            for (const [software, version] of Object.entries(versions)) {
+                html += `<div><strong style="color: var(--primary); display: inline-block; width: 140px;">${esc(software)}:</strong> <span style="color: var(--success); font-weight: bold;">${esc(version)}</span></div>`;
+            }
+            listDiv.innerHTML = html;
+        }
+        
+        document.getElementById('versions-modal').style.display = 'flex';
+    }
+
+    function closeVersionsModal() {
+        document.getElementById('versions-modal').style.display = 'none';
     }
 
     // --- PUSH NOTIFICATIONS ---

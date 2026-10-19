@@ -18,7 +18,6 @@ from logging.handlers import RotatingFileHandler
 from flask_socketio import SocketIO, emit
 
 # --- DYNAMIC BASE PATH ---
-# Calcola automaticamente la directory esatta in cui si trova questo file (app.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- PATHS ---
@@ -41,10 +40,9 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger("FleetHub")
-# Silence HTTP request spam (GET /api/states 200 OK)
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-# --- CONFIG (caricata subito: serve a secret_key, CORS, utente di default, ecc.) ---
+# --- CONFIG ---
 config_lock = threading.Lock()
 
 def read_config():
@@ -52,7 +50,6 @@ def read_config():
         return json.load(f)
 
 def write_config(cfg):
-    """Scrittura atomica di config.json (file temporaneo + replace), mantenendo i permessi."""
     tmp = CONFIG_PATH + '.tmp'
     with config_lock:
         with open(tmp, 'w') as f:
@@ -64,10 +61,9 @@ def write_config(cfg):
         os.replace(tmp, CONFIG_PATH)
 
 config = read_config()
-web_cfg = config.get('web', {})   # opzionale: secret_key, cookie_secure, session_hours, cors_origins, trust_proxy
+web_cfg = config.get('web', {})
 
 def get_secret_key():
-    """Chiave di sessione: da FLEET_SECRET_KEY, da config.json oppure generata e salvata."""
     key = os.environ.get('FLEET_SECRET_KEY') or config.get('secret_key')
     if not key or key == 'ari_fvg_secret_ultra_secure':
         key = secrets.token_hex(32)
@@ -83,7 +79,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
 
-    c.execute('PRAGMA journal_mode=WAL;') # <-- MAGIC: Enable simultaneous read/write!
+    c.execute('PRAGMA journal_mode=WAL;')
 
     c.execute('''CREATE TABLE IF NOT EXISTS radio_logs
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME, client_id TEXT, 
@@ -122,7 +118,6 @@ def init_db():
         def_pass = adm_cfg.get("default_pass", "")
         generated = False
         if not def_pass or def_pass == "admin123":
-            # niente password di default note: ne generiamo una casuale
             def_pass = secrets.token_urlsafe(9)
             generated = True
 
@@ -149,11 +144,11 @@ def load_ids():
     if os.path.exists(DMR_IDS_PATH):
         with open(DMR_IDS_PATH, 'r', encoding='utf-8', errors='ignore') as f:
             for l in f:
-                l = l.replace('"', '') # Rimuove eventuali virgolette
+                l = l.replace('"', '')
                 if ',' in l: p = l.strip().split(',')
                 elif '\t' in l: p = l.strip().split('\t')
                 elif ';' in l: p = l.strip().split(';')
-                else: p = l.strip().split() # Cerca gli spazi normali
+                else: p = l.strip().split()
 
                 if len(p) >= 2 and p[0].strip().isdigit():
                     new_dmr[p[0].strip()] = p[1].strip()
@@ -166,7 +161,6 @@ def load_ids():
                 if len(p) >= 2 and p[0].strip().isdigit():
                     new_nxdn[p[0].strip()] = p[1].strip()
 
-    # Un file vuoto/corrotto non deve cancellare un database valido già in memoria
     if new_dmr: user_db = new_dmr
     if new_nxdn: nxdn_db = new_nxdn
 
@@ -208,13 +202,11 @@ app.secret_key = get_secret_key()
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    SESSION_COOKIE_SECURE=bool(web_cfg.get('cookie_secure', False)),   # metti true se servi la dashboard solo in HTTPS
+    SESSION_COOKIE_SECURE=bool(web_cfg.get('cookie_secure', False)),
     PERMANENT_SESSION_LIFETIME=int(web_cfg.get('session_hours', 12)) * 3600,
 )
 
-# --- NOTIFICHE WEBSOCKET "COALESCED" ---
-# Molti messaggi MQTT ravvicinati generano UN solo evento ogni NOTIFY_DELAY secondi
-# (altrimenti ogni browser farebbe 3 richieste HTTP per ogni messaggio).
+# --- NOTIFICHE WEBSOCKET ---
 NOTIFY_DELAY = 0.3
 _notify_lock = threading.Lock()
 _notify_pending = set()
@@ -236,6 +228,7 @@ def notify_update(event='dati_aggiornati'):
     timer = threading.Timer(NOTIFY_DELAY, _fire)
     timer.daemon = True
     timer.start()
+
 client_states = {}
 device_configs = {}
 client_telemetry = {}
@@ -245,6 +238,7 @@ last_seen_reflector = {}
 network_mapping = {}  
 node_info = {}
 node_general = {}
+node_versions = {}
 
 if os.path.exists(CACHE_FILE):
     try:
@@ -253,10 +247,6 @@ if os.path.exists(CACHE_FILE):
 
 active_calls = {}
 
-# --- DIAGNOSTICA: ultimo messaggio MQTT ricevuto, per nodo e per tipo ---
-#   mmdvm   -> mmdvm/<id>/json                       (eventi radio: TX, cambio modo...)
-#   gateway -> dmr/nxdn/ysf/p25/dstar-gateway/<id>/json
-#   health  -> devices/<id>/services                 (heartbeat dell'agent sul nodo)
 START_TIME = time.time()
 last_seen = {}
 last_seen_lock = threading.Lock()
@@ -266,13 +256,11 @@ def touch_seen(cid, kind):
         last_seen.setdefault(cid, {})[kind] = time.time()
 
 def seen_ages():
-    """Età (in secondi) dell'ultimo messaggio per nodo/tipo, calcolata sul server (niente problemi di orologio)."""
     now = time.time()
     with last_seen_lock:
         return {cid: {k: round(now - ts, 1) for k, ts in kinds.items()} for cid, kinds in last_seen.items()}
 
 def seed_last_seen():
-    """Dopo un riavvio del server si riparte dall'ultimo evento radio registrato nel DB (dato reale)."""
     try:
         with closing(sqlite3.connect(DB_PATH, timeout=10)) as conn:
             rows = conn.execute("""SELECT LOWER(client_id), MAX(timestamp) FROM radio_logs
@@ -297,21 +285,17 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
     if reason_code == 0:
         mqtt_connected_status = True
         logger.info("✅ Successfully connected to MQTT Broker! Subscribing to topics...")
-        # Invia lo stato Online ai client web
         socketio.emit('mqtt_status', {'connected': True})
         
-        # --- LETTURA DINAMICA DEI TOPIC ---
         default_topics = [
             "servizi/+/stat", "dmr-gateway/+/json", "devices/+/services",
             "nxdn-gateway/+/json", "ysf-gateway/+/json", "p25-gateway/+/json",
             "dstar-gateway/+/json", "mmdvm/+/json", "data/#"
         ]
         
-        # Cerca la lista "topics" nel config.json, se non la trova usa quella di default
         topics_list = config.get('mqtt', {}).get('topics', default_topics)
-        
-        # Converte la lista di stringhe nel formato richiesto da paho-mqtt: [(topic, qos), (topic, qos)...]
         subscribe_list = [(topic, 0) for topic in topics_list]
+        subscribe_list.append(("+/+/log", 0))  # Ascolto dinamico dei log
         
         client.subscribe(subscribe_list)
         logger.info(f"Subscribed to {len(subscribe_list)} MQTT topics.")
@@ -323,11 +307,9 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 def on_disconnect(client, userdata, disconnect_flags, reason_code, properties=None):
     global mqtt_connected_status
     mqtt_connected_status = False
-    # Invia lo stato Offline ai client web
     socketio.emit('mqtt_status', {'connected': False})
     logger.warning(f"⚠️ MQTT Disconnection detected! Reason code: {reason_code}. Attempting automatic reconnection...")
 
-# Quando un nuovo utente apre la pagina web, inviagli subito lo stato attuale
 @socketio.on('connect')
 def handle_connect():
     emit('mqtt_status', {'connected': mqtt_connected_status})
@@ -340,14 +322,51 @@ def on_message(client, userdata, msg):
         if len(parts) < 2: return
         
         cid = parts[1].lower()
-        
-        # --- MAGIA DELLA NORMALIZZAZIONE ---
-        # Prendiamo i blocchi del topic, li facciamo minuscoli e togliamo i trattini
-        # Così "DMRGateway", "dmr-gateway" e "dmrgateway" diventano tutti identici per noi
         p0 = parts[0].lower().replace('-', '')
         p2 = parts[2].lower().replace('-', '') if len(parts) > 2 else ""
 
-        # --- DIAGNOSTICA: registra l'arrivo dell'ultimo messaggio per tipo ---
+            # --- LOG MANAGEMENT (ESTRAZIONE VERSIONI E GIT ID) ---
+        if len(parts) >= 3 and parts[2].lower() == 'log':
+            if cid not in node_versions:
+                node_versions[cid] = {}
+            
+            # 1. Cattura il Firmware MMDVM (es. "... description: MMDVM 20260424 19.2000 Mhz GitID #57e692a")
+            m_fw = re.search(r'description:\s*(MMDVM[^\n\r]+)', payload, re.IGNORECASE)
+            if m_fw:
+                node_versions[cid]["Firmware MMDVM"] = m_fw.group(1).strip()
+                notify_update()
+                
+            # 2. Cattura le versioni dei demoni Formato A (es. "YSFGateway-20260323 is starting")
+            m_sw1 = re.search(r'([A-Za-z0-9_]+)-([a-zA-Z0-9.\-]+)\s+is starting', payload, re.IGNORECASE)
+            if m_sw1:
+                prog = m_sw1.group(1)
+                node_versions[cid][prog] = m_sw1.group(2).strip()
+                node_versions[cid]["_last_prog"] = prog  # Per il GitID della riga dopo
+                notify_update()
+
+            # 3. Cattura le versioni dei demoni Formato B (es. "MMDVMHost version 20250419 git #65ebb55")
+            m_sw2 = re.search(r'([A-Za-z0-9_]+)\s+version\s+([a-zA-Z0-9.\-\s#]+)', payload, re.IGNORECASE)
+            if m_sw2:
+                prog = m_sw2.group(1)
+                # Ignoriamo i falsi positivi dei log (es. "protocol version", "firmware version")
+                if prog.lower() not in ['protocol', 'firmware', 'mmdvm firmware']:
+                    # Puliamo un eventuale "is starting" finale, se presente
+                    ver = m_sw2.group(2).replace("is starting", "").strip()
+                    node_versions[cid][prog] = ver
+                    node_versions[cid]["_last_prog"] = prog
+                    notify_update()
+
+            # 4. Cattura il GitID della riga successiva per i demoni di Formato A
+            m_git = re.search(r'Built .*?\(GitID #([0-9a-fA-F]+)\)', payload, re.IGNORECASE)
+            if m_git:
+                git_id = m_git.group(1)
+                last_prog = node_versions[cid].get("_last_prog")
+                if last_prog and last_prog in node_versions[cid]:
+                    if "GitID" not in node_versions[cid][last_prog]:
+                        node_versions[cid][last_prog] += f" (GitID #{git_id})"
+                        notify_update()
+            return
+
         if p0 == 'mmdvm':
             touch_seen(cid, 'mmdvm')
         elif p0 in ('dmrgateway', 'nxdngateway', 'ysfgateway', 'p25gateway', 'dstargateway'):
@@ -355,7 +374,6 @@ def on_message(client, userdata, msg):
         elif p0 == 'devices' and p2 == 'services':
             touch_seen(cid, 'health')
 
-        # --- CAPTURE FULL CONFIGURATIONS ---
         if p0 == 'data' and len(parts) >= 4 and parts[3].lower() == 'full_config':
             cid_conf = parts[1].lower()
             svc_name = parts[2].lower()
@@ -367,14 +385,10 @@ def on_message(client, userdata, msg):
             except Exception as e:
                 logger.error(f"Error parsing config JSON: {e}")
 
-        # --- NODE AND SERVICE STATE MANAGEMENT ---
         elif p0 == 'servizi':
             client_states[cid] = payload
-            notify_update()  # <--- WEBSOCKET
+            notify_update()
             
-            # --- PUSH TRIGGER: NODE STATE ---
-            # L'agente invia "OFFLINE - <ID>" (anche come LWT) e "ONLINE - <profilo>": si confronta il PREFISSO.
-            # I messaggi retained (già sul broker quando il server si avvia) non generano notifiche.
             state_up = payload.upper()
             if state_up.startswith('OFFLINE'):
                 if not msg.retain and last_notified_errors.get(f"{cid}_NODE") != 'OFFLINE':
@@ -391,7 +405,6 @@ def on_message(client, userdata, msg):
                     client_telemetry[cid] = {"ts1": "Waiting...", "ts2": "Waiting...", "alt": ""}
                     save_cache(client_telemetry)
 
-        # --- DEVICE HEALTH MANAGEMENT ---
         elif p0 == 'devices' and len(parts) >= 3 and p2 == 'services':
             try:
                 data = json.loads(payload)
@@ -406,12 +419,28 @@ def on_message(client, userdata, msg):
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
                     "interval": data.get("update_interval")
                 }
+                # --- AGGIUNTA E PULIZIA: SALVA LE VERSIONI DEI BINARI ---
+                bin_versions = data.get("versions", {})
+                if bin_versions:
+                    if cid not in node_versions:
+                        node_versions[cid] = {}
+                        
+                    # Rimuove le vecchie versioni binarie che il nodo non trasmette più
+                    # (proteggendo però il "Firmware MMDVM" e le chiavi interne che derivano dai log)
+                    keys_to_remove = [k for k in node_versions[cid].keys() 
+                                      if k not in bin_versions and k not in ["Firmware MMDVM", "_last_prog"]]
+                    for k in keys_to_remove:
+                        del node_versions[cid][k]
+                        
+                    # Aggiorna o aggiunge le versioni attuali
+                    for prog_name, prog_ver in bin_versions.items():
+                        node_versions[cid][prog_name] = prog_ver
+                # ----------------------------------------------
                 health_changed = device_health.get(cid) != new_health
                 device_health[cid] = new_health
                 if health_changed:
-                    notify_update()  # <--- WEBSOCKET
+                    notify_update()
 
-                # --- PUSH TRIGGER: SERVICE ERRORS ---
                 processes = data.get("processes", {})
                 for svc_name, svc_status in processes.items():
                     status_key = f"{cid}_{svc_name}"
@@ -425,12 +454,10 @@ def on_message(client, userdata, msg):
                     elif s_lower == "online" and status_key in last_notified_errors:
                         broadcast_push_notification(f"✅ RESTORED: {cid.upper()}", f"Service {svc_name} back ONLINE.", cid=cid)
                         del last_notified_errors[status_key]
-                # -----------------------------------------
 
             except Exception as e: 
                 logger.error(f"Error parsing health data: {e}")
 
-        # --- DMR GATEWAY MANAGEMENT ---
         elif len(parts) >= 4 and p0 == 'data' and p2 == 'dmrgateway' and (parts[3].upper().startswith('NETWORK') or parts[3].upper().startswith('DMR NETWORK')):
             try:
                 cid = parts[1].lower()
@@ -452,18 +479,16 @@ def on_message(client, userdata, msg):
                         
                     if is_ts1: network_mapping[cid]["ts1"] = net_name
                     if is_ts2: network_mapping[cid]["ts2"] = net_name
-                    notify_update()  # <--- WEBSOCKET
+                    notify_update()
                         
             except Exception as e:
                 logger.error(f"Error parsing DMRGateway for {cid}: {e}")
 
-        # --- MMDVMHOST INFO MANAGEMENT (FREQUENZE & LOCATION) ---
         elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'info':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
                 
-                # Estrazione dati
                 tx = data.get("TXFrequency", "0")
                 rx = data.get("RXFrequency", "0")
                 lat = data.get("Latitude", "0.0")
@@ -471,8 +496,6 @@ def on_message(client, userdata, msg):
                 loc = data.get("Location", "Sconosciuta")
                 
                 def format_freq(f):
-                    # Hz -> MHz senza arrotondare: almeno 5 decimali (10 Hz), 6 se serve (1 Hz).
-                    # Aritmetica intera: nessun errore di virgola mobile.
                     if str(f).isdigit() and int(f) > 0:
                         hz = int(f)
                         mhz, frac = divmod(hz, 1000000)
@@ -493,14 +516,13 @@ def on_message(client, userdata, msg):
             except Exception as e:
                 logger.error(f"Error parsing MMDVMHost info for {cid}: {e}")
 
-        # --- MMDVMHOST GENERAL MANAGEMENT (CALLSIGN & ID & DUPLEX) ---
         elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'general':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
                 callsign = data.get("Callsign", "")
                 radio_id = data.get("Id", "")
-                duplex = data.get("Duplex", "1") # 1 = Repeater, 0 = Simplex
+                duplex = data.get("Duplex", "1")
                 
                 if callsign:
                     node_general[cid] = {"callsign": callsign, "radio_id": radio_id, "duplex": str(duplex)}
@@ -508,7 +530,6 @@ def on_message(client, userdata, msg):
             except Exception as e:
                 logger.error(f"Error parsing MMDVMHost general for {cid}: {e}")
 
-        # --- OTHER GATEWAYS MANAGEMENT ---
         elif p0 in ['dmrgateway', 'nxdngateway', 'ysfgateway', 'p25gateway', 'dstargateway']:
             data = json.loads(payload)
             proto = "DMR"
@@ -530,7 +551,6 @@ def on_message(client, userdata, msg):
             
             if m: save_to_sqlite(cid, {'src_id': "🌐 " + m, 'dst_id': 'NET'}, protocol=proto)
 
-        # --- MMDVM AND TRAFFIC MANAGEMENT ---
         elif parts[0] == 'mmdvm':
             data = json.loads(payload)
             if cid not in active_calls: active_calls[cid] = {}
@@ -554,7 +574,7 @@ def on_message(client, userdata, msg):
                     active_calls[cid][sk] = {'src': src, 'dst': dst}
                     client_telemetry[cid]["alt"] = ""
                     client_telemetry[cid][sk] = f"🎙️ {src} ➔ TG {dst}"
-                    notify_update()  # <--- WEBSOCKET
+                    notify_update()
                 elif act in ['end', 'lost']:
                     info = active_calls[cid].get(sk, {'src': '---', 'dst': '---'})
                     d['src_id'], d['dst_id'] = info['src'], info['dst']
@@ -584,7 +604,7 @@ def on_message(client, userdata, msg):
 
                             active_calls[cid][k] = {'src': src, 'dst': target, 'ext': str(p.get('src_ext', ''))}
                             client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target}"})
-                            notify_update()  # <--- WEBSOCKET
+                            notify_update()
                         
                         elif act in ['end', 'lost']:
                             info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'ext': ''})
@@ -596,17 +616,13 @@ def on_message(client, userdata, msg):
     except Exception as e: 
         logger.error(f"MQTT MSG ERROR: {e}")
 
-# --- MQTT CLIENT INITIALIZATION ---
-# Recuperiamo l'ID dal config. Se per caso manca, usiamo un default di emergenza.
 mqtt_id = config['mqtt'].get('client_id', 'flask_backend_generic')
-
 mqtt_backend = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION2, mqtt_id)
 mqtt_backend.username_pw_set(config['mqtt']['user'], config['mqtt']['password'])
 mqtt_backend.on_connect = on_connect
 mqtt_backend.on_disconnect = on_disconnect
 mqtt_backend.on_message = on_message
 try:
-    # Usiamo connect_async! Non blocca il server se l'IP è irraggiungibile
     mqtt_backend.connect_async(config['mqtt']['broker'], config['mqtt']['port'])
     mqtt_backend.loop_start()
     logger.info(f"Avvio connessione MQTT asincrona verso {config['mqtt']['broker']}...")
@@ -614,7 +630,6 @@ except Exception as e:
     logger.error(f"Errore critico nell'inizializzazione MQTT: {e}")
 
 def mqtt_publish(topic, payload, qos=1):
-    """Pubblica solo se il broker è raggiungibile (niente comandi 'vecchi' accodati e consegnati dopo)."""
     if not mqtt_connected_status:
         logger.warning(f"MQTT offline: pubblicazione su {topic} annullata")
         return False
@@ -657,6 +672,11 @@ def get_logs():
 
 @app.route('/api/states', methods=['GET'])
 def get_states():
+    # Filtriamo le chiavi di servizio (come '_last_prog') per non mandarle all'interfaccia
+    clean_versions = {}
+    for c, d in node_versions.items():
+        clean_versions[c] = {k: v for k, v in d.items() if not k.startswith('_')}
+
     return jsonify({
         "states": client_states,
         "telemetry": client_telemetry,
@@ -665,46 +685,41 @@ def get_states():
         "info": node_info,
         "general": node_general,
         "last_seen": seen_ages(),
-        "uptime": int(time.time() - START_TIME)
+        "uptime": int(time.time() - START_TIME),
+        "versions": clean_versions
     })
 
 @app.route('/api/stats')
 def get_stats():
-    # Leggiamo il parametro 'node' (di default 'all')
     node = request.args.get('node', 'all').lower()
     
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
     
-    # Prepariamo il filtro aggiuntivo se è stato selezionato un nodo
     node_filter = ""
     params = []
     if node != 'all':
         node_filter = " AND LOWER(client_id) = ?"
         params.append(node)
     
-    # 1. Top 5 TalkGroups di OGGI
     c.execute(f"""SELECT target, COUNT(*) as cnt FROM radio_logs 
                  WHERE target NOT IN ('---', 'NET', '') 
                  AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY target ORDER BY cnt DESC LIMIT 5""", params)
     top_tgs = [{"target": row[0], "count": row[1]} for row in c.fetchall()]
     
-    # 2. Top 5 Callsign di OGGI
     c.execute(f"""SELECT source_id, COUNT(*) as cnt FROM radio_logs 
                  WHERE source_id NOT LIKE '🌐%' 
                  AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY source_id ORDER BY cnt DESC LIMIT 5""", params)
     top_calls = [{"call": row[0], "count": row[1]} for row in c.fetchall()]
     
-    # 3. Tempo medio dei transiti di OGGI
     c.execute(f"""SELECT AVG(duration) FROM radio_logs 
                  WHERE duration > 0.5 
                  AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter}""", params)
     avg_dur = c.fetchone()[0]
     avg_dur = round(avg_dur, 1) if avg_dur else 0
     
-    # 4. Totale transiti di OGGI
     c.execute(f"SELECT COUNT(*) FROM radio_logs WHERE timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter}", params)
     today_tx = c.fetchone()[0]
     
@@ -727,11 +742,9 @@ PROFILE_KEY_RE = re.compile(r'^[A-Za-z0-9_\-]{1,32}$')
 TIME_RE = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
 MIN_PASSWORD_LEN = 8
 
-# Comandi inviabili a un nodo (topic servizi/<id>/cmnd)
 SIMPLE_COMMANDS = {'TG:ON', 'TG:OFF'}
-PRIVILEGED_COMMANDS = {'REBOOT', 'RESET_HAT', 'UPDATE_AGENT'}   # solo admin
+PRIVILEGED_COMMANDS = {'REBOOT', 'RESET_HAT', 'UPDATE_AGENT'}
 SERVICE_ACTIONS = {'start', 'stop', 'restart'}
-
 
 def db_connect(row=False):
     conn = sqlite3.connect(DB_PATH, timeout=10)
@@ -739,23 +752,17 @@ def db_connect(row=False):
         conn.row_factory = sqlite3.Row
     return conn
 
-
 def json_body():
     d = request.get_json(silent=True)
     return d if isinstance(d, dict) else {}
 
-
 def err(msg, code=400):
     return jsonify({"success": False, "error": msg}), code
 
-
 def pw_fingerprint(password_hash):
-    """Impronta dell'hash: cambiando password le vecchie sessioni diventano invalide."""
     return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
 
-
 def get_auth():
-    """Utente della sessione, riletto dal DB a ogni richiesta (ruolo/nodi sempre aggiornati)."""
     username = session.get('user')
     if not session.get('logged_in') or not username:
         return None
@@ -763,10 +770,9 @@ def get_auth():
         row = conn.execute("SELECT username, password_hash, role, allowed_nodes FROM users WHERE username = ?",
                            (username,)).fetchone()
     if not row or session.get('pv') != pw_fingerprint(row['password_hash']):
-        session.clear()   # utente cancellato o password cambiata
+        session.clear()
         return None
     return {"username": row['username'], "role": row['role'], "allowed_nodes": row['allowed_nodes'] or ''}
-
 
 def node_allowed(role, allowed_nodes, cid):
     if role == 'admin':
@@ -776,9 +782,7 @@ def node_allowed(role, allowed_nodes, cid):
         return True
     return cid in [x.strip().lower() for x in allowed.split(',') if x.strip()]
 
-
 def known_profile_keys(cid=None):
-    """Chiavi di profilo valide (A/B + quelle annunciate dai nodi)."""
     keys = {'A', 'B'}
     healths = [device_health.get(cid)] if cid else list(device_health.values())
     for h in healths:
@@ -786,7 +790,6 @@ def known_profile_keys(cid=None):
         if isinstance(profiles, dict):
             keys.update(str(k) for k in profiles.keys() if PROFILE_KEY_RE.match(str(k)))
     return keys - PRIVILEGED_COMMANDS - SIMPLE_COMMANDS
-
 
 def audit(username, client_id, command):
     try:
@@ -797,7 +800,6 @@ def audit(username, client_id, command):
     except Exception as e:
         logger.error(f"Audit log error: {e}")
 
-
 def count_admins(cursor, exclude_id=None):
     if exclude_id is None:
         cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
@@ -805,29 +807,23 @@ def count_admins(cursor, exclude_id=None):
         cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'admin' AND id != ?", (exclude_id,))
     return cursor.fetchone()[0]
 
-
 def normalize_nodes(value):
     value = (value or '').strip().lower()
     if not value or value == 'all':
         return 'all'
     return ','.join(x.strip() for x in value.split(',') if x.strip())
 
-
-# --- Limitazione tentativi di login (per IP, in memoria) ---
 LOGIN_MAX_FAILS = 5
 LOGIN_WINDOW_SEC = 300
 login_attempts = {}
 login_lock = threading.Lock()
 
-
 def client_ip():
-    # X-Forwarded-For si fida solo se esplicitamente abilitato ("web": {"trust_proxy": true})
     if config.get('web', {}).get('trust_proxy'):
         fwd = request.headers.get('X-Forwarded-For', '')
         if fwd:
             return fwd.split(',')[0].strip()
     return request.remote_addr or 'unknown'
-
 
 def login_blocked(ip):
     now = time.time()
@@ -839,20 +835,14 @@ def login_blocked(ip):
             login_attempts.pop(ip, None)
         return len(fails) >= LOGIN_MAX_FAILS
 
-
 def login_register_fail(ip):
     with login_lock:
         login_attempts.setdefault(ip, []).append(time.time())
-
 
 def login_reset(ip):
     with login_lock:
         login_attempts.pop(ip, None)
 
-
-# =====================================================================
-#  ROUTE: SESSIONE
-# =====================================================================
 @app.route('/api/login', methods=['POST'])
 def login():
     d = json_body()
@@ -882,12 +872,10 @@ def login():
     logger.warning(f"Login fallito per {username[:32]!r} da {ip}")
     return jsonify({"success": False}), 401
 
-
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.clear()
     return jsonify({"success": True})
-
 
 @app.route('/api/me')
 def me():
@@ -897,10 +885,6 @@ def me():
     return jsonify({"logged_in": True, "user": auth['username'], "role": auth['role'],
                     "allowed_nodes": auth['allowed_nodes']})
 
-
-# =====================================================================
-#  ROUTE: COMANDI AI NODI
-# =====================================================================
 @app.route('/api/command', methods=['POST'])
 def cmd():
     auth = get_auth()
@@ -934,7 +918,6 @@ def cmd():
     client_telemetry[cid] = {"ts1": "🔄 Sent...", "ts2": "🔄 Sent...", "alt": ""}
     return jsonify({"success": True})
 
-
 @app.route('/api/global_command', methods=['POST'])
 def global_cmd():
     auth = get_auth()
@@ -964,7 +947,6 @@ def global_cmd():
         return err("MQTT broker offline - command not sent", 503)
     return jsonify({"success": True, "sent": sent, "failed": failed})
 
-
 @app.route('/api/service_control', methods=['POST'])
 def service_control():
     auth = get_auth()
@@ -987,7 +969,6 @@ def service_control():
     audit(auth['username'], cid, f"SVC_{action.upper()}_{service}")
     return jsonify({"success": True})
 
-
 @app.route('/api/update_nodes', methods=['POST'])
 def update_nodes():
     auth = get_auth()
@@ -999,10 +980,6 @@ def update_nodes():
     audit(auth['username'], '*', 'REQ_CONFIG_ALL')
     return jsonify({"success": True})
 
-
-# =====================================================================
-#  ROUTE: UTENTI
-# =====================================================================
 @app.route('/api/users', methods=['GET'])
 def get_users():
     auth = get_auth()
@@ -1011,7 +988,6 @@ def get_users():
     with closing(db_connect(row=True)) as conn:
         users = [dict(r) for r in conn.execute("SELECT id, username, role, allowed_nodes FROM users")]
     return jsonify(users)
-
 
 @app.route('/api/users', methods=['POST'])
 def add_user():
@@ -1044,7 +1020,6 @@ def add_user():
     audit(auth['username'], '-', f"USER_ADD_{username}_{role}")
     return jsonify({"success": True})
 
-
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     auth = get_auth()
@@ -1066,7 +1041,6 @@ def delete_user(user_id):
         conn.commit()
     audit(auth['username'], '-', f"USER_DEL_{u[0]}")
     return jsonify({"success": True})
-
 
 @app.route('/api/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
@@ -1104,7 +1078,6 @@ def update_user(user_id):
     audit(auth['username'], '-', f"USER_EDIT_{existing[0]}")
     return jsonify({"success": True})
 
-
 @app.route('/api/change_password', methods=['POST'])
 def change_password():
     auth = get_auth()
@@ -1130,12 +1103,7 @@ def change_password():
     audit(auth['username'], '-', f"PASSWORD_CHANGE_{user_to_change}")
     return jsonify({"success": True})
 
-
-# =====================================================================
-#  AGGIORNAMENTO DATABASE ID + PULIZIA DB
-# =====================================================================
 def download_file(url, dest):
-    """Scarica in un file temporaneo e sostituisce l'originale solo a download riuscito."""
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=60) as response:
@@ -1147,9 +1115,7 @@ def download_file(url, dest):
         out_file.write(data)
     os.replace(tmp, dest)
 
-
 def prune_old_data():
-    """Retention: radio_logs (default 90 gg) e audit_logs (default 365 gg)."""
     try:
         cfg = read_config()
         radio_days = int(cfg.get("retention_days", 90))
@@ -1166,10 +1132,7 @@ def prune_old_data():
     except Exception as e:
         logger.error(f"❌ Errore pulizia DB: {e}")
 
-
 def auto_update_ids():
-    """Controlla all'avvio e poi ogni notte all'orario configurato."""
-
     def download_logic():
         try:
             urls = read_config().get("id_urls") or {}
@@ -1201,10 +1164,6 @@ def auto_update_ids():
             logger.error(f"⚠️ Errore nel thread update: {e}")
         time.sleep(30)
 
-
-# =====================================================================
-#  ROUTE: CONFIGURAZIONE
-# =====================================================================
 @app.route('/api/ui_config', methods=['GET'])
 def get_ui_config():
     try:
@@ -1220,7 +1179,6 @@ def get_ui_config():
         logger.error(f"ui_config error: {e}")
         return jsonify({"error": "Configuration unavailable"}), 500
 
-
 @app.route('/api/config', methods=['GET'])
 def get_config_api():
     auth = get_auth()
@@ -1232,7 +1190,6 @@ def get_config_api():
         "url_dmr": cfg.get("id_urls", {}).get("dmr", ""),
         "url_nxdn": cfg.get("id_urls", {}).get("nxdn", "")
     })
-
 
 @app.route('/api/config', methods=['POST'])
 def save_config_api():
@@ -1259,7 +1216,6 @@ def save_config_api():
     audit(auth['username'], '-', 'EDIT_SERVER_CONFIG')
     return jsonify({"success": True})
 
-
 @app.route('/api/config_file/<cid>/<service>', methods=['GET'])
 def get_config_file(cid, service):
     auth = get_auth()
@@ -1273,7 +1229,6 @@ def get_config_file(cid, service):
     if not config_data:
         return err("Configuration not received yet. Wait or send an UPDATE command.", 404)
     return jsonify({"success": True, "data": config_data})
-
 
 @app.route('/api/config_file', methods=['POST'])
 def save_config_file():
@@ -1297,33 +1252,22 @@ def save_config_file():
     audit(auth['username'], cid, f"EDIT_CONFIG_{service.upper()}")
     return jsonify({"success": True})
 
-
-# =====================================================================
-#  PWA: MANIFEST / SERVICE WORKER / ICONA
-# =====================================================================
 @app.route('/manifest.json')
 def serve_manifest():
     return send_from_directory(BASE_DIR, 'manifest.json')
 
-
 @app.route('/sw.js')
 def serve_sw():
     resp = send_from_directory(BASE_DIR, 'sw.js', mimetype='application/javascript')
-    resp.headers['Cache-Control'] = 'no-cache'          # il browser controlla sempre se il SW è cambiato
+    resp.headers['Cache-Control'] = 'no-cache'
     resp.headers['Service-Worker-Allowed'] = '/'
     return resp
-
 
 @app.route('/icon-512.png')
 def serve_icon():
     return send_from_directory(BASE_DIR, 'icon-512.png')
 
-
-# =====================================================================
-#  PUSH NOTIFICATIONS (invio in un thread dedicato: non blocca MQTT)
-# =====================================================================
 push_queue = queue.Queue(maxsize=200)
-
 
 def broadcast_push_notification(title, body, cid=None):
     if not config.get('webpush'):
@@ -1332,7 +1276,6 @@ def broadcast_push_notification(title, body, cid=None):
         push_queue.put_nowait((title, body, cid))
     except queue.Full:
         logger.warning("Push queue piena: notifica scartata")
-
 
 def _send_push(title, body, cid):
     wp_config = config.get('webpush')
@@ -1346,11 +1289,11 @@ def _send_push(title, body, cid):
                                FROM push_subscriptions p
                                LEFT JOIN users u ON u.username = p.username""").fetchall()
         for sub_id, sub_json, role, allowed in rows:
-            if role is None:              # utente cancellato
+            if role is None:
                 dead.append(sub_id)
                 continue
             if cid and not node_allowed(role, allowed, cid):
-                continue                  # l'operatore non gestisce questo nodo
+                continue
             try:
                 webpush(
                     subscription_info=json.loads(sub_json),
@@ -1372,7 +1315,6 @@ def _send_push(title, body, cid):
         if dead:
             conn.commit()
 
-
 def push_worker():
     while True:
         title, body, cid = push_queue.get()
@@ -1381,11 +1323,9 @@ def push_worker():
         except Exception as e:
             logger.error(f"Push worker error: {e}")
 
-
 @app.route('/api/vapid_public_key')
 def get_vapid_key():
     return jsonify({"public_key": config.get('webpush', {}).get('vapid_public_key', '')})
-
 
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe_push():
@@ -1396,17 +1336,14 @@ def subscribe_push():
     if not sub_data.get('endpoint'):
         return err("Invalid subscription")
     with closing(db_connect()) as conn:
-        # Se lo stesso browser si iscrive con un altro utente, la subscription passa al nuovo utente
         conn.execute("""INSERT INTO push_subscriptions (username, subscription) VALUES (?, ?)
                         ON CONFLICT(subscription) DO UPDATE SET username = excluded.username""",
                      (auth['username'], json.dumps(sub_data)))
         conn.commit()
     return jsonify({"success": True})
 
-
 threading.Thread(target=auto_update_ids, daemon=True).start()
 threading.Thread(target=push_worker, daemon=True).start()
 
 if __name__ == '__main__':
-    # Eseguire con UN SOLO processo: client MQTT, thread e cache sono in memoria.
     socketio.run(app, host='0.0.0.0', port=9000)
