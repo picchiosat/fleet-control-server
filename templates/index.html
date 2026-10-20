@@ -236,7 +236,7 @@
                         <th data-i18n="thTime">Time</th>
                         <th data-i18n="thRep">Repeater</th>
                         <th data-i18n="thMode">Mode</th>
-                        <th style="text-align: center;">Slot</th>
+                        <th style="text-align: center;">REF / SLOT</th>
                         <th data-i18n="thCall">Callsign</th>
                         <th>Target / TG</th>
                         <th data-i18n="thDur">Duration</th>
@@ -1021,7 +1021,14 @@
                 let sourceHtml = esc(source);
                 if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
 
-                const slotDisplay = protocol === "DMR" ? `TS${rawSlot}` : "--";
+                let slotDisplay = "---";
+                if (rawSlot && String(rawSlot).trim() !== "" && rawSlot !== "undefined") {
+                    if (protocol === "DMR" && !String(rawSlot).toUpperCase().startsWith("TS")) {
+                        slotDisplay = `TS${rawSlot}`;
+                    } else {
+                        slotDisplay = rawSlot;
+                    }
+                }
                 let protoColor = "#3b82f6"; if (protocol === "NXDN") protoColor = "#10b981"; else if (protocol === "YSF") protoColor = "#8b5cf6"; else if (protocol === "D-STAR") protoColor = "#06b6d4"; else if (protocol === "P25") protoColor = "#f59e0b";
                 
                 // Formatta l'RSSI con S-Meter grafico a segmenti

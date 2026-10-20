@@ -567,21 +567,30 @@ def on_message(client, userdata, msg):
                             elif k == 'P25': src = get_call(p.get('src_id', '---'), 'DMR')
                             else: src = str(p.get('Callsign', p.get('src_callsign', p.get('src_info', p.get('src_id', '---')))))
                             
-                            t_list = [p.get('reflector'), p.get('dst_callsign'), p.get('dst_id')]
-                            current_target = next((str(x).strip() for x in t_list if x and str(x).strip() not in ['', '---', '0', 'CQCQCQ']), None)
+                            # --- NUOVA GESTIONE TARGET VS REF/SLOT ---
+                            current_target = str(p.get('dst_callsign', p.get('dst_id', ''))).strip()
                             
-                            if not current_target or current_target == cid.upper():
-                                target = last_seen_reflector.get(f"{cid}_{name}", "---")
+                            if name == 'D-STAR':
+                                target = current_target if current_target else "---"
+                                ref_slot = last_seen_reflector.get(f"{cid}_{name}", "---")
                             else:
-                                target = current_target
+                                target = current_target if current_target else "---"
+                                raw_slot = p.get('slot', '')
+                                ref_slot = str(raw_slot) if raw_slot != '' else "---"
 
-                            active_calls[cid][k] = {'src': src, 'dst': target, 'ext': str(p.get('src_ext', ''))}
-                            client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target}"})
+                            active_calls[cid][k] = {'src': src, 'dst': target, 'slot': ref_slot, 'ext': str(p.get('src_ext', ''))}
+                            
+                            # Aggiorniamo anche la stringa telemetrica visuale per la dashboard
+                            client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target} ({ref_slot})"})
                             notify_update()
                         
                         elif act in ['end', 'lost']:
-                            info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'ext': ''})
-                            p.update({'src_id': info['src'], 'dst_id': info['dst'], 'src_ext': info['ext']})
+                            # Estraiamo anche la variabile 'slot' memorizzata prima
+                            info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'slot': '---', 'ext': ''})
+                            
+                            # Forziamo l'inserimento dello slot nel dizionario 'p' che verrà salvato nel DB
+                            p.update({'src_id': info['src'], 'dst_id': info['dst'], 'slot': info['slot'], 'src_ext': info['ext']})
+                            
                             save_to_sqlite(cid, p, protocol=name)
                             client_telemetry[cid]["alt"] = f"{'✅' if act=='end' else '⚠️'} {name}: {info['src']}"
                             save_cache(client_telemetry)
