@@ -96,6 +96,14 @@ def init_db():
         c.execute("ALTER TABLE radio_logs ADD COLUMN rssi REAL DEFAULT 0")
     except sqlite3.OperationalError: pass
 
+    try:
+        c.execute("ALTER TABLE radio_logs ADD COLUMN source_conn TEXT DEFAULT ''")
+    except sqlite3.OperationalError: pass
+    
+    try:
+        c.execute("ALTER TABLE radio_logs ADD COLUMN ysf_mode TEXT DEFAULT ''")
+    except sqlite3.OperationalError: pass
+
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, 
                   role TEXT, allowed_nodes TEXT)''')
@@ -190,8 +198,8 @@ def save_to_sqlite(client_id, data, protocol="DMR"):
     elif 'rssi' in data:
         rssi_val = data['rssi']
         
-    c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-              (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', '')), rssi_val))
+    c.execute("INSERT INTO radio_logs (timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi, source_conn, ysf_mode) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              (client_id, protocol, str(data.get('src_id', '---')), str(data.get('dst_id', '---')), data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), str(data.get('src_ext', '')), rssi_val, str(data.get('source', '')), str(data.get('mode', ''))))
     conn.commit()
     conn.close()
     notify_update('log_aggiornato')
@@ -568,28 +576,40 @@ def on_message(client, userdata, msg):
                             else: src = str(p.get('Callsign', p.get('src_callsign', p.get('src_info', p.get('src_id', '---')))))
                             
                             # --- NUOVA GESTIONE TARGET VS REF/SLOT ---
-                            current_target = str(p.get('dst_callsign', p.get('dst_id', ''))).strip()
+                            # 1. Peschiamo il target specifico (es. ID in NXDN o chiamata YSF)
+                            raw_target = str(p.get('dst_callsign', p.get('dst_id', ''))).strip()
                             
+                            # Nel D-STAR mostriamo sempre l'UR CALL (CQCQCQ o comandi), negli altri puliamo gli ALL/0 generici
                             if name == 'D-STAR':
-                                target = current_target if current_target else "---"
-                                ref_slot = last_seen_reflector.get(f"{cid}_{name}", "---")
+                                target = raw_target if raw_target else "---"
                             else:
-                                target = current_target if current_target else "---"
-                                raw_slot = p.get('slot', '')
-                                ref_slot = str(raw_slot) if raw_slot != '' else "---"
-
-                            active_calls[cid][k] = {'src': src, 'dst': target, 'slot': ref_slot, 'ext': str(p.get('src_ext', ''))}
+                                target = raw_target if raw_target not in ['', '0', 'ALL'] else "---"
+                            # Selezioniamo il DG-ID per l'YSF
+                            if name == 'YSF' and 'dg-id' in p:
+                                dg_id = str(p.get('dg-id')).strip()
+                                if dg_id:
+                                    target = f"DG-ID {dg_id}" if target == "---" else f"{target} (DG {dg_id})"
                             
-                            # Aggiorniamo anche la stringa telemetrica visuale per la dashboard
-                            client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target} ({ref_slot})"})
+                            # 2. Peschiamo il Reflector / Stanza connessa dalla memoria del Gateway
+                            mem_ref = last_seen_reflector.get(f"{cid}_{name}", "---")
+                            pack_ref = str(p.get('reflector', '')).strip()
+                            
+                            # Diamo sempre priorità alla memoria di rete, ma usiamo il pacchetto come paracadute
+                            ref_slot = mem_ref if mem_ref != "---" else (pack_ref if pack_ref else "---")
+
+                            active_calls[cid][k] = {'src': src, 'dst': target, 'slot': ref_slot, 'ext': str(p.get('src_ext', '')), 'source': str(p.get('source', '')), 'mode': str(p.get('mode', ''))}
+                            
+                            # Aggiorniamo anche la stringa telemetrica visiva
+                            target_str = target if target != "---" else "NET"
+                            client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target_str} ({ref_slot})"})
                             notify_update()
                         
                         elif act in ['end', 'lost']:
                             # Estraiamo anche la variabile 'slot' memorizzata prima
-                            info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'slot': '---', 'ext': ''})
+                            info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'slot': '---', 'ext': '', 'source': '', 'mode': ''})
                             
                             # Forziamo l'inserimento dello slot nel dizionario 'p' che verrà salvato nel DB
-                            p.update({'src_id': info['src'], 'dst_id': info['dst'], 'slot': info['slot'], 'src_ext': info['ext']})
+                            p.update({'src_id': info['src'], 'dst_id': info['dst'], 'slot': info['slot'], 'src_ext': info['ext'], 'source': info['source'], 'mode': info['mode']})
                             
                             save_to_sqlite(cid, p, protocol=name)
                             client_telemetry[cid]["alt"] = f"{'✅' if act=='end' else '⚠️'} {name}: {info['src']}"
@@ -647,7 +667,7 @@ def get_clients():
 def get_logs():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
-    c.execute("SELECT timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi FROM radio_logs ORDER BY id DESC LIMIT 60")
+    c.execute("SELECT timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi, source_conn, ysf_mode FROM radio_logs ORDER BY id DESC LIMIT 60")
     logs = c.fetchall()
     conn.close()
     return jsonify(logs)
