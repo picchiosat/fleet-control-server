@@ -29,25 +29,15 @@ NXDN_IDS_PATH = os.path.join(BASE_DIR, 'nxdn.csv')
 CLIENTS_PATH = os.path.join(BASE_DIR, 'clients.json')
 LOG_FILE = os.path.join(BASE_DIR, 'fleet_console.log')
 
-# --- LOGGING CONFIGURATION ---
-logging.basicConfig(
-    handlers=[
-        RotatingFileHandler(LOG_FILE, maxBytes=10000000, backupCount=3),
-        logging.StreamHandler()
-    ],
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger("FleetHub")
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
-
-# --- CONFIG ---
+# --- CONFIG LOADER (INIZIALE PER IL LOGGING) ---
 config_lock = threading.Lock()
 
 def read_config():
-    with open(CONFIG_PATH, 'r') as f:
-        return json.load(f)
+    try:
+        with open(CONFIG_PATH, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 def write_config(cfg):
     tmp = CONFIG_PATH + '.tmp'
@@ -62,6 +52,23 @@ def write_config(cfg):
 
 config = read_config()
 web_cfg = config.get('web', {})
+
+# --- LOGGING CONFIGURATION DINAMICA ---
+log_max_mb = int(config.get('log_max_mb', 50))
+log_backup_count = int(config.get('log_backup_count', 10))
+max_bytes_val = log_max_mb * 1024 * 1024 if log_max_mb > 0 else 0
+
+logging.basicConfig(
+    handlers=[
+        RotatingFileHandler(LOG_FILE, maxBytes=max_bytes_val, backupCount=log_backup_count),
+        logging.StreamHandler()
+    ],
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger("FleetHub")
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 def get_secret_key():
     key = os.environ.get('FLEET_SECRET_KEY') or config.get('secret_key')
@@ -332,38 +339,32 @@ def on_message(client, userdata, msg):
         p0 = parts[0].lower().replace('-', '')
         p2 = parts[2].lower().replace('-', '') if len(parts) > 2 else ""
 
-            # --- LOG MANAGEMENT (ESTRAZIONE VERSIONI E GIT ID) ---
+        # --- LOG MANAGEMENT (ESTRAZIONE VERSIONI E GIT ID) ---
         if len(parts) >= 3 and parts[2].lower() == 'log':
             if cid not in node_versions:
                 node_versions[cid] = {}
             
-            # 1. Cattura il Firmware MMDVM (es. "... description: MMDVM 20260424 19.2000 Mhz GitID #57e692a")
             m_fw = re.search(r'description:\s*(MMDVM[^\n\r]+)', payload, re.IGNORECASE)
             if m_fw:
                 node_versions[cid]["Firmware MMDVM"] = m_fw.group(1).strip()
                 notify_update()
                 
-            # 2. Cattura le versioni dei demoni Formato A (es. "YSFGateway-20260323 is starting")
             m_sw1 = re.search(r'([A-Za-z0-9_]+)-([a-zA-Z0-9.\-]+)\s+is starting', payload, re.IGNORECASE)
             if m_sw1:
                 prog = m_sw1.group(1)
                 node_versions[cid][prog] = m_sw1.group(2).strip()
-                node_versions[cid]["_last_prog"] = prog  # Per il GitID della riga dopo
+                node_versions[cid]["_last_prog"] = prog
                 notify_update()
 
-            # 3. Cattura le versioni dei demoni Formato B (es. "MMDVMHost version 20250419 git #65ebb55")
             m_sw2 = re.search(r'([A-Za-z0-9_]+)\s+version\s+([a-zA-Z0-9.\-\s#]+)', payload, re.IGNORECASE)
             if m_sw2:
                 prog = m_sw2.group(1)
-                # Ignoriamo i falsi positivi dei log (es. "protocol version", "firmware version")
                 if prog.lower() not in ['protocol', 'firmware', 'mmdvm firmware']:
-                    # Puliamo un eventuale "is starting" finale, se presente
                     ver = m_sw2.group(2).replace("is starting", "").strip()
                     node_versions[cid][prog] = ver
                     node_versions[cid]["_last_prog"] = prog
                     notify_update()
 
-            # 4. Cattura il GitID della riga successiva per i demoni di Formato A
             m_git = re.search(r'Built .*?\(GitID #([0-9a-fA-F]+)\)', payload, re.IGNORECASE)
             if m_git:
                 git_id = m_git.group(1)
@@ -426,23 +427,19 @@ def on_message(client, userdata, msg):
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
                     "interval": data.get("update_interval")
                 }
-                # --- AGGIUNTA E PULIZIA: SALVA LE VERSIONI DEI BINARI ---
                 bin_versions = data.get("versions", {})
                 if bin_versions:
                     if cid not in node_versions:
                         node_versions[cid] = {}
                         
-                    # Rimuove le vecchie versioni binarie che il nodo non trasmette più
-                    # (proteggendo però il "Firmware MMDVM" e le chiavi interne che derivano dai log)
                     keys_to_remove = [k for k in node_versions[cid].keys() 
                                       if k not in bin_versions and k not in ["Firmware MMDVM", "_last_prog"]]
                     for k in keys_to_remove:
                         del node_versions[cid][k]
                         
-                    # Aggiorna o aggiunge le versioni attuali
                     for prog_name, prog_ver in bin_versions.items():
                         node_versions[cid][prog_name] = prog_ver
-                # ----------------------------------------------
+
                 health_changed = device_health.get(cid) != new_health
                 device_health[cid] = new_health
                 if health_changed:
@@ -553,7 +550,6 @@ def on_message(client, userdata, msg):
                     src = get_call(d.get('src_id'))
                     dst = str(d.get('dst_id'))
                     
-                    # Salviamo i campi estesi (source, mode) in RAM quando inizia il passaggio
                     active_calls[cid][sk] = {
                         'src': src, 
                         'dst': dst,
@@ -568,10 +564,8 @@ def on_message(client, userdata, msg):
                     notify_update()
                     
                 elif act in ['end', 'lost']:
-                    # Ripeschiamo le info dalla RAM (incluso il source) che il pacchetto "end" ha omesso
                     info = active_calls[cid].get(sk, {'src': '---', 'dst': '---', 'slot': d.get('slot', 1), 'ext': '', 'source': '', 'mode': ''})
                     
-                    # Iniettiamo a forza i dati nel dizionario prima di inviarlo al database SQLite
                     d.update({
                         'src_id': info['src'], 
                         'dst_id': info['dst'],
@@ -596,40 +590,31 @@ def on_message(client, userdata, msg):
                             elif k == 'P25': src = get_call(p.get('src_id', '---'), 'DMR')
                             else: src = str(p.get('Callsign', p.get('src_callsign', p.get('src_info', p.get('src_id', '---')))))
                             
-                            # --- NUOVA GESTIONE TARGET VS REF/SLOT ---
-                            # 1. Peschiamo il target specifico (es. ID in NXDN o chiamata YSF)
                             raw_target = str(p.get('dst_callsign', p.get('dst_id', ''))).strip()
                             
-                            # Nel D-STAR mostriamo sempre l'UR CALL (CQCQCQ o comandi), negli altri puliamo gli ALL/0 generici
                             if name == 'D-STAR':
                                 target = raw_target if raw_target else "---"
                             else:
                                 target = raw_target if raw_target not in ['', '0', 'ALL'] else "---"
-                            # Selezioniamo il DG-ID per l'YSF
                             if name == 'YSF' and 'dg-id' in p:
                                 dg_id = str(p.get('dg-id')).strip()
                                 if dg_id:
                                     target = f"DG-ID {dg_id}" if target == "---" else f"{target} (DG {dg_id})"
                             
-                            # 2. Peschiamo il Reflector / Stanza connessa dalla memoria del Gateway
                             mem_ref = last_seen_reflector.get(f"{cid}_{name}", "---")
                             pack_ref = str(p.get('reflector', '')).strip()
                             
-                            # Diamo sempre priorità alla memoria di rete, ma usiamo il pacchetto come paracadute
                             ref_slot = mem_ref if mem_ref != "---" else (pack_ref if pack_ref else "---")
 
                             active_calls[cid][k] = {'src': src, 'dst': target, 'slot': ref_slot, 'ext': str(p.get('src_ext', '')), 'source': str(p.get('source', '')), 'mode': str(p.get('mode', ''))}
                             
-                            # Aggiorniamo anche la stringa telemetrica visiva
                             target_str = target if target != "---" else "NET"
                             client_telemetry[cid].update({"ts1":"","ts2":"","alt": f"{ico} {name}: {src} ➔ {target_str} ({ref_slot})"})
                             notify_update()
                         
                         elif act in ['end', 'lost']:
-                            # Estraiamo anche la variabile 'slot' memorizzata prima
                             info = active_calls[cid].get(k, {'src': '---', 'dst': '---', 'slot': '---', 'ext': '', 'source': '', 'mode': ''})
                             
-                            # Forziamo l'inserimento dello slot nel dizionario 'p' che verrà salvato nel DB
                             p.update({'src_id': info['src'], 'dst_id': info['dst'], 'slot': info['slot'], 'src_ext': info['ext'], 'source': info['source'], 'mode': info['mode']})
                             
                             save_to_sqlite(cid, p, protocol=name)
@@ -639,16 +624,16 @@ def on_message(client, userdata, msg):
     except Exception as e: 
         logger.error(f"MQTT MSG ERROR: {e}")
 
-mqtt_id = config['mqtt'].get('client_id', 'flask_backend_generic')
+mqtt_id = config.get('mqtt', {}).get('client_id', 'flask_backend_generic')
 mqtt_backend = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION2, mqtt_id)
-mqtt_backend.username_pw_set(config['mqtt']['user'], config['mqtt']['password'])
+mqtt_backend.username_pw_set(config.get('mqtt', {}).get('user', ''), config.get('mqtt', {}).get('password', ''))
 mqtt_backend.on_connect = on_connect
 mqtt_backend.on_disconnect = on_disconnect
 mqtt_backend.on_message = on_message
 try:
-    mqtt_backend.connect_async(config['mqtt']['broker'], config['mqtt']['port'])
+    mqtt_backend.connect_async(config.get('mqtt', {}).get('broker', 'localhost'), config.get('mqtt', {}).get('port', 1883))
     mqtt_backend.loop_start()
-    logger.info(f"Avvio connessione MQTT asincrona verso {config['mqtt']['broker']}...")
+    logger.info(f"Avvio connessione MQTT asincrona verso {config.get('mqtt', {}).get('broker')}...")
 except Exception as e:
     logger.error(f"Errore critico nell'inizializzazione MQTT: {e}")
 
@@ -695,7 +680,6 @@ def get_logs():
 
 @app.route('/api/states', methods=['GET'])
 def get_states():
-    # Filtriamo le chiavi di servizio (come '_last_prog') per non mandarle all'interfaccia
     clean_versions = {}
     for c, d in node_versions.items():
         clean_versions[c] = {k: v for k, v in d.items() if not k.startswith('_')}
@@ -1210,7 +1194,9 @@ def get_config_api():
     return jsonify({
         "update_schedule": cfg.get("update_schedule", "03:00"),
         "url_dmr": cfg.get("id_urls", {}).get("dmr", ""),
-        "url_nxdn": cfg.get("id_urls", {}).get("nxdn", "")
+        "url_nxdn": cfg.get("id_urls", {}).get("nxdn", ""),
+        "log_max_mb": cfg.get("log_max_mb", 50),
+        "log_backup_count": cfg.get("log_backup_count", 10)
     })
 
 @app.route('/api/config', methods=['POST'])
@@ -1223,6 +1209,13 @@ def save_config_api():
     schedule = str(d.get("update_schedule", "03:00")).strip()
     url_dmr = str(d.get("url_dmr", "")).strip()
     url_nxdn = str(d.get("url_nxdn", "")).strip()
+    
+    try:
+        log_max_mb = int(d.get("log_max_mb", 50))
+        log_backup_count = int(d.get("log_backup_count", 10))
+    except ValueError:
+        return err("Invalid log rotation settings")
+
     if not TIME_RE.match(schedule):
         return err("Invalid time (use HH:MM)")
     for u in (url_dmr, url_nxdn):
@@ -1234,6 +1227,9 @@ def save_config_api():
     cfg.setdefault("id_urls", {})
     cfg["id_urls"]["dmr"] = url_dmr
     cfg["id_urls"]["nxdn"] = url_nxdn
+    cfg["log_max_mb"] = log_max_mb
+    cfg["log_backup_count"] = log_backup_count
+    
     write_config(cfg)
     audit(auth['username'], '-', 'EDIT_SERVER_CONFIG')
     return jsonify({"success": True})

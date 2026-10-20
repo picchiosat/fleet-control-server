@@ -37,6 +37,27 @@ The server acts as the brain of the network:
 Please note that **Web Push Notifications** and the **Service Worker** require a secure connection to function. For security reasons, modern browsers only enable these features over **HTTPS**. If you are accessing the console via HTTP (outside of `localhost`), the "Push" button and notification registration will not work. We recommend using a reverse proxy (like Nginx, Caddy, or Traefik) with an SSL certificate.
 **Pro Tip:** You can use Let's Encrypt to get a free SSL certificate for your domain.
 
+### ⚠️ Reverse Proxy & WebSocket Configuration
+If you expose the Fleet Console through a reverse proxy like **Apache** on a public IP (HTTPS), standard HTTP proxying will drop Socket.IO real-time connections, causing the dashboard's tables to randomly clear or flash. 
+You must enable the WebSocket tunnel in Apache:
+```bash
+sudo a2enmod proxy_wstunnel rewrite headers
+```
+And insert the **Rewrite** rules *before* the `ProxyPass` directives inside your `<VirtualHost *:443>` block:
+```apache
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule /(.*)           ws://127.0.0.1:9000/$1 [P,L]
+RewriteCond %{HTTP:Upgrade} !=websocket [NC]
+RewriteRule /(.*)           http://127.0.0.1:9000/$1 [P,L]
+
+ProxyPass /socket.io/ ws://127.0.0.1:9000/socket.io/
+ProxyPassReverse /socket.io/ ws://127.0.0.1:9000/socket.io/
+
+ProxyPass / http://127.0.0.1:9000/
+ProxyPassReverse / http://127.0.0.1:9000/
+```
+
 #### 🛠️ Advanced Remote Control & Maintenance
 * **Remote .INI Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface without SSH access.
 * **Service Management:** Start, Stop, or Restart remote system daemons with a single click.
@@ -82,6 +103,7 @@ pip install -r requirements.txt
 2. Configure your MQTT broker credentials.
 3. Define your repeaters in `clients.json`.
 4. Generate VAPID keys at [vapidkeys.com](https://vapidkeys.com/) and add them to `config.json` to enable Web Push notifications. *(Note: Push notifications require HTTPS).*
+5. Configure dynamic log rotation sizes (`log_max_mb` and `log_backup_count`) directly in `config.json` to manage disk space.
 
 #### 4. Running as a Service
 To run the server continuously in production using Gunicorn:
@@ -125,6 +147,27 @@ Il server agisce da cervello della rete:
 ### ⚠️ Sicurezza Richiesta: HTTPS
 Si prega di notare che le **Notifiche Web Push** e il **Service Worker** richiedono una connessione sicura per funzionare. Per motivi di sicurezza, i browser moderni abilitano queste funzionalità solo su **HTTPS**. Se accedi alla console via HTTP (al di fuori di `localhost`), il tasto "Push" e la registrazione delle notifiche non saranno attivi. Si consiglia l'uso di un reverse proxy (come Nginx, Caddy o Traefik) con certificato SSL.
 **Suggerimento:** Puoi usare Let's Encrypt per ottenere un certificato SSL gratuito per il tuo dominio.
+
+### ⚠️ Configurazione Reverse Proxy & WebSocket
+Se esponi la Fleet Console tramite un reverse proxy come **Apache** su IP pubblico (HTTPS), il proxy HTTP standard farà cadere continuamente la connessione in tempo reale di Socket.IO, causando fastidiosi "azzeramenti" o lampeggiamenti della dashboard.
+Devi abilitare il tunnel WebSocket in Apache:
+```bash
+sudo a2enmod proxy_wstunnel rewrite headers
+```
+E inserire le regole di **Rewrite** *prima* del `ProxyPass` all'interno del tuo blocco `<VirtualHost *:443>`:
+```apache
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule /(.*)           ws://127.0.0.1:9000/$1 [P,L]
+RewriteCond %{HTTP:Upgrade} !=websocket [NC]
+RewriteRule /(.*)           http://127.0.0.1:9000/$1 [P,L]
+
+ProxyPass /socket.io/ ws://127.0.0.1:9000/socket.io/
+ProxyPassReverse /socket.io/ ws://127.0.0.1:9000/socket.io/
+
+ProxyPass / http://127.0.0.1:9000/
+ProxyPassReverse / http://127.0.0.1:9000/
+```
 
 #### 🛠️ Controllo Remoto & Manutenzione Avanzata
 * **Editor .INI Remoto:** Modifica i file di configurazione (es. MMDVMHost.ini) direttamente dal pannello web, senza bisogno di accessi SSH.
@@ -171,6 +214,7 @@ pip install -r requirements.txt
 2. Inserisci le credenziali del broker MQTT.
 3. Definisci i ripetitori nel file `clients.json`.
 4. Genera le chiavi VAPID su [vapidkeys.com](https://vapidkeys.com/) e inseriscile in `config.json` per attivare le notifiche Push. *(Attenzione: le notifiche Push richiedono obbligatoriamente un certificato HTTPS).*
+5. Configura le dimensioni della rotazione dei log (`log_max_mb` e `log_backup_count`) direttamente nel `config.json` per gestire lo spazio su disco.
 
 #### 4. Esecuzione come Servizio (systemd)
 Per eseguire il server in produzione in modo continuo e stabile con Gunicorn:

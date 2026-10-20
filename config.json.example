@@ -37,5 +37,7 @@
     "id_urls": {
         "dmr": "https://radioid.net/static/dmrid.dat",
         "nxdn": "https://radioid.net/static/nxdn.csv"
-    }
+    },
+    "log_max_mb": 50,
+    "log_backup_count": 10
 }
