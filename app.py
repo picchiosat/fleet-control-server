@@ -316,7 +316,7 @@ def handle_connect():
 def on_message(client, userdata, msg):
     try:
         topic = msg.topic
-        payload = msg.payload.decode().strip()
+        payload = msg.payload.decode('utf-8', errors='replace').strip()
         parts = topic.split('/')
         if len(parts) < 2: return
         
