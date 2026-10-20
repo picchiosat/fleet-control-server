@@ -196,7 +196,7 @@
         <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
             <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
         </h3>
-        <select id="stat-node-filter" onchange="refreshStats()" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: bold; cursor: pointer; outline: none;">
+        <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: bold; cursor: pointer; outline: none;">
             <option value="all">🌐 ALL NODES</option>
         </select>
     </div>
@@ -1100,7 +1100,11 @@
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
                     networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
                 } else {
-                    tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="text-align:center;">${modeDisplay}</td><td style="text-align:center; font-family:'JetBrains Mono', monospace;">${sourceBadge}</td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td><td style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td></tr>`;
+                    // FILTRO TENDINA: Controlla il nodo selezionato prima di aggiungere la riga
+                    const selectedFilter = document.getElementById('stat-node-filter').value;
+                    if (selectedFilter === 'all' || String(clientId).toLowerCase() === selectedFilter) {
+                        tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="text-align:center;">${modeDisplay}</td><td style="text-align:center; font-family:'JetBrains Mono', monospace;">${sourceBadge}</td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td><td style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td></tr>`;
+                    }
                 }
             });
             tbody.innerHTML = tableHTML;
