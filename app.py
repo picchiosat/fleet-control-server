@@ -552,18 +552,39 @@ def on_message(client, userdata, msg):
                 if act in ['start', 'late_entry']:
                     src = get_call(d.get('src_id'))
                     dst = str(d.get('dst_id'))
-                    active_calls[cid][sk] = {'src': src, 'dst': dst}
+                    
+                    # Salviamo i campi estesi (source, mode) in RAM quando inizia il passaggio
+                    active_calls[cid][sk] = {
+                        'src': src, 
+                        'dst': dst,
+                        'slot': d.get('slot', 1),
+                        'ext': str(d.get('src_ext', '')),
+                        'source': str(d.get('source', '')),
+                        'mode': str(d.get('mode', ''))
+                    }
+                    
                     client_telemetry[cid]["alt"] = ""
                     client_telemetry[cid][sk] = f"🎙️ {src} ➔ TG {dst}"
                     notify_update()
+                    
                 elif act in ['end', 'lost']:
-                    info = active_calls[cid].get(sk, {'src': '---', 'dst': '---'})
-                    d['src_id'], d['dst_id'] = info['src'], info['dst']
+                    # Ripeschiamo le info dalla RAM (incluso il source) che il pacchetto "end" ha omesso
+                    info = active_calls[cid].get(sk, {'src': '---', 'dst': '---', 'slot': d.get('slot', 1), 'ext': '', 'source': '', 'mode': ''})
+                    
+                    # Iniettiamo a forza i dati nel dizionario prima di inviarlo al database SQLite
+                    d.update({
+                        'src_id': info['src'], 
+                        'dst_id': info['dst'],
+                        'slot': info['slot'],
+                        'src_ext': info['ext'],
+                        'source': info['source'],
+                        'mode': info['mode']
+                    })
+                    
                     save_to_sqlite(cid, d, protocol="DMR")
                     client_telemetry[cid][sk] = f"{'✅' if act=='end' else '⚠️'} {info['src']}"
                     save_cache(client_telemetry)
                     if sk in active_calls[cid]: del active_calls[cid][sk]
-
             else:
                 for k, ico, name in [('NXDN','🟢','NXDN'),('YSF','🟣','YSF'),('P25','🟠','P25'),('D-Star','🔵','D-STAR')]:
                     if k in data:
