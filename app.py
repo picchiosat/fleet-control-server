@@ -12,6 +12,7 @@ import re
 import queue
 import hashlib
 import secrets
+import subprocess
 from contextlib import closing
 from pywebpush import webpush, WebPushException
 from logging.handlers import RotatingFileHandler
@@ -660,8 +661,18 @@ def add_security_headers(resp):
         resp.headers['Cache-Control'] = 'no-store'
     return resp
 
+def get_git_commit():
+    try:
+        # Legge i primi 7 caratteri dell'hash del commit corrente
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
+    except Exception:
+        return "sconosciuta"
+
+SERVER_COMMIT = get_git_commit()
+
 @app.route('/')
-def index(): return render_template('index.html')
+def index():
+    return render_template('index.html', git_commit=SERVER_COMMIT)
 
 @app.route('/api/clients')
 def get_clients():
