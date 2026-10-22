@@ -720,7 +720,7 @@
 
               if (isAuthenticated) {
                 let adminBtn = role === 'admin' ? `
-                    <button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn blink" style="background:var(--danger); color:white; display:none; border: 2px solid white;" title="Aggiornamento Server Disponibile">🔄 UPDATE SERVER</button>
+                    <button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn" style="background:var(--danger); color:white !important; display:none; border: 2px solid white; animation: pulse-red 1.5s infinite;" title="Aggiornamento Server Disponibile">🔄 UPDATE SERVER</button>
                     <button onclick="sendGlobalUpdate()" class="auth-btn" style="background:#f59e0b; color:white;" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">${t('btnReqCfg')}</button>
                     <button onclick="triggerGlobalEmergency()" class="auth-btn" style="background:#ef4444; color:white;" data-i18n-title="ttGlobal" title="${t('ttGlobal')}">${t('btnGlobal')}</button>
                     <button onclick="openAdmin()" class="auth-btn" style="background:var(--accent); color:white;" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">${t('btnAdmin')}</button>` : '';
