@@ -427,7 +427,8 @@ def on_message(client, userdata, msg):
                     "file_names": data.get("file_names", []),
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
                     "interval": data.get("update_interval"),
-                    "uptime": data.get("uptime_seconds", 0)
+                    "uptime": data.get("uptime_seconds", 0),
+                    "agent_version": data.get("agent_version", "1.0")
                 }
                 bin_versions = data.get("versions", {})
                 if bin_versions:
