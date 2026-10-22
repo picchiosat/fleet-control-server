@@ -428,7 +428,8 @@ def on_message(client, userdata, msg):
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
                     "interval": data.get("update_interval"),
                     "uptime": data.get("uptime_seconds", 0),
-                    "agent_version": data.get("agent_version", "1.0")
+                    "agent_version": data.get("agent_version", "1.0"),
+                    "agent_update_available": data.get("agent_update_available", False)
                 }
                 bin_versions = data.get("versions", {})
                 if bin_versions:
