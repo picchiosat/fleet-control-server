@@ -1004,10 +1004,12 @@
                 let btnOta = document.getElementById(`btn-ota-${c.id}`);
                 if (btnOta) {
                     if (healthObj && healthObj.agent_update_available) {
-                        btnOta.style.background = 'var(--danger)';
+                        btnOta.style.setProperty('background', 'var(--danger)', 'important');
+                        btnOta.style.setProperty('color', 'white', 'important');
                         btnOta.style.animation = 'pulse-red 1.5s infinite';
                     } else {
-                        btnOta.style.background = '#2563eb';
+                        btnOta.style.setProperty('background', '#2563eb', 'important');
+                        btnOta.style.setProperty('color', 'white', 'important');
                         btnOta.style.animation = 'none';
                     }
                 }
