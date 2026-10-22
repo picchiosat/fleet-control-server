@@ -426,7 +426,8 @@ def on_message(client, userdata, msg):
                     "files": data.get("files", data.get("config_files", [])),
                     "file_names": data.get("file_names", []),
                     "profiles": data.get("profiles", {"A": "PROFILE A", "B": "PROFILE B"}),
-                    "interval": data.get("update_interval")
+                    "interval": data.get("update_interval"),
+                    "uptime": data.get("uptime_seconds", 0)
                 }
                 bin_versions = data.get("versions", {})
                 if bin_versions:

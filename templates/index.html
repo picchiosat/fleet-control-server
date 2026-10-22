@@ -758,6 +758,7 @@
                             <span>🌡️ <span id="temp-${c.id}">--</span>°C</span>
                             <span>🧠 <span id="ram-${c.id}">--</span>%</span>
                             <span>💾 <span id="disk-${c.id}">--</span>%</span>
+                            <span title="System Uptime">⏱️ <span id="up-${c.id}">--</span></span>
                         </div>
                         <div class="seen-bar" id="seen-${c.id}" style="display: none;"></div>
                         
@@ -947,6 +948,11 @@
                     let tempVal = healthObj.temp; tempSpan.innerText = tempVal; tempSpan.style.color = tempVal < 55 ? 'var(--success)' : (tempVal < 70 ? '#f59e0b' : 'var(--danger)');
                     ramSpan.innerText = healthObj.ram; let d = healthObj.disk; diskSpan.innerText = d; diskSpan.style.color = d < 85 ? 'inherit' : (d < 95 ? '#f59e0b' : 'var(--danger)');
                     
+                    let upSpan = document.getElementById(`up-${c.id}`);
+                    if (upSpan && healthObj.uptime) {
+                        upSpan.innerText = fmtAge(healthObj.uptime);
+                    }
+
                 const profBtnsDiv = document.getElementById(`prof-btns-${c.id}`);
                     const profKeys = JSON.stringify(healthObj.profiles || {});
                     
