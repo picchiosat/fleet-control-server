@@ -55,8 +55,8 @@
         /* Pannelli Ripetitori */
         .card { background: var(--card-bg) !important; border-radius: 4px; padding: 20px; border: 1px solid var(--border-color); border-top: 4px solid var(--border-color) !important; display: flex; flex-direction: column; box-shadow: none !important; filter: none !important; opacity: 1 !important; transition: all 0.3s ease; }
         
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        .client-name { font-size: 1.1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }        
+        .client-name { font-size: 1.1rem; font-weight: 700; flex: 1 1 auto; min-width: 150px; word-break: break-word; }
         .badge-id { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; background: #010409; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border-color); color: var(--text-muted); }
         
         /* Telemetria stile terminale */
@@ -741,10 +741,10 @@
                         <div class="card" id="card-${c.id}">
                         <div class="card-header">
                             <span class="client-name" title="${esc(c.name)}">${esc(c.name)}</span>
-                            <div style="display: flex; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                                 <span class="badge-id">ID: ${c.id.toUpperCase()}</span>
-                                <span class="badge-id" id="agent-badge-${c.id}" style="display: none; margin-left: 6px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);" title="Versione Node Agent"></span>
-                                <div id="type-badge-${c.id}" class="type-badge" style="display: none;"></div>
+                                <span class="badge-id" id="agent-badge-${c.id}" style="display: none; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);" title="Versione Node Agent"></span>
+                                <div id="type-badge-${c.id}" class="type-badge" style="display: none; margin-left: 0;"></div>
                             </div>
                         </div>
                         <div class="freq-bar" id="freq-container-${c.id}" style="display: none;">
