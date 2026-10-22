@@ -1282,6 +1282,53 @@ def save_config_file():
     audit(auth['username'], cid, f"EDIT_CONFIG_{service.upper()}")
     return jsonify({"success": True})
 
+@app.route('/api/server_update/check', methods=['GET'])
+def check_server_update():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+    
+    try:
+        # Aggiorna le informazioni dal remote senza unire i file
+        subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
+        
+        # Confronta il commit locale con quello remoto
+        local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
+        remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
+        
+        update_available = local_hash != remote_hash
+        return jsonify({"success": True, "update_available": update_available})
+    except Exception as e:
+        logger.error(f"Errore controllo aggiornamenti server: {e}")
+        return jsonify({"success": False, "error": "Impossibile verificare aggiornamenti"})
+
+@app.route('/api/server_update/apply', methods=['POST'])
+def apply_server_update():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Unauthorized", 403)
+    
+    try:
+        audit(auth['username'], 'SERVER', 'SERVER_OTA_UPDATE')
+        logger.warning(f"🔄 Aggiornamento OTA del server avviato da {auth['username']}")
+        
+        # Esegue il pull
+        subprocess.run(['git', 'pull', '--ff-only'], timeout=30, cwd=BASE_DIR, check=True)
+        
+        # Programma il riavvio (esce dal processo, systemd lo farà ripartire)
+        def restart_server():
+            time.sleep(2)
+            os._exit(1)
+            
+        threading.Thread(target=restart_server, daemon=True).start()
+        return jsonify({"success": True})
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Errore durante git pull: {e}")
+        return err("Conflitto o errore durante il git pull.")
+    except Exception as e:
+        logger.error(f"Errore aggiornamento server: {e}")
+        return err(str(e))
+
 @app.route('/manifest.json')
 def serve_manifest():
     return send_from_directory(BASE_DIR, 'manifest.json')

@@ -718,8 +718,9 @@
             const role = me.role || '';
             const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 
-            if (isAuthenticated) {
+              if (isAuthenticated) {
                 let adminBtn = role === 'admin' ? `
+                    <button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn blink" style="background:var(--danger); color:white; display:none; border: 2px solid white;" title="Aggiornamento Server Disponibile">🔄 UPDATE SERVER</button>
                     <button onclick="sendGlobalUpdate()" class="auth-btn" style="background:#f59e0b; color:white;" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">${t('btnReqCfg')}</button>
                     <button onclick="triggerGlobalEmergency()" class="auth-btn" style="background:#ef4444; color:white;" data-i18n-title="ttGlobal" title="${t('ttGlobal')}">${t('btnGlobal')}</button>
                     <button onclick="openAdmin()" class="auth-btn" style="background:var(--accent); color:white;" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">${t('btnAdmin')}</button>` : '';
@@ -1341,6 +1342,38 @@
         try { const reg = await navigator.serviceWorker.ready; const subscription = await reg.pushManager.getSubscription(); const btn = document.getElementById('push-btn'); if (subscription && btn) { btn.style.color = 'var(--success)'; } } catch(e) { console.error(e); }
     }
     function urlB64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i); return outputArray; }
+
+    async function checkServerUpdate() {
+        if (!isAuthenticated || me.role !== 'admin') return;
+        try {
+            const res = await fetch('/api/server_update/check');
+            const data = await res.json();
+            const btn = document.getElementById('server-update-btn');
+            if (btn) {
+                btn.style.display = data.update_available ? 'inline-block' : 'none';
+            }
+        } catch (e) { console.error("Errore check update server:", e); }
+    }
+
+    function confirmServerUpdate() {
+        customConfirm("🔄 UPDATE SERVER", "Vuoi scaricare l'ultima versione del server da Gitea/GitHub e riavviare il servizio backend?", "var(--danger)", async () => {
+            try {
+                const res = await fetch('/api/server_update/apply', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    customAlert("✅ SUCCESS", "Aggiornamento in corso. La pagina si ricaricherà a breve.");
+                    setTimeout(() => location.reload(), 5000); // Ricarica dopo 5 secondi
+                } else {
+                    customAlert("❌ ERRORE", esc(data.error), true);
+                }
+            } catch (e) { console.error(e); customAlert("❌ ERRORE", "Errore di rete.", true); }
+        });
+    }
+
+    // Controlla gli aggiornamenti ogni ora
+    setInterval(checkServerUpdate, 3600000);
+    // Effettua un controllo 5 secondi dopo l'avvio della UI
+    setTimeout(checkServerUpdate, 5000);
 
     initUI();
     checkPushStatus();
