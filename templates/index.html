@@ -1006,10 +1006,12 @@
                     if (healthObj && healthObj.agent_update_available) {
                         btnOta.style.setProperty('background', 'var(--danger)', 'important');
                         btnOta.style.setProperty('color', 'white', 'important');
+                        btnOta.style.setProperty('border', '1px solid var(--danger)', 'important');
                         btnOta.style.animation = 'pulse-red 1.5s infinite';
                     } else {
-                        btnOta.style.setProperty('background', '#2563eb', 'important');
-                        btnOta.style.setProperty('color', 'white', 'important');
+                        btnOta.style.setProperty('background', 'transparent', 'important');
+                        btnOta.style.setProperty('color', '#38bdf8', 'important');
+                        btnOta.style.setProperty('border', '1px solid #38bdf8', 'important');
                         btnOta.style.animation = 'none';
                     }
                 }
