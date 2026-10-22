@@ -794,7 +794,7 @@
                                 <button class="btn-cmd" style="background: var(--danger); padding: 8px 4px;" title="${t('ttBoot')}" onclick="confirmReboot('${c.id}')">${t('btnBoot')}</button>
                             </div>
                             <div style="width: 100%; display: flex; gap: 8px;">
-                                <button class="btn-cmd" style="background: #2563eb; padding: 8px 4px;" title="Scarica l'ultima versione da Gitea" onclick="confirmUpdateAgent('${c.id}')">⬇️ UPDATE OTA</button>
+                                <button id="btn-ota-${c.id}" class="btn-cmd" style="background: #2563eb; padding: 8px 4px;" title="Scarica l'ultima versione da Gitea" onclick="confirmUpdateAgent('${c.id}')">⬇️ UPDATE OTA</button>
                             </div>
                      ` : ''}
                     </div>`;
@@ -990,6 +990,17 @@
                 if (btnSvc) {
                     if (hasOfflineService) { btnSvc.style.background = 'var(--danger)'; btnSvc.classList.add('blink'); btnSvc.innerHTML = t('btnSvcKo'); } 
                     else { btnSvc.style.background = '#334155'; btnSvc.classList.remove('blink'); btnSvc.innerHTML = t('btnSvc'); }
+                }
+
+                let btnOta = document.getElementById(`btn-ota-${c.id}`);
+                if (btnOta) {
+                    if (healthObj && healthObj.agent_update_available) {
+                        btnOta.style.background = 'var(--danger)';
+                        btnOta.style.animation = 'pulse-red 1.5s infinite';
+                    } else {
+                        btnOta.style.background = '#2563eb';
+                        btnOta.style.animation = 'none';
+                    }
                 }
 
                 if (isOnline) {
