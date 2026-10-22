@@ -1297,6 +1297,11 @@ def check_server_update():
         remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
         
         update_available = local_hash != remote_hash
+
+        # --- LOG DI DEBUG ---
+        logger.info(f"🔍 Controllo OTA: Local={local_hash[:7]} | Remote={remote_hash[:7]} | Update={update_available}")
+        # --------------------
+
         return jsonify({"success": True, "update_available": update_available})
     except Exception as e:
         logger.error(f"Errore controllo aggiornamenti server: {e}")
