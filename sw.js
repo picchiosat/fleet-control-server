@@ -1,6 +1,9 @@
-const CACHE_NAME = 'fleet-c2-v5';
+const CACHE_NAME = 'fleet-c2-v6';
 const PRECACHE_URLS = [
   '/',
+  '/static/css/style.css',
+  '/static/js/modals.js',
+  '/static/js/app.js',
   '/manifest.json',
   '/icon-512.png'
 ];
