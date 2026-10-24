@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fleet-c2-v3'; // incrementare a ogni modifica degli asset precaricati
+const CACHE_NAME = 'fleet-c2-v5';
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
@@ -6,8 +6,6 @@ const PRECACHE_URLS = [
 ];
 
 // --- 1. INSTALL: precache "best effort" -------------------------------------
-// Se un file manca (es. icona non ancora caricata) l'installazione NON fallisce:
-// un SW che non si installa significa niente notifiche push.
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -26,8 +24,6 @@ self.addEventListener('activate', event => {
 });
 
 // --- 3. FETCH: network-first, cache come ripiego offline ---------------------
-// Gestiamo solo le GET della nostra origine. API e WebSocket (socket.io) passano
-// sempre direttamente dalla rete: i dati della flotta non vanno mai serviti "vecchi".
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -80,8 +76,6 @@ self.addEventListener('push', event => {
     icon: '/icon-512.png',
     badge: '/icon-512.png',
     vibrate: [200, 100, 200],
-    // Stesso tag = la nuova notifica dello stesso nodo sostituisce la precedente
-    // (invece di accumulare 10 notifiche) e rifà vibrare/suonare.
     tag: data.tag || 'fleet-alert',
     renotify: true,
     data: {
@@ -100,8 +94,6 @@ self.addEventListener('push', event => {
 });
 
 // --- 5. CLICK SULLA NOTIFICA -------------------------------------------------
-// Click sul corpo O su "Apri Dashboard": porta in primo piano la finestra già aperta,
-// altrimenti ne apre una nuova. "Chiudi" chiude soltanto.
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   if (event.action === 'close') return;

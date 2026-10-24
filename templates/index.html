@@ -13,154 +13,170 @@
     <meta name="apple-mobile-web-app-title" content="Fleet C2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* --- TEMA NOC (Network Operations Center) --- */
+        /* --- TEMA MODERNO (Soft UI / Tailwind inspired) --- */
         :root { 
-            --primary: #2f81f7; --success: #2ea043; --danger: #da3633; --accent: #a371f7; 
-            --bg-gradient: #0d1117; 
-            --card-bg: #161b22;     
-            --border-color: #30363d;
-            --text-main: #c9d1d9;   
-            --text-muted: #8b949e;  
-            --topbar-bg: #161b22;
+            --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --accent: #8b5cf6; 
+            --bg-gradient: #0f172a; 
+            --card-bg: #1e293b;     
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;   
+            --text-muted: #94a3b8;  
+            --topbar-bg: #1e293b;
         }
 
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: var(--bg-gradient); margin: 0; padding: 0; color: var(--text-main); min-height: 100vh; }
         
-        /* Barra superiore squadrata e tecnica */
-        #top-bar-container { 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
-            padding: 15px 20px; 
-            display: flex; 
-            justify-content: center; 
-            background: var(--bg-gradient); 
-            margin-bottom: 30px; 
-        }
-        #top-bar { background: var(--topbar-bg); padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; border: 1px solid var(--border-color); width: 100%; max-width: 1400px; }
+        #top-bar-container { position: sticky; top: 0; z-index: 100; padding: 15px 20px; display: flex; justify-content: center; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); margin-bottom: 30px; }
+        #top-bar { background: var(--topbar-bg); padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px; border: 1px solid var(--border-color); width: 100%; max-width: 1400px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .title-brand { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; color: var(--text-main); font-family: 'JetBrains Mono', monospace; }
         
-        /* --- Navigation Tabs --- */
         .nav-tabs { display: flex; gap: 15px; margin-left: 30px; flex: 1; }
-        .nav-tab { background: transparent; border: none; color: var(--text-muted); font-size: 0.95rem; font-weight: 800; cursor: pointer; padding: 6px 12px; border-bottom: 3px solid transparent; transition: all 0.2s ease; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
-        .nav-tab:hover { color: var(--text-main); }
-        .nav-tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .nav-tab { background: transparent; border: none; color: var(--text-muted); font-size: 0.95rem; font-weight: 800; cursor: pointer; padding: 8px 16px; border-radius: 8px; transition: all 0.2s ease; font-family: 'Inter', sans-serif; letter-spacing: 1px; }
+        .nav-tab:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .nav-tab.active { color: var(--primary); background: rgba(59, 130, 246, 0.1); }
 
-        .theme-switch { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+        .theme-switch { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Inter', sans-serif; transition: all 0.2s; }
         .theme-switch:hover { color: var(--text-main); border-color: var(--text-main); }
         
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; max-width: 1400px; margin: 30px auto; padding: 0 20px; }
         
-        /* Pannelli Ripetitori */
-        .card { background: var(--card-bg) !important; border-radius: 4px; padding: 20px; border: 1px solid var(--border-color); border-top: 4px solid var(--border-color) !important; display: flex; flex-direction: column; box-shadow: none !important; filter: none !important; opacity: 1 !important; transition: all 0.3s ease; }
+        .card { background: var(--card-bg) !important; border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); border-top: 3px solid var(--border-color) !important; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; filter: none !important; opacity: 1 !important; transition: all 0.3s ease; }
         
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        .client-name { font-size: 1.1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; padding-top: 2px; }
-        .badge-id { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; background: #010409; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border-color); color: var(--text-muted); }
+        .card-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .client-name { font-size: 1.2rem; font-weight: 800; white-space: normal; word-break: break-word; flex: 1 1 100px; line-height: 1.2; padding-top: 2px; }
+        .header-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex: 1 1 auto; }
         
-        /* Telemetria stile terminale */
-        .health-bar { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; background: #010409; padding: 8px 12px; border-radius: 3px; margin-bottom: 15px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; }
+        .badge-id { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-muted); }
+        
+        .health-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; text-align: center; }
+        .health-bar > span { background: rgba(255,255,255,0.03); padding: 6px; border-radius: 6px; }
 
-        /* Frequenze Radio */
-        .freq-bar { display: flex; justify-content: space-around; font-size: 0.8rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 3px; margin-bottom: 15px; border: 1px dashed var(--border-color); font-family: 'JetBrains Mono', monospace; }
-        .freq-tx { color: #f87171; } /* Rosso per la TX */
-        .freq-rx { color: #4ade80; } /* Verde per la RX */
+        .freq-bar { display: flex; justify-content: space-around; font-size: 0.8rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border-color); font-family: 'JetBrains Mono', monospace; }
+        .freq-tx { color: #f87171; } .freq-rx { color: #4ade80; }
 
-        /* Metadati Nodo (Location, Coordinate) */
         .seen-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin: -6px 0 12px 0; }
         .seen-item b { font-weight: 700; }
         .seen-item.ok b { color: var(--success); }
-        .seen-item.warn, .seen-item.warn b { color: #d29922; font-weight: 700; }
+        .seen-item.warn, .seen-item.warn b { color: #f59e0b; font-weight: 700; }
         .node-meta { font-size: 0.75rem; color: #8b949e; text-align: center; margin-bottom: 15px; line-height: 1.4; }
         .node-meta-item { display: block; }
 
-        /* --- Badge Tipo Nodo --- */
-        .type-badge {
-           font-size: 0.65rem;
-           padding: 2px 6px;
-           border-radius: 4px;
-           font-weight: 700;
-           text-transform: uppercase;
-           display: inline-block;
-           margin-left: 8px;
-           vertical-align: middle;
-        }
-        .type-repeater { 
-           background: rgba(47, 129, 247, 0.15); 
-           color: var(--primary); 
-           border: 1px solid var(--primary); 
-        }
-        .type-hotspot { 
-           background: rgba(163, 113, 247, 0.15); 
-           color: var(--accent); 
-           border: 1px solid var(--accent); 
-        }
+        .type-badge { font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase; display: inline-block; margin-left: 0; vertical-align: middle; }
+        .type-repeater { background: rgba(59, 130, 246, 0.15); color: var(--primary); border: 1px solid var(--primary); }
+        .type-hotspot { background: rgba(139, 92, 246, 0.15); color: var(--accent); border: 1px solid var(--accent); }
 
-        /* Display Stato */
-        .status-display { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; padding: 8px; border-radius: 3px; background: #010409; border: 1px solid var(--border-color); margin-bottom: 15px; color: var(--text-muted); }
-        .card.online .status-display { color: var(--success); border-color: rgba(46, 160, 67, 0.4); }
-        .status-offline { color: var(--danger) !important; border-color: rgba(218, 54, 51, 0.4) !important; }
+        .status-display { text-align: center; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 700; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); margin-bottom: 15px; color: var(--text-muted); }
+        .card.online .status-display { color: var(--success); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
+        .status-offline { color: var(--danger) !important; border-color: rgba(239, 68, 68, 0.4) !important; }
         
-        /* TimeSlots */
         .ts-container { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
-        .dmr-info { font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 8px 12px; border-radius: 3px; background: #010409 !important; border: 1px solid var(--border-color); border-left: 4px solid var(--border-color) !important; color: var(--text-muted) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dmr-info { font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.2) !important; border: 1px solid var(--border-color); border-left: 4px solid var(--border-color) !important; color: var(--text-muted) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.3s; }
         
-        /* Terminal Log */
-        .terminal-log { background: #010409; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; border-radius: 3px; padding: 10px; height: 130px; overflow-y: auto; border: 1px solid var(--border-color); line-height: 1.4; margin-bottom: 15px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        .terminal-log { background: #010409; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; border-radius: 6px; padding: 10px; max-height: 90px; overflow-y: auto; border: 1px solid var(--border-color); line-height: 1.4; margin-bottom: 15px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
         
-        /* Bottoni flat */
         .actions { display: none; gap: 8px; flex-wrap: wrap; margin-top: auto; }
-        .btn-cmd { flex: 1; padding: 8px 10px; border: 1px solid var(--border-color); background: #010409 !important; border-radius: 3px; font-weight: 600; font-size: 0.75rem; cursor: pointer; color: var(--text-main) !important; font-family: 'JetBrains Mono', monospace; transition: border-color 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: none !important; }
-        .btn-cmd:hover { border-color: var(--text-main); }
+        .btn-cmd { flex: 1; padding: 8px 10px; border: 1px solid transparent; background: rgba(255,255,255,0.05) !important; border-radius: 6px; font-weight: 600; font-size: 0.75rem; cursor: pointer; color: var(--text-main) !important; font-family: 'Inter', sans-serif; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; }
+        .btn-cmd:hover { filter: brightness(1.2); }
   
-        /* Badge MQTT */
-        .mqtt-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; transition: all 0.3s ease; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; height: 30px;}
-        .mqtt-online { background: rgba(46, 160, 67, 0.1); color: var(--success); border-color: var(--success); }
-        .mqtt-offline { background: rgba(218, 54, 51, 0.1); color: var(--danger); border-color: var(--danger); animation: pulse-red 2s infinite; }
-        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        details.admin-dropdown summary { list-style: none; display: flex; justify-content: center; align-items: center; }
+        details.admin-dropdown summary::-webkit-details-marker { display: none; }
+
+        .mqtt-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; transition: all 0.3s ease; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; height: 30px;}
+        .mqtt-online { background: rgba(16, 185, 129, 0.1); color: var(--success); border-color: var(--success); }
+        .mqtt-offline { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: var(--danger); animation: danger-glow 2s infinite; }
         
-        /* Tabella LastHeard */
-        .table-container { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); overflow-x: auto; overflow-y: auto; max-height: 500px; margin: 0 20px 40px 20px; -webkit-overflow-scrolling: touch; }
-        thead th { position: sticky; top: 0; z-index: 10; background: #1c2128; border-bottom: 2px solid var(--primary); }
-        table { width: 100%; min-width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+        .table-container { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); overflow-x: auto; overflow-y: auto; max-height: 500px; margin: 0 20px 40px 20px; -webkit-overflow-scrolling: touch; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        thead th { position: sticky; top: 0; z-index: 10; background: #0f172a; border-bottom: 2px solid var(--primary); }
+        table { width: 100%; min-width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; font-family: 'Inter', sans-serif; white-space: nowrap; }
         th, td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); line-height: 1.6; vertical-align: middle; }
-        th { background-color: rgba(255, 255, 255, 0.03); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        th { background-color: rgba(255, 255, 255, 0.02); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.75rem; color: var(--text-muted); }
         tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.015); }
 
-        /* Animazioni Traffico e Allarmi */
-        @keyframes pulse-border { 0% { border-color: var(--border-color); } 50% { border-color: var(--pulse-color, var(--primary)); } 100% { border-color: var(--border-color); } }
-        .tx-active-unified { animation: pulse-border 1.5s infinite !important; color: var(--text-main) !important; border-left: 4px solid var(--pulse-color, var(--primary)) !important; background: #010409 !important; }
-        @keyframes flat-blink { 0% { border-color: var(--border-color); } 50% { border-color: var(--danger); } 100% { border-color: var(--border-color); } }
-        .blink { animation: flat-blink 1.5s infinite; color: var(--danger) !important; }
+        @keyframes soft-glow { 0% { box-shadow: 0 0 5px var(--pulse-color, var(--primary)); border-color: var(--border-color); } 50% { box-shadow: 0 0 15px var(--pulse-color, var(--primary)); border-color: var(--pulse-color, var(--primary)); } 100% { box-shadow: 0 0 5px var(--pulse-color, var(--primary)); border-color: var(--border-color); } }
+        .tx-active-unified { animation: soft-glow 2s infinite !important; color: var(--text-main) !important; background: rgba(0,0,0,0.3) !important; border-left: 4px solid var(--pulse-color, var(--primary)) !important; }
         
-        /* Finestre Modali (Popup) */
-        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(1, 4, 9, 0.85); z-index:1000; align-items:center; justify-content:center; }
-        .modal-top { z-index: 5000 !important; } /* Per Alert e Confirm */
-        .modal-content { background:var(--card-bg); border:1px solid var(--border-color); padding:25px; border-radius:6px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        @keyframes danger-glow { 0% { box-shadow: 0 0 5px var(--danger); border-color: var(--border-color); } 50% { box-shadow: 0 0 15px var(--danger); border-color: var(--danger); } 100% { box-shadow: 0 0 5px var(--danger); border-color: var(--border-color); } }
+        .blink { animation: danger-glow 1.5s infinite; color: var(--danger) !important; border: 1px solid var(--danger) !important; }
         
-        /* Input Form */
-        .auth-btn { background: #010409; color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; transition: border-color 0.2s; }
-        .auth-btn:hover { border-color: var(--text-main); }
-        input, select { background: #010409; border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 12px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; outline: none; }
-        input:focus { border-color: var(--primary); }
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.9); z-index:1000; align-items:center; justify-content:center; backdrop-filter: blur(5px); }
+        .modal-top { z-index: 5000 !important; } 
+        .modal-content { background:var(--card-bg); border:1px solid var(--border-color); padding:25px; border-radius:12px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        
+        .auth-btn { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .auth-btn:hover { border-color: var(--text-main); background: rgba(255,255,255,0.1); }
+        input, select { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 12px; border-radius: 6px; font-family: 'Inter', sans-serif; outline: none; }
+        input:focus, select:focus { border-color: var(--primary); }
         input:disabled { opacity: 0.5; cursor: not-allowed; }
         option { background: var(--card-bg); color: var(--text-main); }
+
+        /* Stili per le Mini-Card (HOME) */
+        .mini-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            height: 105px;
+            width: 160px; /* <--- AGGIUNGI QUESTA RIGA */
+            overflow: hidden;
+        }
+        .mini-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+        }
+        .mini-card-content {
+            width: 100%;
+            overflow: hidden;
+        }
+        .mini-card-name {
+            font-weight: 800;
+            font-size: 0.95rem;
+            width: 100%;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mini-card-status {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 4px 6px;
+            border-radius: 6px;
+            width: 100%;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         
-        /* Ottimizzazione Mobile */
         @media (max-width: 768px) {
-            #top-bar-container { top: 10px; padding: 0 10px; }
-            #top-bar { flex-direction: column; padding: 15px; gap: 12px; border-radius: 8px; }
+            #top-bar-container { top: 0; padding: 10px; margin-bottom: 15px; }
+            #top-bar { flex-direction: column; padding: 15px; gap: 12px; border-radius: 12px; }
             .title-brand { font-size: 1.1rem; text-align: center; width: 100%; }
-            .nav-tabs { margin-left: 0; width: 100%; justify-content: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; }
             #top-bar > div { width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px !important; }
             #auth-container { width: 100%; justify-content: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-color); }
-            #auth-container > span { width: 100%; text-align: center; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+            #auth-container > span { width: 100%; text-align: center; margin-bottom: 8px; font-family: 'Inter', sans-serif; }
             .auth-btn, .theme-switch { flex: 1 1 auto; text-align: center; }
-        }
-        @media (max-width: 600px) {
-            .table-container { margin: 0 10px 20px 10px; border-radius: 4px; }
-            th, td { padding: 10px 12px; font-size: 0.75rem; }
+            
+            .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--topbar-bg); border-top: 1px solid var(--border-color); margin: 0; padding: 10px 0; justify-content: space-around; z-index: 1000; flex-direction: row; gap: 0; padding-bottom: env(safe-area-inset-bottom, 10px); box-shadow: 0 -4px 15px rgba(0,0,0,0.3); }
+            .nav-tab { font-size: 1rem; padding: 12px; flex: 1; text-align: center; border-radius: 0; }
+            body { padding-bottom: 70px; }
+
+            .table-container { background: transparent; border: none; box-shadow: none; margin: 0 10px 20px 10px; }
+            .table-container table, .table-container thead, .table-container tbody, .table-container th, .table-container td, .table-container tr { display: block; width: 100%; }
+            .table-container thead tr { position: absolute; top: -9999px; left: -9999px; }
+            .table-container tr { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px; background: var(--card-bg); padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .table-container td { border: none; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; padding-left: 40%; text-align: left; font-size: 0.85rem; min-height: 35px; display: flex; align-items: center; }
+            .table-container td:before { position: absolute; top: 50%; transform: translateY(-50%); left: 10px; width: 35%; padding-right: 10px; white-space: nowrap; font-weight: bold; color: var(--text-muted); content: attr(data-label); font-family: 'Inter', sans-serif; font-size: 0.75rem; text-transform: uppercase; }
+            .table-container td:last-child { border-bottom: 0; }
         }
     </style>
 </head>
@@ -170,7 +186,6 @@
     <div id="top-bar">
         <div class="title-brand">FLEET CONTROL CONSOLE</div>
         
-        <!-- Menu a schede -->
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>
             <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes">NODES</button>
@@ -185,51 +200,30 @@
     </div>
 </div>
 
-<!-- ================= VISTA NODI ================= -->
 <div id="view-nodes" style="display: none;">
     <div class="grid" id="client-grid"></div>
 </div>
 
-<!-- ================= VISTA HOME ================= -->
 <div id="view-home">
-    <div style="max-width: 1400px; margin: 0 auto 15px auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-            <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
+    <!-- STATUS RAPIDO NODI -->
+    <div style="max-width: 1400px; margin: 0 auto 20px auto; padding: 0 20px;">
+        <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+            <span style="font-size: 1.2rem;">🟢</span> <span>FLEET STATUS</span>
         </h3>
-        <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 15px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: bold; cursor: pointer; outline: none;">
-            <option value="all">🌐 ALL NODES</option>
-        </select>
+        <div id="home-mini-nodes" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;"></div>
     </div>
 
-    <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-        <div class="card" style="padding: 15px; border-top-color: var(--accent) !important;">
-            <h4 style="margin: 0 0 10px 0; color: var(--accent); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopTG">🎯 TOP TALKGROUPS</h4>
-            <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+    <!-- LASTHEARD -->
+    <div style="max-width: 1400px; margin: 0 auto 30px auto;">
+        <div style="padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+                <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
+            </h3>
+            <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="font-weight: bold; cursor: pointer;">
+                <option value="all">🌐 ALL NODES</option>
+            </select>
         </div>
-        
-        <div class="card" style="padding: 15px; border-top-color: var(--success) !important;">
-            <h4 style="margin: 0 0 10px 0; color: var(--success); font-family: 'JetBrains Mono', monospace;" data-i18n="statTopCall">🗣️ TOP CALLSIGNS</h4>
-            <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
-        </div>
-        
-        <div class="card" style="padding: 15px; border-top-color: var(--primary) !important; display: flex; justify-content: space-around; align-items: center; text-align: center;">
-            <div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statAvgDur">⏱️ AVERAGE DURATION</div>
-            </div>
-            <div style="width: 1px; height: 50px; background: var(--border-color);"></div> 
-            <div>
-                <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statTodayTx">📡 TRANSITS TODAY</div>
-            </div>
-        </div>
-    </div>
-
-    <div style="max-width: 1400px; margin: 0 auto;">
-        <h3 style="margin-left: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-            <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
-        </h3>
-        <div class="table-container">
+        <div class="table-container" style="margin-bottom: 0;">
             <table>
                 <thead>
                     <tr>
@@ -250,6 +244,36 @@
             </table>
         </div>
     </div>
+
+    <!-- DAILY STATISTICS -->
+    <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px;">
+        <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+            <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div class="card" style="padding: 15px; border-top-color: var(--accent) !important;">
+                <h4 style="margin: 0 0 10px 0; color: var(--accent);" data-i18n="statTopTG">🎯 TOP TALKGROUPS</h4>
+                <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+            </div>
+            
+            <div class="card" style="padding: 15px; border-top-color: var(--success) !important;">
+                <h4 style="margin: 0 0 10px 0; color: var(--success);" data-i18n="statTopCall">🗣️ TOP CALLSIGNS</h4>
+                <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+            </div>
+            
+            <div class="card" style="padding: 15px; border-top-color: var(--primary) !important; display: flex; justify-content: space-around; align-items: center; text-align: center; flex-direction: row;">
+                <div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statAvgDur">⏱️ AVERAGE DURATION</div>
+                </div>
+                <div style="width: 1px; height: 50px; background: var(--border-color);"></div> 
+                <div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statTodayTx">📡 TRANSITS TODAY</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <footer>
@@ -257,13 +281,7 @@
         <span>&copy; 2026 <strong>IV3JDV @ ARIFVG</strong></span>
         <span style="opacity: 0.5;">|</span>
         <a href="https://git.arifvg.it/iv3jdv/fleet-control-server" target="_blank" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s;">
-            <svg height="18" viewBox="0 0 24 24" width="18" style="fill: currentColor; vertical-align: middle;"><path d="M15 4V3H1V4H2V12C2 13.1 2.9 14 4 14H10C11.1 14 12 13.1 12 12V4H15ZM10 12H4V4H10V12ZM14 4H12V5H14V4Z" /></svg>
             <span>Gitea Home</span>
-        </a>
-        <span style="opacity: 0.5;">|</span>
-        <a href="https://github.com/picchiosat/fleet-control-server" target="_blank" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s;">
-            <svg height="18" viewBox="0 0 16 16" width="18" style="fill: currentColor; vertical-align: middle;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
-            <span>GitHub Mirror</span>
         </a>
         <span style="opacity: 0.5;">|</span>
         <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent);">Rev: {{ git_commit }}</span>
@@ -271,6 +289,7 @@
         <span id="last-update">Sync: --:--</span>
     </div>
 </footer>
+
 <div id="login-modal" class="modal-overlay">
     <div class="modal-content" style="width:90%; max-width:400px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:20px;">
@@ -291,7 +310,7 @@
             <h2 style="margin:0;" data-i18n="adminTitle">🛠️ User & System Management</h2>
             <button onclick="closeAdmin()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.05); padding:15px; border-radius:16px; align-items:center;">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:15px; border-radius:16px; align-items:center;">
             <input type="text" id="new-user" placeholder="Username" style="flex:1; min-width:120px;">
             <input type="password" id="new-pass" placeholder="Password" style="flex:1; min-width:120px;">
             <select id="new-role" style="flex:0.5; min-width:100px;">
@@ -394,9 +413,7 @@
     <div class="modal-content" style="width:90%; max-width:400px; text-align:center;">
         <h2 style="margin-top:0; color:var(--danger);">🚨 <span data-i18n="titleGlobal">GLOBAL OVERRIDE</span> 🚨</h2>
         <p style="margin-bottom:25px; color:var(--text-muted); font-weight: 600;" id="override-desc">Select the profile to send to the ENTIRE network:</p>
-        
         <div id="global-btn-container" style="display:flex; flex-direction:column; gap:15px; margin-bottom: 15px;"></div>
-        
         <button onclick="document.getElementById('override-modal').style.display='none'" class="btn-cmd" style="background:var(--text-muted); padding:12px; width:100%;" data-i18n="btnCancel">CANCEL</button>
     </div>
 </div>
@@ -423,7 +440,6 @@
     </div>
 </div>
 
-<!-- NUOVO MODALE VERSIONI -->
 <div id="versions-modal" class="modal-overlay">
     <div class="modal-content" style="width:90%; max-width:450px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:15px;">
@@ -431,7 +447,6 @@
             <button onclick="closeVersionsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
         </div>
         <div id="versions-list" style="background: #010409; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8; color: var(--text-main);">
-            <!-- Dati iniettati via JS -->
         </div>
     </div>
 </div>
@@ -467,7 +482,7 @@
             ttReqCfg: "Request immediate data update", ttGlobal: "Force profile switch on network", ttAdmin: "User and system management", ttPass: "Change your password", ttLogout: "Log out",
             ttProfA: "Switch to Profile A", ttProfB: "Switch to Profile B", ttTgOn: "Enable Telegram notifications", ttTgOff: "Disable Telegram notifications", ttSvc: "Manage system daemons", ttFile: "Edit .ini configuration files", ttHat: "Send physical reset to modem", ttBoot: "Reboot node operating system",
             ttSwitchTo: "Switch to profile: ", ttSvcStart: "Start service", ttSvcRestart: "Restart service", ttSvcEdit: "Edit configuration", ttSvcStop: "Stop service", ttLang: "Change language",
-            statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITI TODAY", statNoData: "No data",
+            statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITS TODAY", statNoData: "No data",
             statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware"
         },
         it: {
@@ -519,21 +534,17 @@
         else if (newPassInput) newPassInput.placeholder = t('phPass');
     }
 
-    // --- HELPER DI SICUREZZA ---
     function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function q(s) { return esc(JSON.stringify(String(s ?? ''))); }
     const HANG_TIME_MS = 180000;
 
-    // --- GESTIONE SCHEDE (TABS) ---
     function switchView(viewName) {
         document.getElementById('view-home').style.display = 'none';
         document.getElementById('view-nodes').style.display = 'none';
         document.getElementById('tab-home').classList.remove('active');
         document.getElementById('tab-nodes').classList.remove('active');
-
         document.getElementById(`view-${viewName}`).style.display = 'block';
         document.getElementById(`tab-${viewName}`).classList.add('active');
-
         localStorage.setItem('fleetDefaultView', viewName);
     }
 
@@ -542,7 +553,6 @@
         switchView(savedView);
     });
 
-    // --- DIAGNOSTICA ---
     function fmtAge(sec) {
         sec = Math.max(0, Math.round(sec));
         if (sec < 60) return sec + 's';
@@ -586,18 +596,10 @@
         div.style.display = 'flex';
     }
 
-    // --- GLOBAL VARIABLES ---
-    let clients = [];
-    let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
-    let isAuthenticated = false;
-    let usersCache = {};
-    let globalHealthData = {};
-    let globalVersionsData = {}; // NUOVA VARIABILE VERSIONI
-    let editingUserId = null; 
-    let currentResetHatId = null; 
-    let confirmActionCallback = null; 
+    let clients = []; let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
+    let isAuthenticated = false; let usersCache = {}; let globalHealthData = {}; let globalVersionsData = {}; 
+    let editingUserId = null; let currentResetHatId = null; let confirmActionCallback = null; 
 
-    // --- POPUPS & ALERTS ---
     function customAlert(title, desc, isError = false) {
         const color = isError ? 'var(--danger)' : 'var(--success)';
         document.getElementById('alert-title').innerHTML = title;
@@ -621,13 +623,9 @@
 
     function executeConfirmAction() {
         document.getElementById('confirm-modal').style.display = 'none';
-        if (confirmActionCallback) {
-            confirmActionCallback();
-            confirmActionCallback = null;
-        }
+        if (confirmActionCallback) { confirmActionCallback(); confirmActionCallback = null; }
     }
 
-    // --- API & COMMAND FUNCTIONS ---
     function sendCommand(clientId, type, customTitle, customMsg, customColor) {
         const title = customTitle || t('titleAction');
         const msg = customMsg || `${t('confOp')}<b>${clientId.toUpperCase()}</b>?`;
@@ -664,8 +662,7 @@
     
     async function executeHatReset() {
         if (!currentResetHatId) return;
-        const clientId = currentResetHatId;
-        closeHatResetModal(); 
+        const clientId = currentResetHatId; closeHatResetModal(); 
         try {
             const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId, type: 'RESET_HAT' }) });
             const data = await res.json();
@@ -695,7 +692,6 @@
         });
     }
 
-    // --- MAIN UI INIT ---
     async function initUI() {
         applyTranslations();
         try {
@@ -738,13 +734,13 @@
                 let showReboot = (role === 'admin'); 
 
                 return `
-                        <div class="card" id="card-${c.id}">
+                    <div class="card" id="card-${c.id}">
                         <div class="card-header">
                             <span class="client-name" title="${esc(c.name)}">${esc(c.name)}</span>
-                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto; max-width: 65%;">
+                            <div class="header-badges">
                                 <span class="badge-id">ID: ${c.id.toUpperCase()}</span>
-                                <span class="badge-id" id="agent-badge-${c.id}" style="display: none; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);" title="Versione Node Agent"></span>
-                                <div id="type-badge-${c.id}" class="type-badge" style="display: none; margin-left: 0;"></div>
+                                <span class="badge-id" id="agent-badge-${c.id}" style="display: none; color: #38bdf8; background: rgba(56, 189, 248, 0.1);"></span>
+                                <div id="type-badge-${c.id}" class="type-badge" style="display: none;"></div>
                             </div>
                         </div>
                         <div class="freq-bar" id="freq-container-${c.id}" style="display: none;">
@@ -753,17 +749,18 @@
                         </div>
                         <div class="node-meta" id="meta-container-${c.id}" style="display: none;">
                             <span class="node-meta-item">📍 <strong id="loc-${c.id}">...</strong></span>
-                            <span class="node-meta-item">Lat: <span id="lat-${c.id}">...</span> | Lon: <span id="lon-${c.id}">...</span></span>
+                            <span class="node-meta-item" style="margin-top: 4px; color: var(--text-muted);">Lat: <span id="lat-${c.id}">...</span> | Lon: <span id="lon-${c.id}">...</span></span>
                         </div>
+                        
                         <div class="health-bar" id="health-${c.id}" style="display: none;">
                             <span>⚡ <span id="cpu-${c.id}">--</span>%</span>
                             <span>🌡️ <span id="temp-${c.id}">--</span>°C</span>
                             <span>🧠 <span id="ram-${c.id}">--</span>%</span>
                             <span>💾 <span id="disk-${c.id}">--</span>%</span>
-                            <span title="System Uptime">⏱️ <span id="up-${c.id}">--</span></span>
+                            <span style="grid-column: span 2;" title="System Uptime">⏱️ <span id="up-${c.id}">--</span></span>
                         </div>
-                        <div class="seen-bar" id="seen-${c.id}" style="display: none;"></div>
                         
+                        <div class="seen-bar" id="seen-${c.id}" style="display: none;"></div>
                         <div class="status-display" id="status-${c.id}">Offline</div>
                         
                         <div id="ts-container-${c.id}" class="ts-container">
@@ -774,38 +771,52 @@
                         
                         <div class="terminal-log" id="sys-log-${c.id}">${t('waitNet')}</div>
 
-                        <div id="svc-warn-${c.id}" class="blink" style="display: none; text-align: center; margin-bottom: 15px; border-radius: 12px; padding: 10px;">
+                        <div id="svc-warn-${c.id}" class="blink" style="display: none; text-align: center; margin-bottom: 15px; border-radius: 8px; padding: 10px;">
                             <span style="font-size: 0.85rem;" data-i18n="warnDaemon">${t('warnDaemon')}</span>
                         </div>
-
-                            
-                            ${canControl ? `
-                            <div id="prof-btns-${c.id}" style="width: 100%; gap: 10px; display: none;"></div>
-                            <div style="width: 100%; display: flex; gap: 10px; margin-bottom: 8px;">
-                                <button class="btn-cmd" style="background: var(--success);" title="${t('ttTgOn')}" onclick="sendTgCommand('${c.id}', 'TG:ON')">🔔 Telegram ON</button>
-                                <button class="btn-cmd" style="background: var(--text-muted);" title="${t('ttTgOff')}" onclick="sendTgCommand('${c.id}', 'TG:OFF')">🔇 Telegram OFF</button>
+                        
+                        ${canControl ? `
+                        <div id="prof-btns-${c.id}" style="width: 100%; gap: 10px; display: none; margin-bottom: 8px;"></div>
+                        <div style="width: 100%; display: flex; gap: 10px; margin-bottom: 8px;">
+                            <button class="btn-cmd" style="background: rgba(255, 255, 255, 0.05); color: var(--text-main) !important;" title="${t('ttTgOn')}" onclick="sendTgCommand('${c.id}', 'TG:ON')">🔔 TG ON</button>
+                            <button class="btn-cmd" style="background: rgba(255, 255, 255, 0.05); color: var(--text-main) !important;" title="${t('ttTgOff')}" onclick="sendTgCommand('${c.id}', 'TG:OFF')">🔇 TG OFF</button>
+                        </div>
+                        ` : ''}
+                        
+                        ${showReboot ? `
+                        <details class="admin-dropdown" style="width: 100%;">
+                            <summary id="admin-summary-${c.id}" class="btn-cmd" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted) !important;">⚙️ Admin Tools</summary>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 10px;">
+                                <button class="btn-cmd" style="background: var(--primary); border: none; color: white !important;" title="Versioni Software" onclick="openVersionsModal('${c.id}')">ℹ️ INFO</button>
+                                <button id="btn-svc-${c.id}" class="btn-cmd" style="background: #334155; border: none; color: white !important;" title="${t('ttSvc')}" onclick="openServicesModal('${c.id}')">${t('btnSvc')}</button>
+                                <button class="btn-cmd" style="background: var(--accent); border: none; color: white !important;" title="${t('ttFile')}" onclick="openConfigsModal('${c.id}')">${t('btnFile')}</button>
+                                <button class="btn-cmd" style="background: #ea580c; border: none; color: white !important;" title="${t('ttHat')}" onclick="confirmHatReset('${c.id}')">${t('btnHat')}</button>
+                                <button class="btn-cmd" style="background: var(--danger); border: none; color: white !important;" title="${t('ttBoot')}" onclick="confirmReboot('${c.id}')">${t('btnBoot')}</button>
+                                <button id="btn-ota-${c.id}" class="btn-cmd" style="background: #2563eb; border: none; color: white !important;" title="Update OTA" onclick="confirmUpdateAgent('${c.id}')">⬇️ OTA</button>
                             </div>
-                            ` : ''}
-                            ${showReboot ? `
-                            <div style="width: 100%; display: flex; gap: 8px;">
-                                <button class="btn-cmd" style="background: var(--primary); padding: 8px 4px;" title="Mostra Versioni Software" onclick="openVersionsModal('${c.id}')">ℹ️ INFO</button>
-                                <button id="btn-svc-${c.id}" class="btn-cmd" style="background: #334155; padding: 8px 4px;" title="${t('ttSvc')}" onclick="openServicesModal('${c.id}')">${t('btnSvc')}</button>
-                                <button class="btn-cmd" style="background: #8e44ad; padding: 8px 4px;" title="${t('ttFile')}" onclick="openConfigsModal('${c.id}')">${t('btnFile')}</button>
-                                <button class="btn-cmd" style="background: #ea580c; padding: 8px 4px;" title="${t('ttHat')}" onclick="confirmHatReset('${c.id}')">${t('btnHat')}</button>
-                                <button class="btn-cmd" style="background: var(--danger); padding: 8px 4px;" title="${t('ttBoot')}" onclick="confirmReboot('${c.id}')">${t('btnBoot')}</button>
-                            </div>
-                            <div style="width: 100%; display: flex; gap: 8px;">
-                                <button id="btn-ota-${c.id}" class="btn-cmd" style="background: #2563eb; padding: 8px 4px;" title="Scarica l'ultima versione da Gitea" onclick="confirmUpdateAgent('${c.id}')">⬇️ UPDATE OTA</button>
-                            </div>
-                     ` : ''}
+                        </details>
+                        ` : ''}
                     </div>`;
             }).join('');
+
+            // Generazione delle Mini-Card per la HOME
+            const miniGrid = document.getElementById('home-mini-nodes');
+            if (miniGrid) {
+                miniGrid.innerHTML = clients.map(c => `
+                    <div id="mini-card-${c.id}" class="mini-card" onclick="switchView('nodes'); setTimeout(()=>document.getElementById('card-${c.id}').scrollIntoView({behavior:'smooth', block: 'center'}), 200);">
+                        <div class="mini-card-content">
+                            <div id="mini-name-${c.id}" class="mini-card-name" title="${esc(c.name)}">${esc(c.name)}</div>
+                            <div id="mini-id-${c.id}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">ID: ${c.id.toUpperCase()}</div>
+                        </div>
+                        <div id="mini-status-${c.id}" class="mini-card-status" style="color: var(--danger); background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2);" title="OFFLINE">OFFLINE</div>
+                    </div>
+                `).join('');
+            }
 
             refreshStates(); refreshLogs(); refreshStats();
         } catch (e) { console.error(e); }
     }
 
-    // --- LOGIN ---
     function openLoginModal() { document.getElementById('login-modal').style.display = 'flex'; setTimeout(() => document.getElementById('modal-username').focus(), 100); }
     function closeLoginModal() { document.getElementById('login-modal').style.display = 'none'; document.getElementById('modal-username').value = ''; document.getElementById('modal-password').value = ''; }
     function handleLoginEnter(e) { if (e.key === 'Enter') performLogin(); }
@@ -824,8 +835,6 @@
     async function refreshStates() {
         try {
             const res = await fetch('/api/states'); const data = await res.json();
-            
-            // AGGIORNAMENTO DATI VERSIONI GLOBALI
             globalVersionsData = data.versions || {};
 
             clients.forEach(c => {
@@ -845,27 +854,17 @@
                 if (genObj && isOnline) {
                     nameSpan.innerText = genObj.callsign;
                     idBadge.innerText = `ID: ${genObj.radio_id}`;
-                    idBadge.style.background = "var(--primary)"; 
-                    idBadge.style.color = "#ffffff"; 
-                    idBadge.style.borderColor = "var(--primary)"; 
+                    idBadge.style.background = "var(--primary)"; idBadge.style.color = "#ffffff"; idBadge.style.borderColor = "var(--primary)"; 
                     
                     if (typeBadge && genObj.duplex !== undefined) {
                         typeBadge.style.display = 'inline-block';
-                        if (genObj.duplex === "1") {
-                            typeBadge.innerText = "REPEATER";
-                            typeBadge.className = "type-badge type-repeater";
-                        } else {
-                            typeBadge.innerText = "HOTSPOT";
-                            typeBadge.className = "type-badge type-hotspot";
-                        }
+                        if (genObj.duplex === "1") { typeBadge.innerText = "REPEATER"; typeBadge.className = "type-badge type-repeater"; } 
+                        else { typeBadge.innerText = "HOTSPOT"; typeBadge.className = "type-badge type-hotspot"; }
                     }
                 } else {
                     nameSpan.innerText = c.name;
                     idBadge.innerText = `ID: ${c.id.toUpperCase()}`;
-                    idBadge.style.background = "rgba(255,255,255,0.1)";
-                    idBadge.style.color = "var(--text-muted)"; 
-                    idBadge.style.borderColor = "var(--border-color)";
-                    
+                    idBadge.style.background = "rgba(255,255,255,0.1)"; idBadge.style.color = "var(--text-muted)"; idBadge.style.borderColor = "var(--border-color)";
                     if (typeBadge) typeBadge.style.display = 'none';
                 }
 
@@ -881,34 +880,24 @@
                     if (altDiv) {
                         altDiv.style.display = "block"; altDiv.innerText = telemetryObj.alt; let altText = telemetryObj.alt.toUpperCase();
                         
-                        if (altText.includes("NXDN")) activeModeColor = "#10b981"; 
-                        else if (altText.includes("YSF")) activeModeColor = "#8b5cf6"; 
-                        else if (altText.includes("D-STAR")) activeModeColor = "#06b6d4"; 
-                        else if (altText.includes("P25")) activeModeColor = "#f59e0b";
-                        
+                        if (altText.includes("NXDN")) activeModeColor = "#10b981"; else if (altText.includes("YSF")) activeModeColor = "#8b5cf6"; else if (altText.includes("D-STAR")) activeModeColor = "#06b6d4"; else if (altText.includes("P25")) activeModeColor = "#f59e0b";
                         isTx = altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠");
-                        
                         altDiv.style.setProperty('--pulse-color', activeModeColor);
                         if (isTx) { altDiv.classList.add('tx-active-unified'); } else { altDiv.classList.remove('tx-active-unified'); altDiv.style.setProperty('color', 'var(--text-muted)', 'important'); altDiv.style.setProperty('border-left', `4px solid var(--border-color)`, 'important'); }
                     }
                 } else {
                     if (altDiv) altDiv.style.display = "none";
                     if (tsContainer) tsContainer.style.display = "flex";
-                    
                     activeModeColor = "var(--primary)";
-                    
-                if (ts1Div && ts2Div) {
+                    if (ts1Div && ts2Div) {
                         let isSimplex = (genObj && genObj.duplex === "0");
                         ts1Div.style.display = isSimplex ? 'none' : 'block';
-
                         [ts1Div, ts2Div].forEach((div, idx) => {
                             if (isSimplex && idx === 0) return;
-
                             const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? '');
                             const fullLabel = `TS${idx + 1}`;
                             div.innerText = `${fullLabel}: ${val}`;
                             div.style.setProperty('--pulse-color', activeModeColor);
-                            
                             if (val.includes("🎙️")) { isTx = true; div.classList.add('tx-active-unified'); } 
                             else { div.classList.remove('tx-active-unified'); div.style.setProperty('color', 'var(--text-muted)', 'important'); div.style.setProperty('border-left', '4px solid var(--border-color)', 'important'); }
                         });
@@ -917,27 +906,21 @@
 
                 let healthObj = data.health && data.health[c.id.toLowerCase()];
                 let infoObj = data.info && data.info[c.id.toLowerCase()];
-                const freqContainer = document.getElementById(`freq-container-${c.id}`); 
-                const freqTx = document.getElementById(`freq-tx-${c.id}`); 
-                const freqRx = document.getElementById(`freq-rx-${c.id}`);
-                const metaContainer = document.getElementById(`meta-container-${c.id}`);
+                const freqContainer = document.getElementById(`freq-container-${c.id}`); const freqTx = document.getElementById(`freq-tx-${c.id}`); const freqRx = document.getElementById(`freq-rx-${c.id}`);
+                const metaContainer = document.getElementById(`meta-container-${c.id}`); 
                 const locSpan = document.getElementById(`loc-${c.id}`);
                 const latSpan = document.getElementById(`lat-${c.id}`);
                 const lonSpan = document.getElementById(`lon-${c.id}`);
 
                 if (infoObj && isOnline) {
-                    if (freqContainer) {
-                        freqContainer.style.display = 'flex';
-                        freqTx.innerText = infoObj.tx;
-                        freqRx.innerText = infoObj.rx;
+                    if (freqContainer) { freqContainer.style.display = 'flex'; freqTx.innerText = infoObj.tx; freqRx.innerText = infoObj.rx; }
+                    if (metaContainer) { 
+                        metaContainer.style.display = 'block'; 
+                        locSpan.innerText = infoObj.loc; 
+                        if(latSpan) latSpan.innerText = infoObj.lat;
+                        if(lonSpan) lonSpan.innerText = infoObj.lon;
                     }
-                    if (metaContainer) {
-                        metaContainer.style.display = 'block';
-                        locSpan.innerText = infoObj.loc;
-                        latSpan.innerText = infoObj.lat;
-                        lonSpan.innerText = infoObj.lon;
-                    }
-                } else { 
+                } else {
                     if (freqContainer) freqContainer.style.display = 'none'; 
                     if (metaContainer) metaContainer.style.display = 'none'; 
                 }
@@ -945,42 +928,31 @@
                 const healthContainer = document.getElementById(`health-${c.id}`); const cpuSpan = document.getElementById(`cpu-${c.id}`); const tempSpan = document.getElementById(`temp-${c.id}`); const ramSpan = document.getElementById(`ram-${c.id}`); const diskSpan = document.getElementById(`disk-${c.id}`);
 
                 if (healthObj && isOnline) {
-                    healthContainer.style.display = 'flex';
+                    healthContainer.style.display = 'grid';
                     let cpu = healthObj.cpu; cpuSpan.innerText = cpu; cpuSpan.style.color = cpu < 50 ? 'var(--success)' : (cpu < 80 ? '#f59e0b' : 'var(--danger)');
                     let tempVal = healthObj.temp; tempSpan.innerText = tempVal; tempSpan.style.color = tempVal < 55 ? 'var(--success)' : (tempVal < 70 ? '#f59e0b' : 'var(--danger)');
                     ramSpan.innerText = healthObj.ram; let d = healthObj.disk; diskSpan.innerText = d; diskSpan.style.color = d < 85 ? 'inherit' : (d < 95 ? '#f59e0b' : 'var(--danger)');
                     
                     let upSpan = document.getElementById(`up-${c.id}`);
-                    if (upSpan && healthObj.uptime) {
-                        upSpan.innerText = fmtAge(healthObj.uptime);
-                    }
+                    if (upSpan && healthObj.uptime) { upSpan.innerText = fmtAge(healthObj.uptime); }
                     let agentBadge = document.getElementById(`agent-badge-${c.id}`);
-                    if (agentBadge && healthObj.agent_version) {
-                        agentBadge.innerText = `Agent v${healthObj.agent_version}`;
-                        agentBadge.style.display = 'inline-block';
-                    }
-                const profBtnsDiv = document.getElementById(`prof-btns-${c.id}`);
-                    const profKeys = JSON.stringify(healthObj.profiles || {});
+                    if (agentBadge && healthObj.agent_version) { agentBadge.innerText = `Agent v${healthObj.agent_version}`; agentBadge.style.display = 'inline-block'; }
                     
+                    const profBtnsDiv = document.getElementById(`prof-btns-${c.id}`);
+                    const profKeys = JSON.stringify(healthObj.profiles || {});
                     if (profBtnsDiv && profBtnsDiv.dataset.keys !== profKeys) {
                         profBtnsDiv.dataset.keys = profKeys;
                         if (healthObj.profiles && Object.keys(healthObj.profiles).length > 0) {
                             profBtnsDiv.style.display = 'flex';
-                            let html = '';
-                            const colors = ["var(--accent)", "#eab308", "var(--success)", "var(--primary)"];
-                            let idx = 0;
+                            let html = ''; const colors = ["var(--accent)", "#eab308", "var(--success)", "var(--primary)"]; let idx = 0;
                             for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
                                 let col = colors[idx % colors.length];
-                                html += `<button class="btn-cmd" style="background: ${col}; flex: 1;" title="${esc(t('ttSwitchTo') + pLabel)}" onclick="confirmSwitch('${c.id}', ${q(pKey)})">${esc(pLabel)}</button>`;
+                                html += `<button class="btn-cmd" style="background: ${col}; flex: 1; border: none; color: white !important;" title="${esc(t('ttSwitchTo') + pLabel)}" onclick="confirmSwitch('${c.id}', ${q(pKey)})">${esc(pLabel)}</button>`;
                                 idx++;
                             }
                             profBtnsDiv.innerHTML = html;
-                        } else {
-                            profBtnsDiv.style.display = 'none';
-                            profBtnsDiv.innerHTML = '';
-                        }
+                        } else { profBtnsDiv.style.display = 'none'; profBtnsDiv.innerHTML = ''; }
                     }
-
                 } else { 
                     if (healthContainer) healthContainer.style.display = 'none'; 
                     let agentBadge = document.getElementById(`agent-badge-${c.id}`);
@@ -1002,40 +974,87 @@
                 }
 
                 let btnOta = document.getElementById(`btn-ota-${c.id}`);
+                let adminSummary = document.getElementById(`admin-summary-${c.id}`);
+                
                 if (btnOta) {
-                    if (healthObj && healthObj.agent_update_available) {
-                        btnOta.style.setProperty('background', 'var(--danger)', 'important');
-                        btnOta.style.setProperty('color', 'white', 'important');
-                        btnOta.style.setProperty('border', '1px solid var(--danger)', 'important');
-                        btnOta.style.animation = 'pulse-red 1.5s infinite';
-                    } else {
-                        btnOta.style.setProperty('background', 'transparent', 'important');
-                        btnOta.style.setProperty('color', '#38bdf8', 'important');
-                        btnOta.style.setProperty('border', '1px solid #38bdf8', 'important');
-                        btnOta.style.animation = 'none';
+                    if (healthObj && healthObj.agent_update_available) { 
+                        btnOta.style.setProperty('background', 'var(--danger)', 'important'); 
+                        btnOta.style.setProperty('color', 'white', 'important'); 
+                        btnOta.style.setProperty('border', '1px solid var(--danger)', 'important'); 
+                        btnOta.style.animation = 'danger-glow 1.5s infinite'; 
+                        
+                        if (adminSummary) {
+                            adminSummary.innerHTML = "⚠️ ADMIN (UPDATE OTA!)";
+                            adminSummary.style.setProperty('color', 'var(--danger)', 'important');
+                            adminSummary.style.setProperty('border-color', 'var(--danger)', 'important');
+                            adminSummary.style.animation = 'danger-glow 1.5s infinite';
+                        }
+                    } else { 
+                        btnOta.style.setProperty('background', '#2563eb', 'important'); 
+                        btnOta.style.setProperty('color', 'white', 'important'); 
+                        btnOta.style.setProperty('border', '1px solid transparent', 'important'); 
+                        btnOta.style.animation = 'none'; 
+                        
+                        if (adminSummary) {
+                            adminSummary.innerHTML = "⚙️ Admin Tools";
+                            adminSummary.style.setProperty('color', 'var(--text-muted)', 'important');
+                            adminSummary.style.setProperty('border-color', 'var(--border-color)', 'important');
+                            adminSummary.style.animation = 'none';
+                        }
                     }
                 }
 
                 if (isOnline) {
                     cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline'); cardDiv.style.opacity = "1"; cardDiv.style.filter = "none";
-                    
                     if (isTx) cardDiv.dataset.lastTx = Date.now(); 
                     let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
-                    
                     let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
-
                     cardDiv.style.setProperty('border-top-color', showActiveColor ? activeModeColor : "var(--border-color)", 'important');
                     if(isTx) {
                         let shadowRGB = '59, 130, 246'; 
-                        if (activeModeColor === '#10b981') shadowRGB = '16, 185, 129'; 
-                        else if (activeModeColor === '#8b5cf6') shadowRGB = '139, 92, 246'; 
-                        else if (activeModeColor === '#06b6d4') shadowRGB = '6, 182, 212'; 
-                        else if (activeModeColor === '#f59e0b') shadowRGB = '245, 158, 11'; 
-                        cardDiv.style.boxShadow = `0 0 20px rgba(${shadowRGB}, 0.5)`;
-                    } else { cardDiv.style.boxShadow = 'none'; }
+                        if (activeModeColor === '#10b981') shadowRGB = '16, 185, 129'; else if (activeModeColor === '#8b5cf6') shadowRGB = '139, 92, 246'; else if (activeModeColor === '#06b6d4') shadowRGB = '6, 182, 212'; else if (activeModeColor === '#f59e0b') shadowRGB = '245, 158, 11'; 
+                        cardDiv.style.boxShadow = `0 0 20px rgba(${shadowRGB}, 0.5) !important`;
+                    } else { cardDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2) !important'; }
                 } else {
                     cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline'); cardDiv.style.opacity = "0.7"; cardDiv.style.filter = "grayscale(80%)";
-                    cardDiv.style.setProperty('border-top-color', '#64748b', 'important'); cardDiv.style.boxShadow = 'none';
+                    cardDiv.style.setProperty('border-top-color', '#64748b', 'important'); cardDiv.style.boxShadow = 'none !important';
+                }
+
+                // Aggiornamento status delle Mini Card (HOME)
+                const miniCard = document.getElementById(`mini-card-${c.id}`);
+                const miniStatus = document.getElementById(`mini-status-${c.id}`);
+                const miniName = document.getElementById(`mini-name-${c.id}`);
+                const miniId = document.getElementById(`mini-id-${c.id}`);
+                
+                if (miniCard && miniStatus) {
+                    if (genObj && isOnline) { 
+                        if (miniName) miniName.innerText = genObj.callsign; 
+                        if (miniId) miniId.innerText = `ID: ${genObj.radio_id}`; 
+                    } 
+                    else { 
+                        if (miniName) miniName.innerText = c.name; 
+                        if (miniId) miniId.innerText = `ID: ${c.id.toUpperCase()}`; 
+                    }
+                    
+                    if (isOnline) {
+                        miniCard.style.borderColor = "var(--success)";
+                        miniCard.style.opacity = "1";
+                        miniCard.style.filter = "none";
+                        miniStatus.innerText = stateValue;
+                        miniStatus.title = stateValue; 
+                        miniStatus.style.color = "var(--success)";
+                        miniStatus.style.background = "rgba(16, 185, 129, 0.1)";
+                        miniStatus.style.borderColor = "rgba(16, 185, 129, 0.2)";
+                    } else {
+                        miniCard.style.borderColor = "var(--border-color)";
+                        miniCard.style.opacity = "0.6";
+                        miniCard.style.filter = "grayscale(80%)";
+                        miniStatus.innerText = "OFFLINE";
+                        miniStatus.title = "OFFLINE"; 
+                        miniStatus.style.color = "var(--danger)";
+                        miniStatus.style.background = "rgba(239, 68, 68, 0.1)";
+                        miniStatus.style.borderColor = "rgba(239, 68, 68, 0.2)";
+                    }
                 }
             });
             document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
@@ -1049,42 +1068,19 @@
             logs.forEach(row => {
                 const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
                 const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
-                const rawSlot = row[5]; const source_ext = row[8];
-                const rawRssi = row[9];
-                const sourceConn = row[10];
-                const ysfMode = row[11];
+                const rawSlot = row[5]; const source_ext = row[8]; const rawRssi = row[9]; const sourceConn = row[10]; const ysfMode = row[11];
                 
                 let sourceHtml = esc(source);
-                if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:#94a3b8; font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
+                if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:var(--text-muted); font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
 
-                let slotDisplay = "---";
-                if (rawSlot && String(rawSlot).trim() !== "" && rawSlot !== "undefined") {
-                    if (protocol === "DMR" && !String(rawSlot).toUpperCase().startsWith("TS")) {
-                        slotDisplay = `TS${rawSlot}`;
-                    } else {
-                        slotDisplay = rawSlot;
-                    }
-                }
+                let slotDisplay = rawSlot && String(rawSlot).trim() !== "" && rawSlot !== "undefined" ? (protocol === "DMR" && !String(rawSlot).toUpperCase().startsWith("TS") ? `TS${rawSlot}` : rawSlot) : "---";
                 let protoColor = "#3b82f6"; if (protocol === "NXDN") protoColor = "#10b981"; else if (protocol === "YSF") protoColor = "#8b5cf6"; else if (protocol === "D-STAR") protoColor = "#06b6d4"; else if (protocol === "P25") protoColor = "#f59e0b";
                 
-                // Formatta il Source (RF o NET)
-                let sourceBadge = "---";
-                if (sourceConn) {
-                    if (sourceConn.toLowerCase() === 'rf') sourceBadge = '<span style="color:#f87171; font-weight:800;">RF</span>';
-                    else if (sourceConn.toLowerCase() === 'network') sourceBadge = '<span style="color:#38bdf8; font-weight:800;">NET</span>';
-                    else sourceBadge = `<span style="font-weight:800; color:var(--text-muted);">${esc(sourceConn).toUpperCase()}</span>`;
-                }
+                let sourceBadge = sourceConn ? (sourceConn.toLowerCase() === 'rf' ? '<span style="color:#f87171; font-weight:800;">RF</span>' : (sourceConn.toLowerCase() === 'network' ? '<span style="color:#38bdf8; font-weight:800;">NET</span>' : `<span style="font-weight:800; color:var(--text-muted);">${esc(sourceConn).toUpperCase()}</span>`)) : "---";
+                let modeDisplay = ysfMode && ysfMode.trim() !== "" ? `<span style="font-size:0.7rem; color:var(--accent); border: 1px solid var(--accent); padding: 2px 4px; border-radius: 4px;">${esc(ysfMode).toUpperCase()}</span>` : "---";
                 
-                // Formatta l'YSF Mode
-                let modeDisplay = "---";
-                if (ysfMode && ysfMode.trim() !== "") {
-                    modeDisplay = `<span style="font-size:0.7rem; color:#a78bfa; border: 1px solid #a78bfa; padding: 2px 4px; border-radius: 4px;">${esc(ysfMode).toUpperCase()}</span>`;
-                }
-                
-                // Formatta l'RSSI con S-Meter grafico a segmenti
                 let rssiDisplay = '---';
                 if (rawRssi && rawRssi !== 0) {
-                    // Calcolo livello S-Meter (Standard VHF/UHF: S9 = -93 dBm, 6dB per punto S)
                     let sLabel = "S0";
                     if (rawRssi >= -93) {
                         let over = Math.round((rawRssi + 93) / 10) * 10;
@@ -1093,49 +1089,36 @@
                         let sUnits = Math.floor((rawRssi + 141) / 6) + 1;
                         sLabel = `S${Math.max(1, Math.min(9, sUnits))}`;
                     }
-
-                    // Calcolo segmenti accesi (9 segmenti totali)
                     let activeSegs = 1;
-                    if (rawRssi >= -53) activeSegs = 9;
-                    else if (rawRssi >= -63) activeSegs = 8;
-                    else if (rawRssi >= -73) activeSegs = 7;
-                    else if (rawRssi >= -83) activeSegs = 6;
-                    else if (rawRssi >= -93) activeSegs = 5; // S9
-                    else if (rawRssi >= -105) activeSegs = 4;
-                    else if (rawRssi >= -117) activeSegs = 3;
-                    else if (rawRssi >= -129) activeSegs = 2;
-
-                    // Generazione barre HTML
-                    let barsHtml = '';
-                    const heights = [4, 5, 6, 7, 8, 10, 12, 14, 14];
+                    if (rawRssi >= -53) activeSegs = 9; else if (rawRssi >= -63) activeSegs = 8; else if (rawRssi >= -73) activeSegs = 7; else if (rawRssi >= -83) activeSegs = 6; else if (rawRssi >= -93) activeSegs = 5; else if (rawRssi >= -105) activeSegs = 4; else if (rawRssi >= -117) activeSegs = 3; else if (rawRssi >= -129) activeSegs = 2;
+                    let barsHtml = ''; const heights = [4, 5, 6, 7, 8, 10, 12, 14, 14];
                     for (let i = 0; i < 9; i++) {
-                        let color = "rgba(255,255,255,0.1)"; // Spento
-                        if (i < activeSegs) {
-                            if (i < 5) color = "var(--success)"; // Verde
-                            else if (i < 7) color = "#f59e0b";   // Giallo
-                            else color = "var(--danger)";        // Rosso
-                        }
+                        let color = "rgba(255,255,255,0.1)"; 
+                        if (i < activeSegs) { if (i < 5) color = "var(--success)"; else if (i < 7) color = "#f59e0b"; else color = "var(--danger)"; }
                         barsHtml += `<div style="width: 4px; height: ${heights[i]}px; background: ${color}; border-radius: 1px;"></div>`;
                     }
-
-                    rssiDisplay = `
-                    <div style="display: flex; align-items: center; gap: 10px;" title="${esc(rawRssi)} dBm">
-                        <div style="min-width: 40px; text-align: right; font-weight: bold; font-family: 'Inter', sans-serif;">${sLabel}</div>
-                        <div style="display: flex; align-items: flex-end; gap: 2px; height: 14px;">
-                            ${barsHtml}
-                        </div>
-                        <span style="font-size: 0.85em; color: var(--text-muted); min-width: 7ch; text-align: right;">${esc(rawRssi)} dBm</span>
-                    </div>`;
+                    rssiDisplay = `<div style="display: flex; align-items: center; gap: 10px;" title="${esc(rawRssi)} dBm"><div style="min-width: 40px; text-align: right; font-weight: bold; font-family: 'Inter', sans-serif;">${sLabel}</div><div style="display: flex; align-items: flex-end; gap: 2px; height: 14px;">${barsHtml}</div><span style="font-size: 0.85em; color: var(--text-muted); min-width: 7ch; text-align: right;">${esc(rawRssi)} dBm</span></div>`;
                 }
-                
+
                 if (source.includes("🌐")) {
                     if (!networkLogs[clientId]) networkLogs[clientId] = "";
-                    networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;"><span style="color:#64748b;">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:#cbd5e1;">${esc(source.replace("🌐", "").trim())}</span></div>`;
+                    networkLogs[clientId] += `<div style="border-bottom:1px solid rgba(255,255,255,0.05); padding:4px 0;"><span style="color:var(--text-muted);">[${esc(time)}]</span> <span style="color:${protoColor}; font-weight:bold;">[${esc(protocol)}]</span> <span style="color:var(--text-main);">${esc(source.replace("🌐", "").trim())}</span></div>`;
                 } else {
-                    // FILTRO TENDINA: Controlla il nodo selezionato prima di aggiungere la riga
                     const selectedFilter = document.getElementById('stat-node-filter').value;
                     if (selectedFilter === 'all' || String(clientId).toLowerCase() === selectedFilter) {
-                        tableHTML += `<tr><td>${esc(time)}</td><td><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td><td><span style="background:${protoColor}; color:white; padding:3px 8px; border-radius:8px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td><td style="text-align:center;">${modeDisplay}</td><td style="text-align:center; font-family:'JetBrains Mono', monospace;">${sourceBadge}</td><td style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td><td style="color:var(--accent); font-weight:800;">${sourceHtml}</td><td style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td><td>${esc(row[6])}s</td><td>${esc(row[7])}%</td><td style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td></tr>`;
+                        tableHTML += `<tr>
+                            <td data-label="${t('thTime')}">${esc(time)}</td>
+                            <td data-label="${t('thRep')}"><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td>
+                            <td data-label="${t('thMode')}"><span style="background:${protoColor}; color:white; padding:4px 8px; border-radius:6px; font-size:0.7rem; font-weight:800;">${esc(protocol)}</span></td>
+                            <td data-label="YSF Mode" style="text-align:center;">${modeDisplay}</td>
+                            <td data-label="Source" style="text-align:center; font-family:'JetBrains Mono', monospace;">${sourceBadge}</td>
+                            <td data-label="REF/SLOT" style="font-family:'JetBrains Mono', monospace; font-weight:bold; text-align:center;">${esc(slotDisplay)}</td>
+                            <td data-label="${t('thCall')}" style="color:var(--accent); font-weight:800;">${sourceHtml}</td>
+                            <td data-label="Target / TG" style="font-family:'JetBrains Mono', monospace;">${esc(target.trim())}</td>
+                            <td data-label="${t('thDur')}">${esc(row[6])}s</td>
+                            <td data-label="BER">${esc(row[7])}%</td>
+                            <td data-label="RSSI" style="font-family:'JetBrains Mono', monospace;">${rssiDisplay}</td>
+                        </tr>`;
                     }
                 }
             });
@@ -1148,13 +1131,12 @@
         try {
             const node = document.getElementById('stat-node-filter').value || 'all';
             const res = await fetch(`/api/stats?node=${node}`); const data = await res.json();
-            document.getElementById('stat-tgs').innerHTML = data.top_tgs.map((t, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(t.target)}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${t.count} tx</span></div>`).join('') || t('statNoData');
-            document.getElementById('stat-calls').innerHTML = data.top_calls.map((c, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(c.call)}</b> <span style="float:right; background:rgba(128,128,128,0.1); padding:2px 6px; border-radius:4px;">${c.count} tx</span></div>`).join('') || t('statNoData');
+            document.getElementById('stat-tgs').innerHTML = data.top_tgs.map((t, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(t.target)}</b> <span style="float:right; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${t.count} tx</span></div>`).join('') || t('statNoData');
+            document.getElementById('stat-calls').innerHTML = data.top_calls.map((c, i) => `<div><b style="color:var(--text-main);">${i+1}. ${esc(c.call)}</b> <span style="float:right; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${c.count} tx</span></div>`).join('') || t('statNoData');
             document.getElementById('stat-avg').innerText = data.avg_duration; document.getElementById('stat-today').innerText = data.today_tx;
         } catch (e) { console.error("Errore statistiche:", e); }
     }
 
-    // --- USER MANAGEMENT ---
     async function openAdmin() { document.getElementById('admin-modal').style.display = 'flex'; loadUsers(); loadSettings(); cancelEdit(); }
     function closeAdmin() { document.getElementById('admin-modal').style.display = 'none'; cancelEdit(); }
     
@@ -1162,18 +1144,17 @@
         const res = await fetch('/api/users'); if (!res.ok) return; const users = await res.json(); usersCache = {}; users.forEach(u => { usersCache[u.id] = u; });
         document.getElementById('users-table-body').innerHTML = users.map(u => `
             <tr>
-                <td>${u.id}</td><td style="font-weight:bold;">${esc(u.username)}</td><td><span style="background:rgba(128,128,128,0.2); padding:2px 8px; border-radius:6px; font-size:0.8rem;">${esc(String(u.role).toUpperCase())}</span></td><td>${esc(u.allowed_nodes)}</td>
+                <td>${u.id}</td><td style="font-weight:bold;">${esc(u.username)}</td><td><span style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:6px; font-size:0.8rem;">${esc(String(u.role).toUpperCase())}</span></td><td>${esc(u.allowed_nodes)}</td>
                 <td style="text-align:center;">
-                    <button onclick="startEditUser(${Number(u.id)})" class="btn-cmd" style="background:var(--accent); padding:6px; width:auto; display:inline-block; margin-right:5px;">✏️</button>
-                    <button onclick="deleteUser(${u.id})" class="btn-cmd" style="background:var(--danger); padding:6px; width:auto; display:inline-block;">🗑️</button>
+                    <button onclick="startEditUser(${Number(u.id)})" class="btn-cmd" style="background:var(--accent); padding:6px; width:auto; display:inline-block; margin-right:5px; border:none; color:white !important;">✏️</button>
+                    <button onclick="deleteUser(${u.id})" class="btn-cmd" style="background:var(--danger); padding:6px; width:auto; display:inline-block; border:none; color:white !important;">🗑️</button>
                 </td>
             </tr>`).join('');
     }
 
     function startEditUser(id) {
         const u = usersCache[id]; if (!u) return;
-        const username = u.username, role = u.role, nodes = u.allowed_nodes;
-        editingUserId = id; document.getElementById('new-user').value = username; document.getElementById('new-user').disabled = true; document.getElementById('new-pass').value = ""; document.getElementById('new-pass').placeholder = t('phNewPass'); document.getElementById('new-role').value = role; document.getElementById('new-nodes').value = nodes;
+        editingUserId = id; document.getElementById('new-user').value = u.username; document.getElementById('new-user').disabled = true; document.getElementById('new-pass').value = ""; document.getElementById('new-pass').placeholder = t('phNewPass'); document.getElementById('new-role').value = u.role; document.getElementById('new-nodes').value = u.allowed_nodes;
         const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = t('titleSave'); btnSubmit.style.background = "var(--accent)"; document.getElementById('btn-user-cancel').style.display = "block";
     }
 
@@ -1186,7 +1167,6 @@
         const username = document.getElementById('new-user').value; const password = document.getElementById('new-pass').value; const role = document.getElementById('new-role').value; let allowed = document.getElementById('new-nodes').value;
         if (!username) return customAlert(t('titleError'), t('msgMissUser'), true);
         const payload = { username, role, allowed_nodes: allowed || 'all' }; if (password) payload.password = password;
-
         if (editingUserId) {
             const res = await fetch(`/api/users/${editingUserId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const data = await res.json(); 
             if (data.success) { cancelEdit(); loadUsers(); } else customAlert(t('titleError'), esc(data.error), true);
@@ -1199,35 +1179,21 @@
 
     function deleteUser(id) { customConfirm(t('titleDelete'), t('msgDelUser'), "var(--danger)", async () => { const r = await fetch(`/api/users/${id}`, {method: 'DELETE'}); const dd = await r.json().catch(() => ({})); if (!dd.success) customAlert(t('titleError'), esc(dd.error || 'Error'), true); loadUsers(); cancelEdit(); }); }
     
-    // --- SETTINGS ---
     function triggerGlobalEmergency() {
         let uniqueProfiles = {};
         for (const id in globalHealthData) { 
             if (globalHealthData[id] && globalHealthData[id].profiles) { 
-                for (const [k, v] of Object.entries(globalHealthData[id].profiles)) {
-                    uniqueProfiles[k] = v;
-                }
+                for (const [k, v] of Object.entries(globalHealthData[id].profiles)) { uniqueProfiles[k] = v; }
             } 
         }
-        
-        const container = document.getElementById('global-btn-container');
-        let html = '';
-        const colors = ["var(--accent)", "#eab308", "var(--success)", "var(--primary)"];
-        let idx = 0;
-        
+        const container = document.getElementById('global-btn-container'); let html = ''; const colors = ["var(--accent)", "#eab308", "var(--success)", "var(--primary)"]; let idx = 0;
         for (const [k, v] of Object.entries(uniqueProfiles)) {
             let col = colors[idx % colors.length];
-            html += `<button onclick="sendGlobalAction(${q(k)})" class="btn-cmd" style="background:${col}; padding:15px; font-size:1.1rem; font-weight:bold;">${esc(v)}</button>`;
+            html += `<button onclick="sendGlobalAction(${q(k)})" class="btn-cmd" style="background:${col}; padding:15px; font-size:1.1rem; font-weight:bold; border:none; color:white !important;">${esc(v)}</button>`;
             idx++;
         }
-        
-        if (Object.keys(uniqueProfiles).length === 0) {
-            html = `<p style="color:var(--danger); font-weight:bold;">No profiles configured on the network.</p>`;
-        }
-        
-        container.innerHTML = html;
-        document.getElementById('override-desc').innerText = t('msgOvrSel'); 
-        document.getElementById('override-modal').style.display = 'flex';
+        if (Object.keys(uniqueProfiles).length === 0) { html = `<p style="color:var(--danger); font-weight:bold;">No profiles configured on the network.</p>`; }
+        container.innerHTML = html; document.getElementById('override-desc').innerText = t('msgOvrSel'); document.getElementById('override-modal').style.display = 'flex';
     }
 
     function sendGlobalAction(action) {
@@ -1256,20 +1222,15 @@
         } catch (e) { console.error(e); } 
     }
 
-    // --- SERVICES & CONFIGS ---
     function fileLabel(stem, names) {
-        const key = String(stem).toLowerCase();
-        const full = (names || []).find(n => String(n).replace(/\.[^.]*$/, '').toLowerCase() === key);
-        if (full) {
-            const m = String(full).match(/^(.*?)(\.[^.]*)?$/);
-            return String(m[1]).toUpperCase() + (m[2] || '');
-        }
+        const key = String(stem).toLowerCase(); const full = (names || []).find(n => String(n).replace(/\.[^.]*$/, '').toLowerCase() === key);
+        if (full) { const m = String(full).match(/^(.*?)(\.[^.]*)?$/); return String(m[1]).toUpperCase() + (m[2] || ''); }
         return String(stem).toUpperCase() + '.ini';
     }
     function openConfigsModal(clientId) {
         const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('configs-list'); let listaFile = data ? (data.config_files || data.files || []) : []; const fileNames = (data && data.file_names) || [];
         if (listaFile.length === 0) listDiv.innerHTML = `<div style="text-align:center; padding:20px;"><p style="color:var(--text-muted); margin-bottom:15px;">${t('waitData')}</p><button onclick="sendGlobalUpdate(); closeConfigsModal();" class="btn-cmd" style="background:var(--accent);">${t('forceUpdate')}</button></div>`;
-        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(128,128,128,0.1); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(fileLabel(f, fileNames))}</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px;">${t('btnEdit')}</button></div>`).join('');
+        else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(fileLabel(f, fileNames))}</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px; border:none; color:white !important;">${t('btnEdit')}</button></div>`).join('');
         document.getElementById('configs-modal').style.display = 'flex';
     }
     function closeConfigsModal() { document.getElementById('configs-modal').style.display = 'none'; }
@@ -1282,13 +1243,13 @@
         let html = "";
         for (const [name, status] of Object.entries(data.processes)) {
             const isOnline = status.toLowerCase() === 'online'; const statusColor = isOnline ? 'var(--success)' : 'var(--danger)'; 
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border-color); background:rgba(128,128,128,0.05); border-radius:12px; margin-bottom:8px; border-left: 5px solid ${statusColor};">
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border-color); background:rgba(255,255,255,0.02); border-radius:12px; margin-bottom:8px; border-left: 5px solid ${statusColor};">
                         <div><strong style="font-size:1.1rem; display:block; font-family:'JetBrains Mono',monospace;">${esc(name)}</strong><span class="${isOnline?'':'blink'}" style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${esc(String(status).toUpperCase())}</span></div>
                         <div style="display:flex; gap:8px;">
-                            ${!isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'start')" class="btn-cmd" style="background:var(--success);">▶</button>` : ''}
-                            <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="background:#f59e0b;">🔄</button>
-                            <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="background:#8e44ad;">📝</button>
-                            ${isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger);">🛑</button>` : ''}
+                            ${!isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'start')" class="btn-cmd" style="background:var(--success); border:none; color:white !important;">▶</button>` : ''}
+                            <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="background:#f59e0b; border:none; color:white !important;">🔄</button>
+                            <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="background:#8e44ad; border:none; color:white !important;">📝</button>
+                            ${isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger); border:none; color:white !important;">🛑</button>` : ''}
                         </div>
                     </div>`;
         }
@@ -1305,10 +1266,8 @@
 
     let currentEditClient = ""; let currentEditService = "";
     async function openEditorModal(clientId, service) {
-        currentEditClient = clientId; currentEditService = service;
-        document.getElementById('editor-title').innerText = `${service.toUpperCase()} @ ${clientId.toUpperCase()}`;
-        document.getElementById('config-textarea').value = "Connecting to server..."; document.getElementById('editor-status').innerText = "";
-        document.getElementById('editor-modal').style.display = 'flex';
+        currentEditClient = clientId; currentEditService = service; document.getElementById('editor-title').innerText = `${service.toUpperCase()} @ ${clientId.toUpperCase()}`;
+        document.getElementById('config-textarea').value = "Connecting to server..."; document.getElementById('editor-status').innerText = ""; document.getElementById('editor-modal').style.display = 'flex';
         try { const res = await fetch(`/api/config_file/${encodeURIComponent(clientId)}/${encodeURIComponent(service)}`); const data = await res.json(); if (data.success) document.getElementById('config-textarea').value = data.data.raw_text || "Empty file"; else document.getElementById('config-textarea').value = "ERROR:\n" + data.error; } catch(e) { document.getElementById('config-textarea').value = "Connection error."; }
     }
     function closeEditorModal() { document.getElementById('editor-modal').style.display = 'none'; }
@@ -1325,29 +1284,14 @@
         });
     }
 
-    // --- NUOVE FUNZIONI PER POP-UP VERSIONI ---
     function openVersionsModal(clientId) {
-        const versions = globalVersionsData[clientId.toLowerCase()];
-        const listDiv = document.getElementById('versions-list');
-        
-        if (!versions || Object.keys(versions).length === 0) {
-            listDiv.innerHTML = "<span style='color: var(--text-muted);'>Nessun dato ancora ricevuto. Usa il tasto 🔄 RESTART sui servizi del nodo per forzare l'invio del log di avvio.</span>";
-        } else {
-            let html = "";
-            for (const [software, version] of Object.entries(versions)) {
-                html += `<div><strong style="color: var(--primary); display: inline-block; width: 140px;">${esc(software)}:</strong> <span style="color: var(--success); font-weight: bold;">${esc(version)}</span></div>`;
-            }
-            listDiv.innerHTML = html;
-        }
-        
+        const versions = globalVersionsData[clientId.toLowerCase()]; const listDiv = document.getElementById('versions-list');
+        if (!versions || Object.keys(versions).length === 0) { listDiv.innerHTML = "<span style='color: var(--text-muted);'>Nessun dato ancora ricevuto. Usa il tasto 🔄 RESTART sui servizi del nodo per forzare l'invio del log di avvio.</span>"; } 
+        else { let html = ""; for (const [software, version] of Object.entries(versions)) { html += `<div><strong style="color: var(--primary); display: inline-block; width: 140px;">${esc(software)}:</strong> <span style="color: var(--success); font-weight: bold;">${esc(version)}</span></div>`; } listDiv.innerHTML = html; }
         document.getElementById('versions-modal').style.display = 'flex';
     }
+    function closeVersionsModal() { document.getElementById('versions-modal').style.display = 'none'; }
 
-    function closeVersionsModal() {
-        document.getElementById('versions-modal').style.display = 'none';
-    }
-
-    // --- PUSH NOTIFICATIONS ---
     async function subscribeToPush() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) { customAlert("Error", "Push notifications are not supported by this browser.", true); return; }
         if (!me.logged_in) { openLoginModal(); return; } 
@@ -1369,63 +1313,30 @@
 
     async function checkServerUpdate() {
         if (!isAuthenticated || me.role !== 'admin') return;
-        try {
-            const res = await fetch('/api/server_update/check');
-            const data = await res.json();
-            const btn = document.getElementById('server-update-btn');
-            if (btn) {
-                btn.style.display = data.update_available ? 'inline-block' : 'none';
-            }
-        } catch (e) { console.error("Errore check update server:", e); }
+        try { const res = await fetch('/api/server_update/check'); const data = await res.json(); const btn = document.getElementById('server-update-btn'); if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } } catch (e) { console.error(e); }
     }
-
     function confirmServerUpdate() {
         customConfirm("🔄 UPDATE SERVER", "Vuoi scaricare l'ultima versione del server da Gitea/GitHub e riavviare il servizio backend?", "var(--danger)", async () => {
-            try {
-                const res = await fetch('/api/server_update/apply', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    customAlert("✅ SUCCESS", "Aggiornamento in corso. La pagina si ricaricherà a breve.");
-                    setTimeout(() => location.reload(), 5000); // Ricarica dopo 5 secondi
-                } else {
-                    customAlert("❌ ERRORE", esc(data.error), true);
-                }
-            } catch (e) { console.error(e); customAlert("❌ ERRORE", "Errore di rete.", true); }
+            try { const res = await fetch('/api/server_update/apply', { method: 'POST' }); const data = await res.json(); if (data.success) { customAlert("✅ SUCCESS", "Aggiornamento in corso. La pagina si ricaricherà a breve."); setTimeout(() => location.reload(), 5000); } else { customAlert("❌ ERRORE", esc(data.error), true); } } catch (e) { console.error(e); customAlert("❌ ERRORE", "Errore di rete.", true); }
         });
     }
 
-    // Controlla gli aggiornamenti ogni ora
-    setInterval(checkServerUpdate, 3600000);
-    // Effettua un controllo 5 secondi dopo l'avvio della UI
-    setTimeout(checkServerUpdate, 5000);
+    setInterval(checkServerUpdate, 3600000); setTimeout(checkServerUpdate, 5000);
+    initUI(); checkPushStatus();
+    setInterval(refreshStates, 15000); setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
 
-    initUI();
-    checkPushStatus();
-
-    // --- AGGIORNAMENTI PERIODICI ---
-    setInterval(refreshStates, 15000);
-    setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
-
-    // --- WEBSOCKET REAL-TIME ---
     function debounce(fn, ms) { let tm = null; return () => { clearTimeout(tm); tm = setTimeout(fn, ms); }; }
-    const refreshStatesSoon = debounce(refreshStates, 300);
-    const refreshLogsSoon = debounce(() => { refreshLogs(); refreshStats(); }, 500);
+    const refreshStatesSoon = debounce(refreshStates, 300); const refreshLogsSoon = debounce(() => { refreshLogs(); refreshStats(); }, 500);
 
     if (typeof io !== 'undefined') {
         const socket = io();
-        socket.on('mqtt_status', function(data) {
-            const badge = document.getElementById('mqtt-badge');
-            if (badge) { if (data.connected) { badge.innerText = "MQTT: ONLINE"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: OFFLINE"; badge.className = "mqtt-badge mqtt-offline"; } }
-        });
+        socket.on('mqtt_status', function(data) { const badge = document.getElementById('mqtt-badge'); if (badge) { if (data.connected) { badge.innerText = "MQTT: ONLINE"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: OFFLINE"; badge.className = "mqtt-badge mqtt-offline"; } } });
         socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
-        socket.on('dati_aggiornati', refreshStatesSoon);   
-        socket.on('log_aggiornato', refreshLogsSoon);      
+        socket.on('dati_aggiornati', refreshStatesSoon); socket.on('log_aggiornato', refreshLogsSoon);      
     }
 </script>
 <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(err => { console.log('ServiceWorker fallita: ', err); }); });
-    }
+    if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(err => { console.log('ServiceWorker fallita: ', err); }); }); }
 </script>
 </body>
 </html>

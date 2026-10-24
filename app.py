@@ -1,3 +1,6 @@
+import gevent.monkey
+gevent.monkey.patch_all()
+
 from flask import Flask, render_template, request, session, jsonify, send_from_directory
 from paho.mqtt import client as mqtt_client
 from werkzeug.security import generate_password_hash, check_password_hash
