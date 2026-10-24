@@ -257,6 +257,7 @@ last_seen_reflector = {}
 node_info = {}
 node_general = {}
 node_versions = {}
+gateway_states = {} 
 
 if os.path.exists(CACHE_FILE):
     try:
@@ -313,7 +314,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         
         topics_list = config.get('mqtt', {}).get('topics', default_topics)
         subscribe_list = [(topic, 0) for topic in topics_list]
-        subscribe_list.append(("+/+/log", 0))  # Ascolto dinamico dei log
+        subscribe_list.append(("+/+/log", 0))
         
         client.subscribe(subscribe_list)
         logger.info(f"Subscribed to {len(subscribe_list)} MQTT topics.")
@@ -343,7 +344,6 @@ def on_message(client, userdata, msg):
         p0 = parts[0].lower().replace('-', '')
         p2 = parts[2].lower().replace('-', '') if len(parts) > 2 else ""
 
-        # --- LOG MANAGEMENT (ESTRAZIONE VERSIONI E GIT ID) ---
         if len(parts) >= 3 and parts[2].lower() == 'log':
             if cid not in node_versions:
                 node_versions[cid] = {}
@@ -523,6 +523,19 @@ def on_message(client, userdata, msg):
             elif "p25" in p0: proto = "P25"
             elif "dstar" in p0: proto = "D-STAR"
             
+            if cid not in gateway_states:
+                gateway_states[cid] = {}
+            
+            if 'status' in data:
+                gateway_states[cid][proto] = {"action": "status", "dest": data['status'].get('message', 'IDLE')}
+                notify_update()
+            elif 'link' in data:
+                l = data['link']
+                g_dest = str(l.get('reflector') or l.get('talkgroup') or '---').strip()
+                g_action = l.get('action', '')
+                gateway_states[cid][proto] = {"action": g_action, "dest": g_dest}
+                notify_update()
+            
             m = ""
             if 'status' in data: 
                 m = data['status'].get('message', '')
@@ -669,7 +682,6 @@ def add_security_headers(resp):
 
 def get_git_commit():
     try:
-        # Legge i primi 7 caratteri dell'hash del commit corrente
         return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
     except Exception:
         return "sconosciuta"
@@ -701,6 +713,35 @@ def get_states():
     for c, d in node_versions.items():
         clean_versions[c] = {k: v for k, v in d.items() if not k.startswith('_')}
 
+    # --- INIEZIONE DMR NETWORKS DA CONFIGURAZIONE (Versione 4.0) ---
+    enriched_gateway_states = dict(gateway_states)
+    
+    for cid, confs in device_configs.items():
+        if 'dmrgateway' in confs:
+            dmr_conf = confs['dmrgateway']
+            if isinstance(dmr_conf, dict) and 'raw_text' in dmr_conf:
+                raw = dmr_conf['raw_text']
+                active_dmr_nets = []
+                
+                # Cerca le sezioni [DMR Network 1] fino a [DMR Network 5]
+                for i in range(1, 6):
+                    section_name = f"[DMR Network {i}]"
+                    if section_name in raw:
+                        # Estrai blocco della sezione
+                        block = raw.split(section_name)[1].split('[')[0]
+                        # Cerca Enabled=1
+                        if re.search(r'^Enabled\s*=\s*1', block, re.MULTILINE | re.IGNORECASE):
+                            # Cerca Name= (es. Name=BM_2222)
+                            m_name = re.search(r'^Name\s*=\s*(.+)', block, re.MULTILINE | re.IGNORECASE)
+                            net_name = m_name.group(1).strip() if m_name else f"Net {i}"
+                            active_dmr_nets.append(net_name)
+                
+                if active_dmr_nets:
+                    if cid not in enriched_gateway_states:
+                        enriched_gateway_states[cid] = {}
+                    enriched_gateway_states[cid]['DMR_NETS'] = active_dmr_nets
+    # ----------------------------------------------------------------
+
     return jsonify({
         "states": client_states,
         "telemetry": client_telemetry,
@@ -709,7 +750,8 @@ def get_states():
         "general": node_general,
         "last_seen": seen_ages(),
         "uptime": int(time.time() - START_TIME),
-        "versions": clean_versions
+        "versions": clean_versions,
+        "gateway_states": enriched_gateway_states
     })
 
 @app.route('/api/stats')
@@ -1294,19 +1336,10 @@ def check_server_update():
         return err("Unauthorized", 403)
     
     try:
-        # Aggiorna le informazioni dal remote senza unire i file
         subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
-        
-        # Confronta il commit locale con quello remoto
         local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
         remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
-        
         update_available = local_hash != remote_hash
-
-        # --- LOG DI DEBUG ---
-        logger.info(f"🔍 Controllo OTA: Local={local_hash[:7]} | Remote={remote_hash[:7]} | Update={update_available}")
-        # --------------------
-
         return jsonify({"success": True, "update_available": update_available})
     except Exception as e:
         logger.error(f"Errore controllo aggiornamenti server: {e}")
@@ -1320,16 +1353,10 @@ def apply_server_update():
     
     try:
         audit(auth['username'], 'SERVER', 'SERVER_OTA_UPDATE')
-        logger.warning(f"🔄 Aggiornamento OTA del server avviato da {auth['username']}")
-        
-        # Esegue il pull
         subprocess.run(['git', 'pull', '--ff-only'], timeout=30, cwd=BASE_DIR, check=True)
-        
-        # Programma il riavvio (esce dal processo, systemd lo farà ripartire)
         def restart_server():
             time.sleep(2)
             os._exit(1)
-            
         threading.Thread(target=restart_server, daemon=True).start()
         return jsonify({"success": True})
     except subprocess.CalledProcessError as e:

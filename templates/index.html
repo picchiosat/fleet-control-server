@@ -39,7 +39,24 @@
         .theme-switch { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: 'Inter', sans-serif; transition: all 0.2s; }
         .theme-switch:hover { color: var(--text-main); border-color: var(--text-main); }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; max-width: 1400px; margin: 30px auto; padding: 0 20px; }
+        /* FILTRI E CONTROLLI VIEW (Versione 4.0) */
+        .filter-bar { background: var(--topbar-bg); border-radius: 12px; border: 1px solid var(--border-color); padding: 10px 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.2); margin-bottom: 20px; }
+        .filter-pill { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        .filter-pill:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .filter-pill.active { background: rgba(59, 130, 246, 0.15); color: var(--primary); border-color: var(--primary); }
+        
+        /* GRIGLIA E LISTA (Versione 4.0) */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+        
+        .list-view { display: flex; flex-direction: column; gap: 10px; max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+        .list-view .card { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 15px; gap: 15px; }
+        .list-view .card-header { border-bottom: none; padding-bottom: 0; margin-bottom: 0; flex: 1 1 200px; }
+        .list-view .health-bar { display: flex; flex-wrap: nowrap; margin-bottom: 0; flex: 1 1 auto; justify-content: center; }
+        .list-view .freq-bar { margin-bottom: 0; padding: 5px 10px; flex: 1 1 auto; }
+        .list-view .ts-container { flex-direction: row; margin-bottom: 0; flex: 1 1 250px; }
+        .list-view .terminal-log { display: none; }
+        .list-view .node-meta { margin-bottom: 0; text-align: left; }
+        .list-view .admin-dropdown { width: auto; flex: 0 0 auto; }
         
         .card { background: var(--card-bg) !important; border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); border-top: 3px solid var(--border-color) !important; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; filter: none !important; opacity: 1 !important; transition: all 0.3s ease; }
         
@@ -52,24 +69,28 @@
         .health-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; text-align: center; }
         .health-bar > span { background: rgba(255,255,255,0.03); padding: 6px; border-radius: 6px; }
 
-        .freq-bar { display: flex; justify-content: space-around; font-size: 0.8rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--border-color); font-family: 'JetBrains Mono', monospace; }
+        .freq-bar { display: flex; justify-content: space-around; font-size: 0.8rem; font-weight: 800; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; border: 1px dashed var(--border-color); font-family: 'JetBrains Mono', monospace; }
         .freq-tx { color: #f87171; } .freq-rx { color: #4ade80; }
 
         .seen-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin: -6px 0 12px 0; }
         .seen-item b { font-weight: 700; }
         .seen-item.ok b { color: var(--success); }
         .seen-item.warn, .seen-item.warn b { color: #f59e0b; font-weight: 700; }
-        .node-meta { font-size: 0.75rem; color: #8b949e; text-align: center; margin-bottom: 15px; line-height: 1.4; }
+        
+        .node-meta { font-size: 0.75rem; color: #8b949e; text-align: center; margin-bottom: 10px; line-height: 1.4; }
         .node-meta-item { display: block; }
 
         .type-badge { font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase; display: inline-block; margin-left: 0; vertical-align: middle; }
         .type-repeater { background: rgba(59, 130, 246, 0.15); color: var(--primary); border: 1px solid var(--primary); }
         .type-hotspot { background: rgba(139, 92, 246, 0.15); color: var(--accent); border: 1px solid var(--accent); }
 
-        .status-display { text-align: center; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 700; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); margin-bottom: 15px; color: var(--text-muted); }
+        .status-display { text-align: center; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 700; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); margin-bottom: 10px; color: var(--text-muted); }
         .card.online .status-display { color: var(--success); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); }
         .status-offline { color: var(--danger) !important; border-color: rgba(239, 68, 68, 0.4) !important; }
         
+        /* GATEWAY BAR (Versione 4.0) */
+        .gateway-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center; }
+
         .ts-container { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
         .dmr-info { font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.2) !important; border: 1px solid var(--border-color); border-left: 4px solid var(--border-color) !important; color: var(--text-muted) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.3s; }
         
@@ -110,52 +131,11 @@
         input:disabled { opacity: 0.5; cursor: not-allowed; }
         option { background: var(--card-bg); color: var(--text-main); }
 
-        /* Stili per le Mini-Card (HOME) */
-        .mini-card {
-            background: var(--card-bg);
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            padding: 15px 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            text-align: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            height: 105px;
-            width: 160px; /* <--- AGGIUNGI QUESTA RIGA */
-            overflow: hidden;
-        }
-        .mini-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-        }
-        .mini-card-content {
-            width: 100%;
-            overflow: hidden;
-        }
-        .mini-card-name {
-            font-weight: 800;
-            font-size: 0.95rem;
-            width: 100%;
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .mini-card-status {
-            font-size: 0.65rem;
-            font-weight: 800;
-            padding: 4px 6px;
-            border-radius: 6px;
-            width: 100%;
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .mini-card { background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color); padding: 15px 10px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 105px; width: 160px; overflow: hidden; }
+        .mini-card:hover { transform: translateY(-4px); box-shadow: 0 8px 15px rgba(0,0,0,0.3); }
+        .mini-card-content { width: 100%; overflow: hidden; }
+        .mini-card-name { font-weight: 800; font-size: 0.95rem; width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mini-card-status { font-size: 0.65rem; font-weight: 800; padding: 4px 6px; border-radius: 6px; width: 100%; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         @media (max-width: 768px) {
             #top-bar-container { top: 0; padding: 10px; margin-bottom: 15px; }
@@ -169,14 +149,9 @@
             .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--topbar-bg); border-top: 1px solid var(--border-color); margin: 0; padding: 10px 0; justify-content: space-around; z-index: 1000; flex-direction: row; gap: 0; padding-bottom: env(safe-area-inset-bottom, 10px); box-shadow: 0 -4px 15px rgba(0,0,0,0.3); }
             .nav-tab { font-size: 1rem; padding: 12px; flex: 1; text-align: center; border-radius: 0; }
             body { padding-bottom: 70px; }
-
-            .table-container { background: transparent; border: none; box-shadow: none; margin: 0 10px 20px 10px; }
-            .table-container table, .table-container thead, .table-container tbody, .table-container th, .table-container td, .table-container tr { display: block; width: 100%; }
-            .table-container thead tr { position: absolute; top: -9999px; left: -9999px; }
-            .table-container tr { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px; background: var(--card-bg); padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-            .table-container td { border: none; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; padding-left: 40%; text-align: left; font-size: 0.85rem; min-height: 35px; display: flex; align-items: center; }
-            .table-container td:before { position: absolute; top: 50%; transform: translateY(-50%); left: 10px; width: 35%; padding-right: 10px; white-space: nowrap; font-weight: bold; color: var(--text-muted); content: attr(data-label); font-family: 'Inter', sans-serif; font-size: 0.75rem; text-transform: uppercase; }
-            .table-container td:last-child { border-bottom: 0; }
+            
+            .filter-bar { flex-direction: column; }
+            .list-view .card { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
@@ -201,11 +176,30 @@
 </div>
 
 <div id="view-nodes" style="display: none;">
+    <!-- Barra Filtri Versione 4.0 -->
+    <div style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
+        <div class="filter-bar">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="node-filters">
+                <button class="filter-pill active" onclick="setFilter('all')" data-i18n="filtAll">All Nodes</button>
+                <button class="filter-pill" onclick="setFilter('online')" data-i18n="filtOnline">Online</button>
+                <button class="filter-pill" onclick="setFilter('offline')" data-i18n="filtOffline">Offline</button>
+                <div style="width: 1px; background: var(--border-color); margin: 0 5px;"></div>
+                <button class="filter-pill" onclick="setFilter('dmr')" style="color: #3b82f6; border-color: rgba(59,130,246,0.3);">DMR</button>
+                <button class="filter-pill" onclick="setFilter('ysf')" style="color: #8b5cf6; border-color: rgba(139,92,246,0.3);">YSF</button>
+                <button class="filter-pill" onclick="setFilter('d-star')" style="color: #06b6d4; border-color: rgba(6,182,212,0.3);">D-STAR</button>
+                <button class="filter-pill" onclick="setFilter('nxdn')" style="color: #10b981; border-color: rgba(16,185,129,0.3);">NXDN</button>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; width: auto; flex-grow: 1; justify-content: flex-end;">
+                <input type="text" id="node-search" placeholder="Search ID / Callsign..." onkeyup="applyFilters()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white; flex-grow: 1; max-width: 200px;">
+                <button id="view-toggle-btn" class="btn-cmd" style="background: rgba(255,255,255,0.1); padding: 8px 12px; flex: 0 0 auto; width: auto;" onclick="toggleViewMode()" title="Toggle Grid/List View">🔲 GRID</button>
+            </div>
+        </div>
+    </div>
+    
     <div class="grid" id="client-grid"></div>
 </div>
 
 <div id="view-home">
-    <!-- STATUS RAPIDO NODI -->
     <div style="max-width: 1400px; margin: 0 auto 20px auto; padding: 0 20px;">
         <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
             <span style="font-size: 1.2rem;">🟢</span> <span>FLEET STATUS</span>
@@ -213,7 +207,6 @@
         <div id="home-mini-nodes" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;"></div>
     </div>
 
-    <!-- LASTHEARD -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto;">
         <div style="padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
             <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
@@ -245,7 +238,6 @@
         </div>
     </div>
 
-    <!-- DAILY STATISTICS -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px;">
         <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
             <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
@@ -483,7 +475,8 @@
             ttProfA: "Switch to Profile A", ttProfB: "Switch to Profile B", ttTgOn: "Enable Telegram notifications", ttTgOff: "Disable Telegram notifications", ttSvc: "Manage system daemons", ttFile: "Edit .ini configuration files", ttHat: "Send physical reset to modem", ttBoot: "Reboot node operating system",
             ttSwitchTo: "Switch to profile: ", ttSvcStart: "Start service", ttSvcRestart: "Restart service", ttSvcEdit: "Edit configuration", ttSvcStop: "Stop service", ttLang: "Change language",
             statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITS TODAY", statNoData: "No data",
-            statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware"
+            statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware",
+            filtAll: "All Nodes", filtOnline: "Online", filtOffline: "Offline"
         },
         it: {
             lastTransits: "Ultimi ascolti", loginTitle: "🔒 Login di Sistema",
@@ -512,7 +505,8 @@
             ttProfA: "Passa al Profilo A", ttProfB: "Passa al Profilo B", ttTgOn: "Abilita notifiche Telegram", ttTgOff: "Disabilita notifiche Telegram", ttSvc: "Gestisci demoni di sistema", ttFile: "Modifica file .ini da remoto", ttHat: "Reset fisico scheda modem", ttBoot: "Riavvia sistema operativo",
             ttSwitchTo: "Passa al profilo: ", ttSvcStart: "Avvia servizio", ttSvcRestart: "Riavvia servizio", ttSvcEdit: "Modifica configurazione", ttSvcStop: "Ferma servizio", ttLang: "Cambia lingua",
             statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Caricamento...", statAvgDur: "⏱️ DURATA MEDIA", statTodayTx: "📡 TRANSITI OGGI", statNoData: "Nessun dato",
-            statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTA LA RETE", modVersions: "Software & Firmware"
+            statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTA LA RETE", modVersions: "Software & Firmware",
+            filtAll: "Tutti i nodi", filtOnline: "Attivi", filtOffline: "Offline"
         }
     };
     let currentLang = localStorage.getItem('lang') || 'en'; 
@@ -538,6 +532,13 @@
     function q(s) { return esc(JSON.stringify(String(s ?? ''))); }
     const HANG_TIME_MS = 180000;
 
+    // --- VARIABILI GLOBALI E UI VIEW ---
+    let clients = []; let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
+    let isAuthenticated = false; let usersCache = {}; let globalHealthData = {}; let globalVersionsData = {}; 
+    let editingUserId = null; let currentResetHatId = null; let confirmActionCallback = null; 
+    
+    let currentFilter = 'all'; let searchQuery = ''; let viewMode = localStorage.getItem('fleetViewMode') || 'grid';
+
     function switchView(viewName) {
         document.getElementById('view-home').style.display = 'none';
         document.getElementById('view-nodes').style.display = 'none';
@@ -546,12 +547,67 @@
         document.getElementById(`view-${viewName}`).style.display = 'block';
         document.getElementById(`tab-${viewName}`).classList.add('active');
         localStorage.setItem('fleetDefaultView', viewName);
+        if (viewName === 'nodes') { applyViewMode(); }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
         const savedView = localStorage.getItem('fleetDefaultView') || 'home';
         switchView(savedView);
     });
+    
+    // --- FUNZIONI FILTRO E LAYOUT VERSIONE 4.0 ---
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            if (btn.getAttribute('onclick') === `setFilter('${filter}')`) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        applyFilters();
+    }
+    
+    function toggleViewMode() {
+        viewMode = viewMode === 'grid' ? 'list' : 'grid';
+        localStorage.setItem('fleetViewMode', viewMode);
+        applyViewMode();
+    }
+    
+    function applyViewMode() {
+        const gridDiv = document.getElementById('client-grid');
+        const btnToggle = document.getElementById('view-toggle-btn');
+        if (viewMode === 'list') {
+            gridDiv.className = 'list-view';
+            btnToggle.innerText = '📄 LIST';
+        } else {
+            gridDiv.className = 'grid';
+            btnToggle.innerText = '🔲 GRID';
+        }
+    }
+    
+    function applyFilters() {
+        searchQuery = document.getElementById('node-search').value.toLowerCase();
+        
+        clients.forEach(c => {
+            const card = document.getElementById(`card-${c.id}`);
+            if (!card) return;
+            
+            let show = true;
+            let status = card.dataset.status || 'offline';
+            let gatewaysStr = card.dataset.gateways || ''; 
+            
+            if (currentFilter === 'online' && status !== 'online') show = false;
+            if (currentFilter === 'offline' && status === 'online') show = false;
+            if (['dmr', 'ysf', 'd-star', 'nxdn'].includes(currentFilter)) {
+                if (!gatewaysStr.includes(currentFilter)) show = false;
+            }
+            
+            if (searchQuery !== '') {
+                const searchStr = `${c.id.toLowerCase()} ${c.name.toLowerCase()} ${(card.dataset.loc || '').toLowerCase()}`;
+                if (!searchStr.includes(searchQuery)) show = false;
+            }
+            
+            card.style.display = show ? 'flex' : 'none';
+        });
+    }
 
     function fmtAge(sec) {
         sec = Math.max(0, Math.round(sec));
@@ -596,9 +652,6 @@
         div.style.display = 'flex';
     }
 
-    let clients = []; let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
-    let isAuthenticated = false; let usersCache = {}; let globalHealthData = {}; let globalVersionsData = {}; 
-    let editingUserId = null; let currentResetHatId = null; let confirmActionCallback = null; 
 
     function customAlert(title, desc, isError = false) {
         const color = isError ? 'var(--danger)' : 'var(--success)';
@@ -714,7 +767,7 @@
             const role = me.role || '';
             const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 
-              if (isAuthenticated) {
+            if (isAuthenticated) {
                 let adminBtn = role === 'admin' ? `
                     <button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn" style="background:var(--danger); color:white !important; display:none; border: 2px solid white; animation: pulse-red 1.5s infinite;" title="Aggiornamento Server Disponibile">🔄 UPDATE SERVER</button>
                     <button onclick="sendGlobalUpdate()" class="auth-btn" style="background:#f59e0b; color:white;" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">${t('btnReqCfg')}</button>
@@ -734,7 +787,7 @@
                 let showReboot = (role === 'admin'); 
 
                 return `
-                    <div class="card" id="card-${c.id}">
+                    <div class="card" id="card-${c.id}" data-status="offline" data-gateways="" data-loc="">
                         <div class="card-header">
                             <span class="client-name" title="${esc(c.name)}">${esc(c.name)}</span>
                             <div class="header-badges">
@@ -743,6 +796,10 @@
                                 <div id="type-badge-${c.id}" class="type-badge" style="display: none;"></div>
                             </div>
                         </div>
+                        
+                        <!-- Barra dei Gateway (Versione 4.0) -->
+                        <div class="gateway-bar" id="gw-bar-${c.id}"></div>
+                        
                         <div class="freq-bar" id="freq-container-${c.id}" style="display: none;">
                             <span><span class="freq-tx">TX:</span> <span id="freq-tx-${c.id}">...</span></span>
                             <span><span class="freq-rx">RX:</span> <span id="freq-rx-${c.id}">...</span></span>
@@ -799,7 +856,6 @@
                     </div>`;
             }).join('');
 
-            // Generazione delle Mini-Card per la HOME
             const miniGrid = document.getElementById('home-mini-nodes');
             if (miniGrid) {
                 miniGrid.innerHTML = clients.map(c => `
@@ -844,6 +900,7 @@
                 let stateValue = data.states[c.id.toLowerCase()] || data.states[c.id] || "OFFLINE";
                 stateValue = String(stateValue).trim().toUpperCase(); statusDiv.innerText = stateValue;
                 const isOnline = !stateValue.includes("OFF") && stateValue !== "";
+                cardDiv.dataset.status = isOnline ? 'online' : 'offline';
                 renderSeen(c, data, isOnline);
 
                 let genObj = data.general && data.general[c.id.toLowerCase()];
@@ -917,6 +974,7 @@
                     if (metaContainer) { 
                         metaContainer.style.display = 'block'; 
                         locSpan.innerText = infoObj.loc; 
+                        cardDiv.dataset.loc = infoObj.loc;
                         if(latSpan) latSpan.innerText = infoObj.lat;
                         if(lonSpan) lonSpan.innerText = infoObj.lon;
                     }
@@ -927,8 +985,80 @@
 
                 const healthContainer = document.getElementById(`health-${c.id}`); const cpuSpan = document.getElementById(`cpu-${c.id}`); const tempSpan = document.getElementById(`temp-${c.id}`); const ramSpan = document.getElementById(`ram-${c.id}`); const diskSpan = document.getElementById(`disk-${c.id}`);
 
+                // --- RENDERING GATEWAY BAR (Versione 4.0 - Gestione Stati Action) ---
+                const gwBar = document.getElementById(`gw-bar-${c.id}`);
+                if (gwBar && healthObj) {
+                    let gwHtml = "";
+                    let gwData = data.gateway_states && data.gateway_states[c.id.toLowerCase()] ? data.gateway_states[c.id.toLowerCase()] : {};
+                    let processes = healthObj.processes || {};
+                    let activeGatewaysStr = "";
+                    
+                    const gwMap = [
+                        { id: 'dmrgateway', label: 'DMR', color: '#3b82f6', tint: 'rgba(59, 130, 246, 0.15)', proto: 'DMR' },
+                        { id: 'ysfgateway', label: 'YSF', color: '#8b5cf6', tint: 'rgba(139, 92, 246, 0.15)', proto: 'YSF' },
+                        { id: 'dstargateway', label: 'D-STAR', color: '#06b6d4', tint: 'rgba(6, 182, 212, 0.15)', proto: 'D-STAR' },
+                        { id: 'nxdngateway', label: 'NXDN', color: '#10b981', tint: 'rgba(16, 185, 129, 0.15)', proto: 'NXDN' },
+                        { id: 'p25gateway', label: 'P25', color: '#f59e0b', tint: 'rgba(245, 158, 11, 0.15)', proto: 'P25' }
+                    ];
+                    
+                    if (isOnline) {
+                        gwMap.forEach(gw => {
+                            let isActiveProc = processes[gw.id] && processes[gw.id].toLowerCase() === 'online';
+                            if (isActiveProc) {
+                                activeGatewaysStr += gw.proto.toLowerCase() + ",";
+                                let stateInfo = gwData[gw.proto] || { action: 'IDLE', dest: '---' };
+                                let action = (stateInfo.action || 'IDLE').toLowerCase();
+                                let dest = stateInfo.dest && stateInfo.dest !== '---' ? stateInfo.dest : '';
+                                
+                                let badgeBg, badgeColor, badgeBorder, suffix = '', extraClass = '';
+                                
+                                // Gestione degli stati: linking/linked, unlinked, failed
+                                if (action === 'linking' || action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed')) {
+                                    badgeBg = gw.color;
+                                    badgeColor = 'white';
+                                    badgeBorder = gw.color;
+                                    if (dest) suffix = `: ${dest}`;
+                                    else suffix = ` [LINKING]`;
+                                } else if (action === 'failed') {
+                                    badgeBg = 'var(--danger)';
+                                    badgeColor = 'white';
+                                    badgeBorder = 'var(--danger)';
+                                    suffix = ' [FAILED]';
+                                    extraClass = 'blink';
+                                } else if (action === 'unlinked') {
+                                    badgeBg = 'transparent';
+                                    badgeColor = 'var(--text-muted)';
+                                    badgeBorder = 'var(--border-color)';
+                                    suffix = ' [UNLINKED]';
+                                } else {
+                                    // Default/IDLE (Nessuna azione esplicita ricevuta di recente)
+                                    badgeBg = gw.tint;
+                                    badgeColor = gw.color;
+                                    badgeBorder = gw.color;
+                                }
+                                
+                                if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
+                                    gwData['DMR_NETS'].forEach(netName => {
+                                        let netText = `DMR: ${esc(netName)}${esc(suffix)}`;
+                                        gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor}; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${netText}</span>`;
+                                    });
+                                } else {
+                                    let text = `${gw.label}${esc(suffix)}`;
+                                    gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor}; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${text}</span>`;
+                                }
+                            }
+                        });
+                    }
+                    cardDiv.dataset.gateways = activeGatewaysStr;
+                    gwBar.innerHTML = gwHtml;
+                } else if (gwBar) {
+                    gwBar.innerHTML = "";
+                    cardDiv.dataset.gateways = "";
+                }
+                // -------------------------------------------------------------------------
+
                 if (healthObj && isOnline) {
-                    healthContainer.style.display = 'grid';
+                    healthContainer.style.display = 'flex';
                     let cpu = healthObj.cpu; cpuSpan.innerText = cpu; cpuSpan.style.color = cpu < 50 ? 'var(--success)' : (cpu < 80 ? '#f59e0b' : 'var(--danger)');
                     let tempVal = healthObj.temp; tempSpan.innerText = tempVal; tempSpan.style.color = tempVal < 55 ? 'var(--success)' : (tempVal < 70 ? '#f59e0b' : 'var(--danger)');
                     ramSpan.innerText = healthObj.ram; let d = healthObj.disk; diskSpan.innerText = d; diskSpan.style.color = d < 85 ? 'inherit' : (d < 95 ? '#f59e0b' : 'var(--danger)');
@@ -1020,7 +1150,6 @@
                     cardDiv.style.setProperty('border-top-color', '#64748b', 'important'); cardDiv.style.boxShadow = 'none !important';
                 }
 
-                // Aggiornamento status delle Mini Card (HOME)
                 const miniCard = document.getElementById(`mini-card-${c.id}`);
                 const miniStatus = document.getElementById(`mini-status-${c.id}`);
                 const miniName = document.getElementById(`mini-name-${c.id}`);
@@ -1057,6 +1186,8 @@
                     }
                 }
             });
+            
+            applyFilters();
             document.getElementById('last-update').innerText = "Sync: " + new Date().toLocaleTimeString();
         } catch (e) { console.error(e); }
     }
