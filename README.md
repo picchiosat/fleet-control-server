@@ -14,32 +14,54 @@
 > ℹ️ **Note:** This is the Central Server repository. To monitor remote repeaters, you must install the [Fleet Control Agent](https://git.arifvg.it/iv3jdv/fleet-node-agent.git) on each node.
 
 ### 🏗️ Architecture & Technology Stack
-The server acts as the brain of the network:
-* **Backend:** Flask (Python) with `gevent` for high-concurrency handling.
+The server acts as the brain of the network, built on a highly scalable foundation (v5.0+):
+* **Modular Backend:** Completely decoupled architecture (`core/`, `services/`, `routes/`) for high maintainability and robust background task handling.
+* **Core Engine:** Flask (Python) with `gevent` for high-concurrency WebSocket handling.
 * **Database:** SQLite (WAL mode) for robust User Management, Audit Logs, and Radio Traffic storage.
 * **Communication:** MQTT for instant data routing + WebSockets (SocketIO) for zero-latency UI updates.
-* **Frontend:** Vanilla JS with a modern *Glassmorphism* NOC (Network Operations Center) design.
+* **Frontend:** Vanilla JS with a modern *Glassmorphism* NOC (Network Operations Center) design and separated logic (`app.js`, `modals.js`).
 
 ### ✨ Ultimate Features
+
+#### 🛡️ Proactive Diagnostics (Watchdog)
+* **Hardware Monitoring:** Continuous analysis of remote CPU temperatures and disk space saturation. Automatically triggers Push Notifications before critical failures (e.g., CPU throttling or log overflow) occur.
+* **RF Anomaly Detection:** Real-time monitoring of local RF BER (Bit Error Rate). Detects hardware RF degradation on local transits and alerts admins instantly.
 
 #### ⚡ Zero-Latency Real-Time Dashboard
 * **WebSocket Powered:** The dashboard updates instantly upon radio traffic or telemetry changes. No heavy HTTP polling, no page reloads.
 * **Live MQTT Status:** A real-time badge continuously monitors the connection to the MQTT broker, instantly alerting you if the backend loses connectivity.
-* **PWA Ready:** Install the dashboard as a Progressive Web App on iOS/Android for a native, full-screen mobile experience.
+* **PWA Ready v6:** Install the dashboard as a Progressive Web App on iOS/Android for a native, full-screen mobile experience with offline asset caching.
 
 #### 🔔 Web Push Notifications
 * Get instant, native alerts directly on your desktop or mobile device when:
   * A node goes offline or comes back online.
   * A critical system daemon crashes (Auto-healing failed).
+  * The Watchdog detects thermal warnings, disk full alerts, or high RF BER.
 * Works securely even when the web app is closed or in the background.
+
+#### 🛠️ Advanced Remote Control & Maintenance
+* **OTA Server Updates:** Apply server-side Git updates with a single click directly from the admin dashboard (Over-The-Air) without SSH access.
+* **Remote .INI Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface.
+* **Service Management:** Start, Stop, or Restart remote system daemons.
+* **Global Overrides:** Switch profiles (e.g., Profile A/B) or force updates simultaneously on all nodes in the fleet.
+* **Hardware Interventions:** Trigger a physical OS reboot or a hard GPIO reset of the MMDVM HAT directly from the web panel.
+
+#### 📊 Unified Monitoring & Statistics
+* **Interactive Fleet Map:** Real-time GIS map showing repeater locations, online/offline status, active TX states (pulsing pins), and active watchdog warnings.
+* **Live Heard Log:** A centralized view of radio traffic across the entire network, auto-resolving DMR and NXDN IDs into callsigns.
+* **Software & Firmware Tracking:** Instantly view MMDVM firmware versions and Pi-Star/Gateway component versions for each node.
+* **Daily Analytics:** Automatically tracks Top Talkgroups, Top Callsigns, Average duration, and daily transit counts.
+
+#### 🔐 Security & Access Control
+* **Role-Based Access Control (RBAC):** Create `admin` and `operator` accounts.
+* **Granular Permissions:** Restrict operators to view/control only specific repeaters.
+* **Audit Trail:** Every critical action (reboots, config edits, daemon restarts) is logged with the username, timestamp, and target node.
 
 ### ⚠️ Security Requirement: HTTPS
 Please note that **Web Push Notifications** and the **Service Worker** require a secure connection to function. For security reasons, modern browsers only enable these features over **HTTPS**. If you are accessing the console via HTTP (outside of `localhost`), the "Push" button and notification registration will not work. We recommend using a reverse proxy (like Nginx, Caddy, or Traefik) with an SSL certificate.
-**Pro Tip:** You can use Let's Encrypt to get a free SSL certificate for your domain.
 
 ### ⚠️ Reverse Proxy & WebSocket Configuration
-If you expose the Fleet Console through a reverse proxy like **Apache** on a public IP (HTTPS), standard HTTP proxying will drop Socket.IO real-time connections, causing the dashboard's tables to randomly clear or flash. 
-You must enable the WebSocket tunnel in Apache:
+If you expose the Fleet Console through a reverse proxy like **Apache** on a public IP (HTTPS), standard HTTP proxying will drop Socket.IO real-time connections. You must enable the WebSocket tunnel in Apache:
 ```bash
 sudo a2enmod proxy_wstunnel rewrite headers
 ```
@@ -58,26 +80,10 @@ ProxyPass / http://127.0.0.1:9000/
 ProxyPassReverse / http://127.0.0.1:9000/
 ```
 
-#### 🛠️ Advanced Remote Control & Maintenance
-* **Remote .INI Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface without SSH access.
-* **Service Management:** Start, Stop, or Restart remote system daemons with a single click.
-* **Global Overrides:** Switch profiles (e.g., Profile A/B) or force updates simultaneously on all nodes in the fleet.
-* **Hardware Interventions:** Trigger a physical OS reboot or a hard GPIO reset of the MMDVM HAT directly from the web panel.
-
-#### 📊 Unified Monitoring & Statistics
-* **Live Heard Log:** A centralized view of radio traffic across the entire network, auto-resolving DMR and NXDN IDs into callsigns.
-* **Real-Time Telemetry:** Monitor CPU, RAM, Disk, and Temperature for every connected node.
-* **Daily Analytics:** Automatically tracks Top Talkgroups, Top Callsigns, Average duration, and daily transit counts.
-
-#### 🔐 Security & Access Control
-* **Role-Based Access Control (RBAC):** Create `admin` and `operator` accounts.
-* **Granular Permissions:** Restrict operators to view/control only specific repeaters.
-* **Audit Trail:** Every critical action (reboots, config edits, daemon restarts) is logged with the username, timestamp, and target node.
-
 ### 🚀 Installation Guide
 
 #### 0. Root Privileges
-All installation steps must be executed as the `root` user. Before starting, elevate your privileges by running:
+All installation steps must be executed as the `root` user.
 ```bash
 apt update
 apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python3-venv
@@ -125,31 +131,54 @@ systemctl start fleet-console
 > ℹ️ **Nota:** Questo è il repository del Server Centrale. Per monitorare i ripetitori, devi installare il [Fleet Control Agent](https://git.arifvg.it/iv3jdv/fleet-node-agent.git) su ciascun nodo remoto.
 
 ### 🏗️ Architettura e Tecnologie
-Il server agisce da cervello della rete:
-* **Backend:** Flask (Python) con `gevent` per la gestione ad alta concorrenza.
+Il server agisce da cervello della rete, basato su fondamenta altamente scalabili (v5.0+):
+* **Backend Modulare:** Architettura completamente disaccoppiata (`core/`, `services/`, `routes/`) per un'elevata manutenibilità e gestione robusta dei task in background.
+* **Motore Core:** Flask (Python) con `gevent` per la gestione ad alta concorrenza dei WebSocket.
 * **Database:** SQLite (in modalità WAL) per gestire in sicurezza Utenti, Log operativi e traffico radio.
 * **Comunicazione:** MQTT per il routing istantaneo dei dati + WebSockets (SocketIO) per aggiornare la UI a latenza zero.
-* **Frontend:** Vanilla JS con un moderno design *Glassmorphism* in stile NOC (Network Operations Center).
+* **Frontend:** Vanilla JS con un moderno design *Glassmorphism* in stile NOC (Network Operations Center) e logica completamente separata (`app.js`, `modals.js`).
 
 ### ✨ Funzionalità Principali
+
+#### 🛡️ Diagnostica Proattiva (Watchdog)
+* **Monitoraggio Hardware:** Analisi continua delle temperature CPU e della saturazione disco da remoto. Innesca automaticamente notifiche Push prima che si verifichino guasti critici (es. thermal throttling o blocco log MMDVM).
+* **Rilevamento Anomalie RF:** Monitoraggio in tempo reale del BER (Bit Error Rate) sul traffico RF locale. Rileva il degrado hardware in radiofrequenza avvisando istantaneamente gli amministratori.
 
 #### ⚡ Dashboard Real-Time a Latenza Zero
 * **Motore WebSocket:** La dashboard scatta all'istante al passaggio di traffico radio o ai cambi di telemetria. Nessun polling HTTP pesante, nessun refresh della pagina.
 * **Stato MQTT Live:** Un badge in tempo reale monitora continuamente la connessione al broker MQTT, avvisandoti istantaneamente in caso di problemi di rete.
-* **PWA Ready:** Installabile su smartphone Android e iOS come Progressive Web App per un'esperienza nativa a schermo intero.
+* **PWA Ready v6:** Installabile su smartphone Android e iOS come Progressive Web App per un'esperienza nativa a schermo intero con cache offline intelligente.
 
 #### 🔔 Notifiche Web Push
 * Ricevi avvisi nativi e immediati su PC o smartphone quando:
   * Un nodo va offline o torna operativo.
   * Un demone di sistema remoto si blocca (fallimento auto-healing).
+  * Il Watchdog rileva allarmi termici, disco pieno o anomalie BER.
 * Funzionano in modo sicuro anche quando la web app è chiusa o in background.
+
+#### 🛠️ Controllo Remoto & Manutenzione Avanzata
+* **Aggiornamenti Server OTA:** Applica gli aggiornamenti del server tramite Git direttamente dalla dashboard di amministrazione (Over-The-Air) con un clic, senza usare SSH.
+* **Editor .INI Remoto:** Modifica i file di configurazione (es. MMDVMHost.ini) direttamente dal pannello web.
+* **Gestione Demoni:** Avvia, arresta o riavvia i servizi di sistema remoti.
+* **Override Globali:** Cambia i profili operativi (es. Profilo A/B) simultaneamente su tutta la rete.
+* **Interventi Hardware:** Innesca un riavvio del sistema operativo o un reset fisico (tramite pin GPIO) della scheda MMDVM.
+
+#### 📊 Monitoraggio & Statistiche
+* **Mappa Interattiva di Flotta:** Mappa GIS in tempo reale che mostra la posizione dei ripetitori, stato online/offline, trasmissione attiva (pin lampeggianti) e allarmi diagnostici in corso.
+* **Log Ascolti Live:** Vista unificata in tempo reale del traffico radio di tutta la rete, con traduzione automatica degli ID DMR e NXDN in nominativi.
+* **Tracciamento Versioni:** Controlla all'istante le versioni firmware MMDVM e software (Pi-Star/Gateway) a bordo di ciascun nodo.
+* **Analisi Giornaliera:** Statistiche automatiche su Top Talkgroups, Top Callsign, durata media e numero totale di transiti.
+
+#### 🔐 Sicurezza e Controllo Accessi
+* **Gestione Ruoli (RBAC):** Creazione di account `admin` e `operator`.
+* **Permessi Granulari:** Limita un operatore al controllo e alla visualizzazione di specifici ripetitori.
+* **Audit Trail:** Ogni azione critica (riavvii, modifiche file, gestione demoni) viene registrata con data, ora, utente e nodo di destinazione.
 
 ### ⚠️ Sicurezza Richiesta: HTTPS
 Si prega di notare che le **Notifiche Web Push** e il **Service Worker** richiedono una connessione sicura per funzionare. Per motivi di sicurezza, i browser moderni abilitano queste funzionalità solo su **HTTPS**. Se accedi alla console via HTTP (al di fuori di `localhost`), il tasto "Push" e la registrazione delle notifiche non saranno attivi. Si consiglia l'uso di un reverse proxy (come Nginx, Caddy o Traefik) con certificato SSL.
-**Suggerimento:** Puoi usare Let's Encrypt per ottenere un certificato SSL gratuito per il tuo dominio.
 
 ### ⚠️ Configurazione Reverse Proxy & WebSocket
-Se esponi la Fleet Console tramite un reverse proxy come **Apache** su IP pubblico (HTTPS), il proxy HTTP standard farà cadere continuamente la connessione in tempo reale di Socket.IO, causando fastidiosi "azzeramenti" o lampeggiamenti della dashboard.
+Se esponi la Fleet Console tramite un reverse proxy come **Apache** su IP pubblico (HTTPS), il proxy HTTP standard farà cadere continuamente la connessione in tempo reale di Socket.IO.
 Devi abilitare il tunnel WebSocket in Apache:
 ```bash
 sudo a2enmod proxy_wstunnel rewrite headers
@@ -169,26 +198,10 @@ ProxyPass / http://127.0.0.1:9000/
 ProxyPassReverse / http://127.0.0.1:9000/
 ```
 
-#### 🛠️ Controllo Remoto & Manutenzione Avanzata
-* **Editor .INI Remoto:** Modifica i file di configurazione (es. MMDVMHost.ini) direttamente dal pannello web, senza bisogno di accessi SSH.
-* **Gestione Demoni:** Avvia, arresta o riavvia i servizi di sistema remoti con un clic.
-* **Override Globali:** Cambia i profili operativi (es. Profilo A/B) simultaneamente su tutta la rete.
-* **Interventi Hardware:** Innesca un riavvio del sistema operativo o un reset fisico (tramite pin GPIO) della scheda MMDVM direttamente dall'interfaccia web.
-
-#### 📊 Monitoraggio & Statistiche
-* **Log Ascolti Live:** Vista unificata in tempo reale del traffico radio di tutta la rete, con traduzione automatica degli ID DMR e NXDN in nominativi.
-* **Telemetria in Diretta:** Monitora l'utilizzo di CPU, RAM, Disco e le Temperature per ogni nodo connesso.
-* **Analisi Giornaliera:** Statistiche automatiche su Top Talkgroups, Top Callsign, durata media e numero totale di transiti.
-
-#### 🔐 Sicurezza e Controllo Accessi
-* **Gestione Ruoli (RBAC):** Creazione di account `admin` e `operator`.
-* **Permessi Granulari:** Limita un operatore al controllo e alla visualizzazione di specifici ripetitori.
-* **Audit Trail:** Ogni azione critica (riavvii, modifiche file, gestione demoni) viene registrata con data, ora, utente e nodo di destinazione.
-
 ### 🚀 Guida all'Installazione
 
 #### 0. Privilegi di Root
-Tutti i passaggi di installazione devono essere eseguiti come utente `root`. Prima di iniziare, eleva i tuoi privilegi eseguendo:
+Tutti i passaggi di installazione devono essere eseguiti come utente `root`.
 ```bash
 apt update
 apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python3-venv
