@@ -538,26 +538,30 @@ async function refreshStates() {
                     { id: 'p25gateway', label: 'P25', color: '#f59e0b', tint: 'rgba(245, 158, 11, 0.15)', proto: 'P25' }
                 ];
                 
-                if (isOnline) {
+if (isOnline) {
                     gwMap.forEach(gw => {
                         let isActiveProc = processes[gw.id] && processes[gw.id].toLowerCase() === 'online';
                         if (isActiveProc) {
                             activeGatewaysStr += gw.proto.toLowerCase() + ",";
                             let stateInfo = gwData[gw.proto] || { action: 'IDLE', dest: '---' };
                             let action = (stateInfo.action || 'IDLE').toLowerCase();
-                            let dest = stateInfo.dest && stateInfo.dest !== '---' ? stateInfo.dest : '';
+                            let dest = stateInfo.dest && stateInfo.dest !== '---' && stateInfo.dest.toUpperCase() !== 'IDLE' ? stateInfo.dest : '';
                             
                             let badgeBg, badgeColor, badgeBorder, suffix = '', extraClass = '';
                             
-                            if (action === 'linking' || action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed')) {
+                            if (action === 'linking') {
+                                badgeBg = gw.color;
+                                badgeColor = 'white';
+                                badgeBorder = gw.color;
+                                suffix = dest ? `: ${dest} [LINKING]` : ` [LINKING]`;
+                            } else if (action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed')) {
                                 badgeBg = gw.color;
                                 badgeColor = 'white';
                                 badgeBorder = gw.color;
                                 if (dest) suffix = `: ${dest}`;
-                                else suffix = ` [LINKING]`;
                             } else if (action === 'failed') {
-                                badgeBg = 'var(--danger)';
-                                badgeColor = 'white';
+                                badgeBg = 'rgba(239, 68, 68, 0.25)';
+                                badgeColor = '#fca5a5';
                                 badgeBorder = 'var(--danger)';
                                 suffix = ' [FAILED]';
                                 extraClass = 'blink';
@@ -574,12 +578,13 @@ async function refreshStates() {
                             
                             if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
                                 gwData['DMR_NETS'].forEach(netName => {
-                                    let netText = `DMR: ${esc(netName)}${esc(suffix)}`;
-                                    gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor}; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${netText}</span>`;
+                                    let netSuffix = (action === 'linking') ? ' [LINKING]' : (action === 'failed' ? ' [FAILED]' : (dest ? `: ${dest}` : ''));
+                                    let netText = `DMR: ${esc(netName)}${esc(netSuffix)}`;
+                                    gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor} !important; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${netText}</span>`;
                                 });
                             } else {
                                 let text = `${gw.label}${esc(suffix)}`;
-                                gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor}; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${text}</span>`;
+                                gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor} !important; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${text}</span>`;
                             }
                         }
                     });
