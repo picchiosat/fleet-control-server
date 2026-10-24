@@ -1,4 +1,5 @@
 // --- VARIABILI GLOBALI E UI VIEW ---
+const HANG_TIME_MS = 3000;
 let clients = []; 
 let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
 let isAuthenticated = false; 
