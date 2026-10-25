@@ -28,6 +28,9 @@ function switchView(viewName) {
     document.getElementById(`tab-${viewName}`).classList.add('active');
     localStorage.setItem('fleetDefaultView', viewName);
     
+    // Riporta la pagina in cima con un'animazione fluida
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     if (viewName === 'nodes') { applyViewMode(); }
     else if (viewName === 'map') { 
         setTimeout(() => {
