@@ -182,16 +182,10 @@ def on_message(client, userdata, msg):
                 logger.error(f"Errore parsing telemetria agent: {e}")
 
         # --- 5. INFO FREQUENZE E GEOLOCALIZZAZIONE ---
-        elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'info':
+        elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost', 'dmrgateway') and parts[3].lower() == 'info':
             try:
                 cid = parts[1].lower()
                 data = json.loads(payload)
-                
-                tx = data.get("TXFrequency", "0")
-                rx = data.get("RXFrequency", "0")
-                lat = data.get("Latitude", "0.0")
-                lon = data.get("Longitude", "0.0")
-                loc = data.get("Location", "Sconosciuta")
                 
                 def format_freq(f):
                     if str(f).isdigit() and int(f) > 0:
@@ -202,17 +196,26 @@ def on_message(client, userdata, msg):
                             dec = dec[:-1]
                         return f"{mhz}.{dec} MHz"
                     return str(f)
+                
+                # Inizializza il dizionario se il nodo è nuovo
+                if cid not in state.node_info:
+                    state.node_info[cid] = {"tx": "0", "rx": "0", "lat": "0.0", "lon": "0.0", "loc": "Sconosciuta"}
+                
+                # Aggiorna solo i campi effettivamente presenti nel payload per fondere i dati di MMDVM e DMRGateway
+                if "TXFrequency" in data:
+                    state.node_info[cid]["tx"] = format_freq(data["TXFrequency"])
+                if "RXFrequency" in data:
+                    state.node_info[cid]["rx"] = format_freq(data["RXFrequency"])
+                if "Latitude" in data:
+                    state.node_info[cid]["lat"] = data["Latitude"]
+                if "Longitude" in data:
+                    state.node_info[cid]["lon"] = data["Longitude"]
+                if "Location" in data:
+                    state.node_info[cid]["loc"] = data["Location"]
                     
-                state.node_info[cid] = {
-                    "tx": format_freq(tx), 
-                    "rx": format_freq(rx),
-                    "lat": lat,
-                    "lon": lon,
-                    "loc": loc
-                }
                 state.notify_update()
             except Exception as e:
-                logger.error(f"Errore parsing MMDVMHost info per {cid}: {e}")
+                logger.error(f"Errore parsing info (MMDVM/DMRGateway) per {cid}: {e}")
 
         # --- 6. INFO GENERALI (CALLSIGN & RADIO ID) ---
         elif len(parts) >= 4 and p0 == 'data' and p2 in ('mmdvm', 'mmdvmhost') and parts[3].lower() == 'general':
