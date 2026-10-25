@@ -738,12 +738,16 @@ async function refreshLogs() {
     try {
         const res = await fetch('/api/logs'); const logs = await res.json();
         const tbody = document.getElementById('log-body'); let tableHTML = ""; let networkLogs = {};
-        logs.forEach(row => {
+            logs.forEach(row => {
             const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
             const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
             const rawSlot = row[5]; const source_ext = row[8]; const rawRssi = row[9]; const sourceConn = row[10]; const ysfMode = row[11];
             
             let sourceHtml = esc(source);
+            if (!source.includes("🌐") && /[a-zA-Z]/.test(source)) {
+                 let cleanCall = source.split(' ')[0].trim();
+                 sourceHtml = `<a href="https://www.qrz.com/db/${encodeURIComponent(cleanCall)}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 3px; font-weight: inherit;">${esc(source)}</a>`;
+            }
             if (source_ext && source_ext.trim() !== "") { sourceHtml += ` <span style="font-size:0.8em; color:var(--text-muted); font-family:'JetBrains Mono', monospace;">/${esc(source_ext)}</span>`; }
 
             let slotDisplay = rawSlot && String(rawSlot).trim() !== "" && rawSlot !== "undefined" ? (protocol === "DMR" && !String(rawSlot).toUpperCase().startsWith("TS") ? `TS${rawSlot}` : rawSlot) : "---";
