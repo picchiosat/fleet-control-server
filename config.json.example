@@ -39,5 +39,6 @@
         "nxdn": "https://radioid.net/static/nxdn.csv"
     },
     "log_max_mb": 50,
-    "log_backup_count": 10
+    "log_backup_count": 10,
+    "last_heard_limit": 60
 }

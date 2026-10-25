@@ -47,10 +47,20 @@ def get_clients():
 
 @api_bp.route('/api/logs')
 def get_logs():
+    # 1. Recupera il valore da config.json (default: 60)
+    cfg_limit = config.get("last_heard_limit", 60)
+    
+    # 2. Se il client passa ?limit=, usa quello (validato tra 10 e 300 righe)
+    try:
+        limit = int(request.args.get('limit', cfg_limit))
+        limit = max(10, min(limit, 300))
+    except (ValueError, TypeError):
+        limit = cfg_limit
+
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
     c.execute("""SELECT timestamp, client_id, protocol, source_id, target, slot, duration, ber, source_ext, rssi, source_conn, ysf_mode 
-                 FROM radio_logs ORDER BY id DESC LIMIT 60""")
+                 FROM radio_logs ORDER BY id DESC LIMIT ?""", (limit,))
     logs = c.fetchall()
     conn.close()
     return jsonify(logs)

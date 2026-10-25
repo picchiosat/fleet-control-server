@@ -206,6 +206,11 @@ async function initUI() {
             statSelect.innerHTML = opts;
         }
 
+        const limitSel = document.getElementById('log-limit-select');
+        if (limitSel) {
+            limitSel.value = localStorage.getItem('fleetLogLimit') || '60';
+
+        }
         const grid = document.getElementById('client-grid');
         const authContainer = document.getElementById('auth-container');
         const role = me.role || '';
@@ -734,9 +739,16 @@ if (isOnline) {
     } catch (e) { console.error(e); }
 }
 
+function changeLogLimit(val) {
+    localStorage.setItem('fleetLogLimit', val);
+    refreshLogs();
+}
+
 async function refreshLogs() {
     try {
-        const res = await fetch('/api/logs'); const logs = await res.json();
+        const savedLimit = localStorage.getItem('fleetLogLimit') || '';
+        const url = savedLimit ? `/api/logs?limit=${encodeURIComponent(savedLimit)}` : '/api/logs';
+        const res = await fetch(url); const logs = await res.json();
         const tbody = document.getElementById('log-body'); let tableHTML = ""; let networkLogs = {};
             logs.forEach(row => {
             const time = row[0] ? row[0].split(' ')[1] : "--:--"; 

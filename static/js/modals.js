@@ -1,6 +1,7 @@
 // --- SISTEMA TRADUZIONI (i18n) & HELPERS ---
 const i18n = {
     en: {
+        lblLogLimit: "Rows:",
         lastTransits: "Lastheard", loginTitle: "🔒 System Login",
         thTime: "Time", thRep: "Repeater", thMode: "Mode", thCall: "Callsign", thDur: "Duration",
         thUser: "User", thRole: "Role", thNodes: "Nodes", thActs: "Actions",
@@ -31,6 +32,7 @@ const i18n = {
         filtAll: "All Nodes", filtOnline: "Online", filtOffline: "Offline", filtAlerts: "⚠️ Alerts"
     },
     it: {
+        lblLogLimit: "Righe:",
         lastTransits: "Ultimi ascolti", loginTitle: "🔒 Login di Sistema",
         thTime: "Ora", thRep: "Ripetitore", thMode: "Modo", thCall: "Nominativo", thDur: "Durata",
         thUser: "Utente", thRole: "Ruolo", thNodes: "Nodi", thActs: "Azioni",

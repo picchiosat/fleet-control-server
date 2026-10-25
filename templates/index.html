@@ -84,9 +84,20 @@
             <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
                 <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
             </h3>
-            <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="font-weight: bold; cursor: pointer;">
-                <option value="all">🌐 ALL NODES</option>
-            </select>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label for="log-limit-select" data-i18n="lblLogLimit" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Righe:</label>
+                    <select id="log-limit-select" onchange="changeLogLimit(this.value)" style="font-weight: bold; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main);">
+                        <option value="30">30</option>
+                        <option value="60">60</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+                <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="font-weight: bold; cursor: pointer;">
+                    <option value="all">🌐 ALL NODES</option>
+                </select>
+            </div>
         </div>
         <div class="table-container" style="margin-bottom: 0;">
             <table>
