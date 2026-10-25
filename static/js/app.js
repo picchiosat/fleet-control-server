@@ -554,7 +554,7 @@ if (isOnline) {
                                 badgeColor = 'white';
                                 badgeBorder = gw.color;
                                 suffix = dest ? `: ${dest} [LINKING]` : ` [LINKING]`;
-                            } else if (action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed')) {
+                            } else if (action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed' && action !== 'status')) {
                                 badgeBg = gw.color;
                                 badgeColor = 'white';
                                 badgeBorder = gw.color;
@@ -578,7 +578,7 @@ if (isOnline) {
                             
                             if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
                                 gwData['DMR_NETS'].forEach(netName => {
-                                    let netSuffix = (action === 'linking') ? ' [LINKING]' : (action === 'failed' ? ' [FAILED]' : (dest ? `: ${dest}` : ''));
+                                    let netSuffix = (action === 'linking') ? ' [LINKING]' : (action === 'failed' ? ' [FAILED]' : (dest && action !== 'status' ? `: ${dest}` : ''));
                                     let netText = `DMR: ${esc(netName)}${esc(netSuffix)}`;
                                     gwHtml += `<span class="${extraClass}" style="font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; padding: 3px 6px; border-radius: 4px; border: 1px solid ${badgeBorder}; background: ${badgeBg}; color: ${badgeColor} !important; transition: all 0.3s ease;" title="Stato: ${action.toUpperCase()}">${netText}</span>`;
                                 });

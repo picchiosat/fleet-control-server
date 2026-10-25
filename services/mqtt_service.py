@@ -240,33 +240,67 @@ def on_message(client, userdata, msg):
             
             if cid not in state.gateway_states:
                 state.gateway_states[cid] = {}
+                
+            m = ""  # Variabile per il log di sistema
             
-            if 'status' in data:
-                state.gateway_states[cid][proto] = {"action": "status", "dest": data['status'].get('message', 'IDLE')}
-                state.notify_update()
-            elif 'link' in data:
+            # 1. Parsing strutturato (usato per il messaggio "Link IT-YSF-FVG")
+            if 'link' in data:
                 l = data['link']
                 g_dest = str(l.get('reflector') or l.get('talkgroup') or '---').strip()
                 g_action = l.get('action', '')
                 state.gateway_states[cid][proto] = {"action": g_action, "dest": g_dest}
                 state.notify_update()
-            
-            m = ""
-            if 'status' in data: 
-                m = data['status'].get('message', '')
-            elif 'link' in data:
-                l = data['link']
-                dest = str(l.get('reflector') or l.get('talkgroup') or '---').strip()
-                action = l.get('action')
-                if action == 'linking':
-                    state.last_seen_reflector[f"{cid}_{proto}"] = dest
-                elif action == 'unlinking':
+                
+                if g_action == 'linking':
+                    state.last_seen_reflector[f"{cid}_{proto}"] = g_dest
+                elif g_action == 'unlinking':
                     state.last_seen_reflector[f"{cid}_{proto}"] = "---"
-                m = f"{'Link' if action=='linking' else 'Unlinked'} {dest}"
+                m = f"{'Link' if g_action=='linking' else 'Unlinked'} {g_dest}"
             
-            if m:
-                save_to_sqlite(cid, {'src_id': "🌐 " + m, 'dst_id': 'NET'}, protocol=proto)
-
+            # 2. Parsing testuale (usato per gli status testuali)
+            elif 'status' in data:
+                raw_msg = str(data['status'].get('message', 'IDLE'))
+                msg_lower = raw_msg.lower()
+                m = raw_msg
+                
+                # A. NXDN: Connessione tramite RF
+                if "switched to reflector" in msg_lower:
+                    match = re.search(r'switched to reflector (\w+)', msg_lower)
+                    if match:
+                        state.gateway_states[cid][proto] = {"action": "linked", "dest": match.group(1).upper()}
+                        state.notify_update()
+                
+                # B. YSF/NXDN: Connessione standard
+                elif "linked to" in msg_lower:
+                    idx = msg_lower.find("linked to")
+                    dest = raw_msg[idx + 9:].strip()
+                    state.gateway_states[cid][proto] = {"action": "linked", "dest": dest}
+                    state.notify_update()
+                    
+                # C. Connessione in corso
+                elif "linking to" in msg_lower:
+                    idx = msg_lower.find("linking to")
+                    dest = raw_msg[idx + 10:].strip()
+                    state.gateway_states[cid][proto] = {"action": "linking", "dest": dest}
+                    state.notify_update()
+                    
+                # D. Disconnessione o arresto del demone (Azzera la memoria)
+                elif "unlinked" in msg_lower or "disconnected" in msg_lower or "not linked" in msg_lower or "failed" in msg_lower or "stopping" in msg_lower:
+                    state.gateway_states[cid][proto] = {"action": "unlinked", "dest": ""}
+                    state.notify_update()
+                    
+                # E. Avvio del demone
+                elif "starting" in msg_lower or "opening" in msg_lower or "idle" in msg_lower:
+                    # Azzera il badge SOLO se non è appena stato registrato un "Link" fulmineo
+                    current_act = state.gateway_states.get(cid, {}).get(proto, {}).get("action")
+                    if current_act not in ["linked", "linking"]:
+                        state.gateway_states[cid][proto] = {"action": "idle", "dest": ""}
+                        state.notify_update()
+            
+            # Salvataggio nel DB per la console log
+            if m and "running" not in m.lower():
+                save_to_sqlite(cid, {'src_id': f"🌐 {m}", 'dst_id': 'NET'}, protocol=proto)
+            
         # --- 8. TRAFFICO VOCE MMDVM (DMR & MODI DIGITALI) ---
         elif parts[0] == 'mmdvm':
             data = json.loads(payload)
