@@ -51,7 +51,7 @@ def run_diagnostics():
             cur.execute("""
                 SELECT LOWER(client_id), AVG(ber), COUNT(*) 
                 FROM radio_logs 
-                WHERE timestamp >= datetime('now', 'localtime', '-2 hours') 
+                WHERE timestamp >= datetime('now', 'localtime', '-5 minutes') 
                   AND source_id NOT LIKE '🌐%' 
                   AND (source_conn IS NULL OR LOWER(source_conn) != 'network')
                 GROUP BY LOWER(client_id)
@@ -60,7 +60,7 @@ def run_diagnostics():
             
             for cid, avg_ber, cnt in rows:
                 key_ber = f"{cid}_BER"
-                if cnt >= 5 and avg_ber is not None and avg_ber >= 5.0:
+                if cnt >= 2 and avg_ber is not None and avg_ber >= 5.0:
                     new_warnings.setdefault(cid, []).append(f"⚠️ Alto BER RF ({avg_ber:.1f}%)")
                     if not watchdog_notified.get(key_ber):
                         broadcast_push_notification(f"⚠️ ANOMALIA RF: {cid.upper()}", f"Rilevato BER medio del {avg_ber:.1f}% negli ultimi {cnt} passaggi RF.", cid=cid)
