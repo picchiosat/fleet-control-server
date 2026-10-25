@@ -546,7 +546,7 @@ async function refreshStates() {
                     { id: 'p25gateway', label: 'P25', color: '#f59e0b', tint: 'rgba(245, 158, 11, 0.15)', proto: 'P25' }
                 ];
                 
-if (isOnline) {
+                if (isOnline) {
                     gwMap.forEach(gw => {
                         let isActiveProc = processes[gw.id] && processes[gw.id].toLowerCase() === 'online';
                         if (isActiveProc) {
@@ -713,18 +713,49 @@ if (isOnline) {
                 }
                 
                 if (isOnline) {
-                    miniCard.style.borderColor = (warns.length > 0) ? "#f59e0b" : "var(--success)";
+                    let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
+                    let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
+                    
                     miniCard.style.opacity = "1";
                     miniCard.style.filter = "none";
-                    miniStatus.innerText = (warns.length > 0) ? "⚠️ ALERT" : stateValue;
-                    miniStatus.title = (warns.length > 0) ? warns.join(" | ") : stateValue; 
-                    miniStatus.style.color = (warns.length > 0) ? "#f59e0b" : "var(--success)";
-                    miniStatus.style.background = (warns.length > 0) ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.1)";
-                    miniStatus.style.borderColor = (warns.length > 0) ? "rgba(245, 158, 11, 0.4)" : "rgba(16, 185, 129, 0.2)";
+
+                    if (showActiveColor) {
+                        let shadowRGB = '59, 130, 246'; 
+                        if (activeModeColor === '#10b981') shadowRGB = '16, 185, 129'; 
+                        else if (activeModeColor === '#8b5cf6') shadowRGB = '139, 92, 246'; 
+                        else if (activeModeColor === '#06b6d4') shadowRGB = '6, 182, 212'; 
+                        else if (activeModeColor === '#f59e0b') shadowRGB = '245, 158, 11'; 
+
+                        miniCard.style.borderColor = activeModeColor;
+                        miniCard.style.boxShadow = `0 0 15px rgba(${shadowRGB}, 0.5)`;
+                        miniStatus.innerText = "🎙️ TX";
+                        miniStatus.title = "Transmitting...";
+                        miniStatus.style.color = "#ffffff";
+                        miniStatus.style.background = activeModeColor;
+                        miniStatus.style.borderColor = activeModeColor;
+                    } 
+                    else if (warns.length > 0) {
+                        miniCard.style.borderColor = "#f59e0b";
+                        miniCard.style.boxShadow = "none";
+                        miniStatus.innerText = "⚠️ ALERT";
+                        miniStatus.title = warns.join(" | "); 
+                        miniStatus.style.color = "#f59e0b";
+                        miniStatus.style.background = "rgba(245, 158, 11, 0.15)";
+                        miniStatus.style.borderColor = "rgba(245, 158, 11, 0.4)";
+                    } else {
+                        miniCard.style.borderColor = "var(--success)";
+                        miniCard.style.boxShadow = "none";
+                        miniStatus.innerText = stateValue;
+                        miniStatus.title = stateValue; 
+                        miniStatus.style.color = "var(--success)";
+                        miniStatus.style.background = "rgba(16, 185, 129, 0.1)";
+                        miniStatus.style.borderColor = "rgba(16, 185, 129, 0.2)";
+                    }
                 } else {
                     miniCard.style.borderColor = "var(--border-color)";
                     miniCard.style.opacity = "0.6";
                     miniCard.style.filter = "grayscale(80%)";
+                    miniCard.style.boxShadow = "none";
                     miniStatus.innerText = "OFFLINE";
                     miniStatus.title = "OFFLINE"; 
                     miniStatus.style.color = "var(--danger)";
