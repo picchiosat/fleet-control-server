@@ -91,7 +91,7 @@ apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python
 #### 1. Clone Repository
 Clone the repository into the /opt directory to ensure all systemd paths work correctly:
 ```bash
-git clone https://tuo-gitea.com/utente/fleet-control-server.git /opt/fleet-control-server
+git clone https://git.arifvg.it/iv3jdv/fleet-control-server.git /opt/fleet-control-server
 cd /opt/fleet-control-server
 ```
 #### 2. Virtual Environment Setup (Recommended)
@@ -209,7 +209,7 @@ apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python
 #### 1. Clonazione dei Repository
 Clona il repository nella cartella /opt per assicurarti che tutti i percorsi dei servizi systemd siano corretti:
 ```bash
-git clone https://tuo-gitea.com/utente/fleet-control-server.git /opt/fleet-control-server
+git clone https://git.arifvg.it/iv3jdv/fleet-control-server.git /opt/fleet-control-server
 cd /opt/fleet-control-server
 ```
 #### 2. Setup Ambiente Virtuale (Consigliato)
