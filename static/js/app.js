@@ -477,12 +477,14 @@ async function refreshStates() {
                     else if (altText.includes("YSF")) { activeModeColor = "#8b5cf6"; txModeStr = "TX YSF"; }
                     else if (altText.includes("D-STAR")) { activeModeColor = "#f97316"; txModeStr = "TX D-STAR"; }
                     else if (altText.includes("P25")) { activeModeColor = "var(--accent)"; txModeStr = "TX P25"; }
-                    isTx = altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠");
+                    
+                    // FIX: Forza isTx a FALSE se il nodo è a riposo (isIdle = true)
+                    isTx = !isIdle && (altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠"));
                 } else {
                     let v1 = String(telemetryObj.ts1 ?? '');
                     let v2 = String(telemetryObj.ts2 ?? '');
                     if (v1.includes("🎙️") || v1.includes("TX") || v2.includes("🎙️") || v2.includes("TX")) {
-                        isTx = true;
+                        isTx = !isIdle; // FIX anche qui
                         activeModeColor = "var(--primary)";
                         txModeStr = "TX DMR";
                     }
