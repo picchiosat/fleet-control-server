@@ -1,5 +1,6 @@
 import json
 import re
+import datetime
 from paho.mqtt import client as mqtt_client
 from core.config import config, logger
 from core.database import save_to_sqlite
@@ -18,7 +19,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         default_topics = [
             "servizi/+/stat", "dmr-gateway/+/json", "devices/+/services",
             "nxdn-gateway/+/json", "ysf-gateway/+/json", "p25-gateway/+/json",
-            "dstar-gateway/+/json", "mmdvm/+/json", "data/#"
+            "dstar-gateway/+/json", "mmdvm/+/json", "data/#", "aprs-gateway/aprs"
         ]
         
         topics_list = config.get('mqtt', {}).get('topics', default_topics)
@@ -42,6 +43,35 @@ def on_message(client, userdata, msg):
     try:
         topic = msg.topic
         payload = msg.payload.decode('utf-8', errors='replace').strip()
+        
+        # NUOVO BLOCCO APRS
+        if topic == "aprs-gateway/aprs":
+            try:
+                raw_aprs = payload
+                # Formato atteso: SOURCE>DEST,PATH:PAYLOAD
+                if ">" in raw_aprs and ":" in raw_aprs:
+                    header, aprs_payload = raw_aprs.split(":", 1)
+                    source, rest = header.split(">", 1)
+                    
+                    if "," in rest:
+                        dest, path = rest.split(",", 1)
+                    else:
+                        dest = rest
+                        path = ""
+                    
+                    aprs_data = {
+                        "time": datetime.datetime.now().strftime("%H:%M:%S"),
+                        "source": source.strip(),
+                        "dest": dest.strip(),
+                        "path": path.strip(),
+                        "payload": aprs_payload.strip()
+                    }
+                    
+                    state.socketio.emit('aprs_msg', aprs_data)
+            except Exception as e:
+                logger.error(f"Errore decodifica APRS: {e}")
+            return # Esci per non processare il resto della logica su questo topic
+        
         parts = topic.split('/')
         if len(parts) < 2:
             return

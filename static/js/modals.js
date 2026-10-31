@@ -13,6 +13,7 @@ const i18n = {
         warnEdit: "[WARN] DIRECT EDIT ACTIVE",
         btnEdit: "EDIT", btnStart: "START", btnRestart: "RST", btnStop: "STOP", btnSave: "WRITE_FILE",
         btnHat: "RST_HAT", confHat: "PHYSICAL RESET MMDVM ON: ",
+        confOta: "EXECUTE GIT PULL ON NODE ",
         confOp: "Confirm operation on ", confTgOn: "ENABLE Telegram notifications for ", confTgOff: "MUTE Telegram notifications for ", confOvr: "Are you sure you want to overwrite file on ",
         warnDaemon: "[WARN] DAEMON OFFLINE",
         promptOvr: "GLOBAL OVERRIDE", promptOvrConfirm: "Confirm sending to ENTIRE network?",
@@ -44,6 +45,7 @@ const i18n = {
         warnEdit: "[WARN] DIRECT EDIT ACTIVE",
         btnEdit: "EDIT", btnStart: "START", btnRestart: "RST", btnStop: "STOP", btnSave: "WRITE_FILE",
         btnHat: "RST_HAT", confHat: "PHYSICAL RESET MMDVM ON: ",
+        confOta: "ESEGUIRE GIT PULL SUL NODO ",
         confOp: "Confermi l'operazione su ", confTgOn: "Vuoi ATTIVARE le notifiche Telegram per il nodo ", confTgOff: "Vuoi SILENZIARE le notifiche Telegram per il nodo ", confOvr: "Sei sicuro di voler sovrascrivere il file su ",
         warnDaemon: "[WARN] DAEMON OFFLINE",
         promptOvr: "GBL_OVR", promptOvrConfirm: "Confermi l'invio a TUTTA la rete?",
@@ -256,7 +258,7 @@ function openConfigsModal(clientId) {
     } else {
         listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--border-light); width:100%;">
             <span style="font-weight:400; font-family:'JetBrains Mono',monospace; flex: 1; text-align: left; overflow:hidden; text-overflow:ellipsis; padding-right:20px;">${esc(fileLabel(f, fileNames))}</span>
-            <button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; width: 100px; flex: 0 0 100px; padding: 8px;">${t('btnEdit')}</button>
+            <button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; width: 80px; flex: 0 0 80px; padding: 6px;">${t('btnEdit')}</button>
         </div>`).join('');
     }
     document.getElementById('configs-modal').style.display = 'flex';

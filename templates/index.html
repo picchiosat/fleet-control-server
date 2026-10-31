@@ -18,8 +18,8 @@
     <!-- Libreria Mappa Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
-    <!-- Foglio di Stile Esterno Modularizzato -->
-    <link rel="stylesheet" href="/static/css/style.css?v=blueprint3">
+    <!-- Foglio di Stile Esterno Modularizzato (Cache Buster) -->
+    <link rel="stylesheet" href="/static/css/style.css?v=blueprint-aprs">
 </head>
 <body>
 
@@ -31,6 +31,7 @@
             <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>
             <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes">NODES</button>
             <button class="nav-tab" onclick="switchView('map')" id="tab-map">MAP</button>
+            <button class="nav-tab" onclick="switchView('aprs')" id="tab-aprs">APRS</button>
         </div>
 
         <div class="top-bar-right">
@@ -47,7 +48,117 @@
     <div id="map-container"></div>
 </div>
 
-<!-- VISTA NODI -->
+<!-- VISTA APRS LOGS -->
+<div id="view-aprs" style="display: none;">
+    <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-main); padding-bottom: 5px; margin-bottom: 15px;">
+            <h3 style="margin: 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main);">[ APRS_TRAFFIC ]</h3>
+            <button class="btn-cmd" onclick="document.getElementById('aprs-body').innerHTML='';" style="width: auto; padding: 4px 12px; flex: none;">[ CLEAR ]</button>
+        </div>
+        <div class="table-container" style="max-height: calc(100vh - 200px);">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">TIME</th>
+                        <th style="width: 120px;">SOURCE</th>
+                        <th style="width: 120px;">DEST</th>
+                        <th style="width: 200px;">PATH</th>
+                        <th>PAYLOAD</th>
+                    </tr>
+                </thead>
+                <tbody id="aprs-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- VISTA FOCUS NODO SINGOLO (FULL SCREEN) -->
+<div id="view-focus" style="display: none;">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
+        <!-- Header Ritorno e Titolo -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--border-main); padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+            <button class="btn-cmd" style="width: auto; padding: 12px 25px; font-size: 1.1rem; border-color: var(--accent); color: var(--accent) !important;" onclick="closeNodeFocus()">[ < RETURN TO OVERVIEW ]</button>
+            <div style="text-align: right; flex-grow: 1;">
+                <h2 id="focus-name" style="margin: 0; color: var(--text-main); font-weight: 300; font-size: 2.5rem; letter-spacing: 2px; display: flex; align-items: center; justify-content: flex-end; gap: 15px;">--</h2>
+                <div id="focus-id" style="color: var(--primary); font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; margin-top: 5px;">--</div>
+                <div id="focus-status" style="font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; margin-top: 5px; font-weight: bold;">--</div>
+            </div>
+        </div>
+        
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));">
+            <!-- COLONNA SX: HARDWARE E RF -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card" style="border-width: 1px !important;">
+                    <h3 style="margin: 0 0 20px 0; color: var(--accent); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ HARDWARE_TELEMETRY ]</h3>
+                    <div style="font-size: 1.2rem; font-family: 'JetBrains Mono', monospace; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>CPU_LOAD:</span> <span id="focus-cpu">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>SYS_TEMP:</span> <span id="focus-temp">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>RAM_USAGE:</span> <span id="focus-ram">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>DISK_SPACE:</span> <span id="focus-disk">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>UPTIME:</span> <span id="focus-up">--</span></div>
+                    </div>
+                </div>
+                
+                <div class="card" style="border-width: 1px !important;">
+                    <h3 style="margin: 0 0 20px 0; color: var(--primary); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ RF_CONFIGURATION ]</h3>
+                    <div style="font-size: 1.2rem; font-family: 'JetBrains Mono', monospace; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>TX_FREQ:</span> <span id="focus-tx" style="color: var(--danger);">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>RX_FREQ:</span> <span id="focus-rx" style="color: var(--success);">--</span></div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-light); padding-bottom: 8px;"><span>LOCATION:</span> <span id="focus-loc" style="color: var(--text-main);">--</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- COLONNA DX: SOFTWARE E LOG -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card" style="border-width: 1px !important; flex: 1;">
+                    <h3 style="margin: 0 0 20px 0; color: var(--success); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ ACTIVE_GATEWAYS ]</h3>
+                    <div id="focus-gw" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; min-height: 40px; font-size: 0.9rem;"></div>
+                    
+                    <h3 style="margin: 0 0 20px 0; color: var(--primary); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ TIMESLOTS_MODES ]</h3>
+                    <div id="focus-ts" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; font-family: 'JetBrains Mono', monospace; font-size: 1.2rem;"></div>
+                    
+                    <h3 style="margin: 0 0 15px 0; color: var(--border-main); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ LIVE_TERMINAL ]</h3>
+                    <div id="focus-log" class="terminal-log" style="height: 320px; max-height: 320px; font-size: 0.95rem; border-color: var(--border-main);">> AWAITING_STREAM...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOCUS LASTHEARD -->
+        <div style="margin-top: 30px; border-top: 1px dashed var(--border-light); padding-top: 20px;">
+            <h3 style="margin: 0 0 15px 0; color: var(--text-main); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">[ NODE_LASTHEARD ]</h3>
+            <div class="table-container" style="margin: 0; max-height: 400px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-i18n="thTime">TIME</th>
+                            <th data-i18n="thRep">REPEATER</th>
+                            <th data-i18n="thMode">MODE</th>
+                            <th style="text-align: center;">YSF_MODE</th>
+                            <th style="text-align: center;">SOURCE</th>
+                            <th style="text-align: center;">REF/SLOT</th>
+                            <th data-i18n="thCall">CALLSIGN</th>
+                            <th>TARGET</th>
+                            <th data-i18n="thDur">DUR</th>
+                            <th>BER</th>
+                            <th>RSSI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="focus-lastheard-body"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- CONTROLLI ADMIN DEL NODO -->
+        <div id="focus-controls" style="display: none; margin-top: 30px; border: 1px dashed var(--danger); padding: 30px; background: rgba(6, 36, 111, 0.6); backdrop-filter: blur(2px);">
+             <h3 style="margin: 0 0 20px 0; color: var(--danger); font-weight: 300; font-size: 1.5rem; text-align: center; letter-spacing: 2px;">[ ADMIN_CONTROLS ]</h3>
+             <div id="focus-admin-btns" style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+             </div>
+        </div>
+    </div>
+</div>
+
+<!-- VISTA NODI IN GRIGLIA -->
 <div id="view-nodes" style="display: none;">
     <div style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
         <div class="filter-bar">
@@ -74,7 +185,6 @@
 
 <!-- VISTA HOME -->
 <div id="view-home">
-    <!-- STATUS RAPIDO NODI -->
     <div style="max-width: 1400px; margin: 0 auto 20px auto; padding: 0 20px;">
         <h3 style="margin: 0 0 15px 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main); border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;">
             [ FLEET_STATUS ]
@@ -82,7 +192,6 @@
         <div id="home-mini-nodes" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;"></div>
     </div>
 
-    <!-- LASTHEARD -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto;">
         <div style="padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;">
             <h3 style="margin: 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main);" data-i18n="lastTransits">[ LASTHEARD ]</h3>
@@ -123,7 +232,6 @@
         </div>
     </div>
 
-    <!-- DAILY STATISTICS -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px;">
         <h3 style="margin: 0 0 15px 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main); border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;" data-i18n="statTitle">[ DAILY_STATISTICS ]</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
@@ -324,8 +432,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <!-- MOTORE MODULARIZZATO JS (Cache Buster aggiunto per forzare il refresh) -->
-<script src="/static/js/modals.js?v=blueprint3"></script>
-<script src="/static/js/app.js?v=blueprint2"></script>
+<script src="/static/js/modals.js?v=blueprint4"></script>
+<script src="/static/js/app.js?v=blueprint-aprs-final"></script>
 
 <!-- SERVICE WORKER -->
 <script>

@@ -16,27 +16,56 @@ let viewMode = localStorage.getItem('fleetViewMode') || 'grid';
 let fleetMap = null; 
 let mapMarkers = {};
 
+let currentFocusedNode = null;
+
 function switchView(viewName) {
+    currentFocusedNode = null; 
+    document.getElementById('view-focus').style.display = 'none';
+    
     document.getElementById('view-home').style.display = 'none';
     document.getElementById('view-nodes').style.display = 'none';
     document.getElementById('view-map').style.display = 'none';
+    document.getElementById('view-aprs').style.display = 'none';
+    
     document.getElementById('tab-home').classList.remove('active');
     document.getElementById('tab-nodes').classList.remove('active');
     document.getElementById('tab-map').classList.remove('active');
+    document.getElementById('tab-aprs').classList.remove('active');
     
     document.getElementById(`view-${viewName}`).style.display = 'block';
     document.getElementById(`tab-${viewName}`).classList.add('active');
     localStorage.setItem('fleetDefaultView', viewName);
     
-    // Riporta la pagina in cima con un'animazione fluida
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     if (viewName === 'nodes') { applyViewMode(); }
-    else if (viewName === 'map') { 
-        setTimeout(() => {
-            initOrUpdateMap();
-        }, 100);
-    }
+    else if (viewName === 'map') { setTimeout(() => { initOrUpdateMap(); }, 100); }
+}
+
+function openNodeFocus(clientId) {
+    currentFocusedNode = clientId;
+    
+    document.getElementById('view-home').style.display = 'none';
+    document.getElementById('view-nodes').style.display = 'none';
+    document.getElementById('view-map').style.display = 'none';
+    document.getElementById('view-aprs').style.display = 'none';
+    
+    document.getElementById('tab-home').classList.remove('active');
+    document.getElementById('tab-nodes').classList.remove('active');
+    document.getElementById('tab-map').classList.remove('active');
+    document.getElementById('tab-aprs').classList.remove('active');
+    
+    document.getElementById('view-focus').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    refreshStates(); 
+    refreshLogs();   
+}
+
+function closeNodeFocus() {
+    currentFocusedNode = null;
+    document.getElementById('view-focus').style.display = 'none';
+    switchView(localStorage.getItem('fleetDefaultView') || 'home');
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -48,6 +77,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
     checkServerUpdate();
     setInterval(checkServerUpdate, 3600000); 
+    refreshAprs(); // Fetch iniziale APRS
 });
 
 // --- FUNZIONI FILTRO E LAYOUT ---
@@ -165,18 +195,18 @@ function confirmSwitch(id, mode) {
     const data = globalHealthData[id.toLowerCase()];
     let profileName = mode === 'A' ? "PROF A" : "PROF B";
     if (data && data.profiles && data.profiles[mode]) profileName = data.profiles[mode];
-    const title = `🔄 ${t('titleSwitch')}`;
+    const title = `[ SW_PROFILE ]`;
     const msg = `${t('confSwitch')} <b>${esc(profileName)}</b> -> <b>${id.toUpperCase()}</b>?`;
     const color = mode === 'A' ? "var(--accent)" : "var(--primary)";
     sendCommand(id, mode, title, msg, color); 
 }
 
-function confirmReboot(id) { sendCommand(id, 'REBOOT', `🔄 ${t('titleBoot')}`, `${t('confBoot')}<b>${id.toUpperCase()}</b>?`, "var(--danger)"); }
-function confirmUpdateAgent(id) { sendCommand(id, 'UPDATE_AGENT', `⬇️ UPDATE OTA`, `Confermi l'aggiornamento dello script tramite git pull sul nodo <b>${id.toUpperCase()}</b>?`, "var(--primary)"); }    
+function confirmReboot(id) { sendCommand(id, 'REBOOT', `[ REBOOT ]`, `${t('confBoot')}<b>${id.toUpperCase()}</b>?`, "var(--danger)"); }
+function confirmUpdateAgent(id) { sendCommand(id, 'UPDATE_AGENT', `[ OTA_UPDATE ]`, `${t('confOta')}<b>${id.toUpperCase()}</b>?`, "var(--primary)"); }    
 
 function sendTgCommand(clientId, comando) {
     const msg = (comando === 'TG:ON') ? t('confTgOn') : t('confTgOff');
-    customConfirm("💬 TELEGRAM", `${msg}<b>${clientId.toUpperCase()}</b>?`, "var(--primary)", async () => {
+    customConfirm("[ TELEGRAM ]", `${msg}<b>${clientId.toUpperCase()}</b>?`, "var(--primary)", async () => {
         try {
             const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId, type: comando }) });
             const data = await res.json();
@@ -234,7 +264,7 @@ async function initUI() {
             return `
                 <div class="card" id="card-${c.id}" data-status="offline" data-gateways="" data-loc="" data-has-warn="false">
                     <div class="card-header">
-                        <span class="client-name" title="${esc(c.name)}">${esc(c.name)}</span>
+                        <span class="client-name" title="${esc(c.name)}"><span class="tactical-led" id="led-status-${c.id}"></span> ${esc(c.name)}</span>
                         <div class="header-badges">
                             <span class="badge-id">NET-ID: ${c.id.toUpperCase()}</span>
                             <span class="badge-id" id="agent-badge-${c.id}" style="display: none; color: var(--primary);"></span>
@@ -272,7 +302,7 @@ async function initUI() {
                     </div>
                     <div class="dmr-info" id="dmr-alt-${c.id}" style="display: none; text-align: center; font-weight: 400;"></div>
                     
-                    <div class="terminal-log" id="sys-log-${c.id}">${t('waitNet')}</div>
+                    <div class="terminal-log" id="sys-log-${c.id}">> AWAITING_STREAM...</div>
 
                     <div id="svc-warn-${c.id}" class="blink" style="display: none; text-align: center; margin-bottom: 15px; border: 1px dashed var(--danger); padding: 10px; color: var(--danger);">
                         <span style="font-size: 0.85rem; font-family: 'JetBrains Mono';" data-i18n="warnDaemon">${t('warnDaemon')}</span>
@@ -289,7 +319,7 @@ async function initUI() {
                     ${showReboot ? `
                     <details class="admin-dropdown" style="width: 100%;">
                         <summary id="admin-summary-${c.id}" class="btn-cmd" style="color: var(--text-muted) !important;">[ SYS_TOOLS ]</summary>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 10px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 10px;">
                             <button class="btn-cmd" style="border-color: var(--primary); color: var(--primary) !important;" title="Versioni Software" onclick="openVersionsModal('${c.id}')">INFO</button>
                             <button id="btn-svc-${c.id}" class="btn-cmd" style="border-color: var(--text-main);" title="${t('ttSvc')}" onclick="openServicesModal('${c.id}')">${t('btnSvc')}</button>
                             <button class="btn-cmd" style="border-color: var(--accent); color: var(--accent) !important;" title="${t('ttFile')}" onclick="openConfigsModal('${c.id}')">${t('btnFile')}</button>
@@ -305,7 +335,7 @@ async function initUI() {
         const miniGrid = document.getElementById('home-mini-nodes');
         if (miniGrid) {
             miniGrid.innerHTML = clients.map(c => `
-                <div id="mini-card-${c.id}" class="mini-card" onclick="switchView('nodes'); setTimeout(()=>document.getElementById('card-${c.id}').scrollIntoView({behavior:'smooth', block: 'center'}), 200);">
+                <div id="mini-card-${c.id}" class="mini-card" onclick="openNodeFocus('${c.id}')">
                     <div class="mini-card-content">
                         <div id="mini-name-${c.id}" class="mini-card-name" title="${esc(c.name)}">${esc(c.name)}</div>
                         <div id="mini-id-${c.id}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">ID: ${c.id.toUpperCase()}</div>
@@ -348,62 +378,64 @@ function initOrUpdateMap() {
 
     let bounds = [];
     clients.forEach(c => {
-        const cid = c.id.toLowerCase();
-        const info = latestStatesData.info && latestStatesData.info[cid];
-        const gen = latestStatesData.general && latestStatesData.general[cid];
-        const state = latestStatesData.states[cid] || "OFFLINE";
-        const isOnline = !state.toUpperCase().includes("OFF") && state !== "";
-        const health = latestStatesData.health && latestStatesData.health[cid];
-        const card = document.getElementById(`card-${c.id}`);
-        const isTx = card && card.dataset.lastTx && (Date.now() - parseInt(card.dataset.lastTx) < 3000);
-        const warns = (latestStatesData.warnings && latestStatesData.warnings[cid]) || [];
+        try {
+            const cid = c.id.toLowerCase();
+            const info = latestStatesData.info && latestStatesData.info[cid];
+            const gen = latestStatesData.general && latestStatesData.general[cid];
+            const state = latestStatesData.states[cid] || "OFFLINE";
+            const isOnline = !state.toUpperCase().includes("OFF") && state !== "";
+            const health = latestStatesData.health && latestStatesData.health[cid];
+            const card = document.getElementById(`card-${c.id}`);
+            const isTx = card && card.dataset.lastTx && (Date.now() - parseInt(card.dataset.lastTx) < 3000);
+            const warns = (latestStatesData.warnings && latestStatesData.warnings[cid]) || [];
 
-        if (info && info.lat && info.lon && parseFloat(info.lat) !== 0 && parseFloat(info.lon) !== 0) {
-            const lat = parseFloat(info.lat);
-            const lon = parseFloat(info.lon);
-            bounds.push([lat, lon]);
+            if (info && info.lat && info.lon && parseFloat(info.lat) !== 0 && parseFloat(info.lon) !== 0) {
+                const lat = parseFloat(info.lat);
+                const lon = parseFloat(info.lon);
+                bounds.push([lat, lon]);
 
-            let pinClass = isOnline ? (warns.length > 0 ? 'pin-warn' : 'pin-online') : 'pin-offline';
-            if (isTx) pinClass += ' pin-tx';
+                let pinClass = isOnline ? (warns.length > 0 ? 'pin-warn' : 'pin-online') : 'pin-offline';
+                if (isTx) pinClass += ' pin-tx';
 
-            let iconSymbol = "+";
-            if (warns.length > 0 && !isTx) iconSymbol = "!";
+                let iconSymbol = "+";
+                if (warns.length > 0 && !isTx) iconSymbol = "!";
 
-            const customIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="custom-map-pin ${pinClass}" style="width: 24px; height: 24px;">${iconSymbol}</div>`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="custom-map-pin ${pinClass}" style="width: 24px; height: 24px;">${iconSymbol}</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
 
-            const call = (gen && gen.callsign) ? gen.callsign : c.name;
-            const warnsHtml = warns.length > 0 ? `
-                <div style="border: 1px dashed var(--accent); padding: 4px 8px; margin-bottom: 8px; font-size: 0.75rem; color: var(--accent); font-weight: bold;">
-                    ${warns.map(w => esc(w)).join('<br>')}
-                </div>
-            ` : '';
+                const call = (gen && gen.callsign) ? gen.callsign : c.name;
+                const warnsHtml = warns.length > 0 ? `
+                    <div style="border: 1px dashed var(--accent); padding: 4px 8px; margin-bottom: 8px; font-size: 0.75rem; color: var(--accent); font-weight: bold;">
+                        ${warns.map(w => esc(w)).join('<br>')}
+                    </div>
+                ` : '';
 
-            const popupContent = `
-                <div style="font-family: 'JetBrains Mono', monospace; min-width: 190px;">
-                    <div style="font-weight: 400; font-size: 1.1rem; color: var(--primary); margin-bottom: 4px;">${esc(call)}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; border-bottom: 1px dashed var(--border-main); padding-bottom: 4px;">ID: ${c.id.toUpperCase()} | ${isOnline ? '<span style="color:var(--success);">ONLINE</span>' : '<span style="color:var(--danger);">OFFLINE</span>'}</div>
-                    ${warnsHtml}
-                    <div style="font-size: 0.8rem; margin-bottom: 4px; color:var(--text-main);">LOC: <strong>${esc(info.loc)}</strong></div>
-                    <div style="font-size: 0.8rem; color: var(--danger);">TX: ${esc(info.tx)}</div>
-                    <div style="font-size: 0.8rem; color: var(--success); margin-bottom: 6px;">RX: ${esc(info.rx)}</div>
-                    ${health ? `<div style="font-size: 0.75rem; margin-bottom: 8px; color: var(--border-main);">TMP: <b>${health.temp}°C</b> | CPU: <b>${health.cpu}%</b></div>` : ''}
-                    <button onclick="switchView('nodes'); setTimeout(()=>document.getElementById('card-${c.id}').scrollIntoView({behavior:'smooth', block: 'center'}), 200);" class="btn-cmd" style="width: 100%; margin-top:5px;">[ FOCUS_NODE ]</button>
-                </div>
-            `;
+                const popupContent = `
+                    <div style="font-family: 'JetBrains Mono', monospace; min-width: 190px;">
+                        <div style="font-weight: 400; font-size: 1.1rem; color: var(--primary); margin-bottom: 4px;">${esc(call)}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; border-bottom: 1px dashed var(--border-main); padding-bottom: 4px;">ID: ${c.id.toUpperCase()} | ${isOnline ? '<span style="color:var(--success);">ONLINE</span>' : '<span style="color:var(--danger);">OFFLINE</span>'}</div>
+                        ${warnsHtml}
+                        <div style="font-size: 0.8rem; margin-bottom: 4px; color:var(--text-main);">LOC: <strong>${esc(info.loc)}</strong></div>
+                        <div style="font-size: 0.8rem; color: var(--danger);">TX: ${esc(info.tx)}</div>
+                        <div style="font-size: 0.8rem; color: var(--success); margin-bottom: 6px;">RX: ${esc(info.rx)}</div>
+                        ${health ? `<div style="font-size: 0.75rem; margin-bottom: 8px; color: var(--border-main);">TMP: <b>${health.temp}°C</b> | CPU: <b>${health.cpu}%</b></div>` : ''}
+                        <button onclick="openNodeFocus('${c.id}')" class="btn-cmd" style="width: 100%; margin-top:5px;">[ FOCUS_NODE ]</button>
+                    </div>
+                `;
 
-            if (!mapMarkers[cid]) {
-                mapMarkers[cid] = L.marker([lat, lon], { icon: customIcon }).addTo(fleetMap).bindPopup(popupContent);
-            } else {
-                mapMarkers[cid].setLatLng([lat, lon]);
-                mapMarkers[cid].setIcon(customIcon);
-                mapMarkers[cid].setPopupContent(popupContent);
+                if (!mapMarkers[cid]) {
+                    mapMarkers[cid] = L.marker([lat, lon], { icon: customIcon }).addTo(fleetMap).bindPopup(popupContent);
+                } else {
+                    mapMarkers[cid].setLatLng([lat, lon]);
+                    mapMarkers[cid].setIcon(customIcon);
+                    mapMarkers[cid].setPopupContent(popupContent);
+                }
             }
-        }
+        } catch(err) { console.error("Map rendering error for node", c.id, err); }
     });
 
     if (bounds.length > 0 && !fleetMap._hasFitted) {
@@ -419,214 +451,314 @@ async function refreshStates() {
         globalVersionsData = data.versions || {};
 
         clients.forEach(c => {
-            const statusDiv = document.getElementById(`status-${c.id}`); const cardDiv = document.getElementById(`card-${c.id}`);
-            if (!statusDiv || !cardDiv) return;
+            try {
+                let stateValue = data.states[c.id.toLowerCase()] || data.states[c.id] || "OFFLINE";
+                stateValue = String(stateValue).trim().toUpperCase(); 
+                const isOnline = !stateValue.includes("OFF") && stateValue !== "";
+                
+                let genObj = data.general && data.general[c.id.toLowerCase()];
+                let healthObj = data.health && data.health[c.id.toLowerCase()];
+                let infoObj = data.info && data.info[c.id.toLowerCase()];
+                
+                let telemetryObj = data.telemetry[c.id.toLowerCase()] || data.telemetry[c.id] || { ts1: "...", ts2: "...", alt: "", idle: true };
+                if (typeof telemetryObj === 'string') telemetryObj = { ts1: telemetryObj, ts2: "...", alt: "", idle: true };
+                
+                const role = me.role || '';
+                const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+                let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
+                let showReboot = (role === 'admin'); 
 
-            let stateValue = data.states[c.id.toLowerCase()] || data.states[c.id] || "OFFLINE";
-            stateValue = String(stateValue).trim().toUpperCase(); statusDiv.innerText = stateValue;
-            const isOnline = !stateValue.includes("OFF") && stateValue !== "";
-            cardDiv.dataset.status = isOnline ? 'online' : 'offline';
-            renderSeen(c, data, isOnline);
-
-            const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
-            const diagDiv = document.getElementById(`diag-warn-${c.id}`);
-            cardDiv.dataset.hasWarn = (warns.length > 0) ? 'true' : 'false';
-            
-            if (diagDiv) {
-                if (warns.length > 0 && isOnline) {
-                    diagDiv.style.display = 'block';
-                    diagDiv.innerHTML = warns.map(w => `<div>[!] ${esc(w)}</div>`).join('');
-                } else {
-                    diagDiv.style.display = 'none';
-                    diagDiv.innerHTML = '';
-                }
-            }
-
-            let genObj = data.general && data.general[c.id.toLowerCase()];
-            const nameSpan = cardDiv.querySelector('.client-name');
-            const idBadge = cardDiv.querySelector('.badge-id');
-            const typeBadge = document.getElementById(`type-badge-${c.id}`);
-
-            if (genObj && isOnline) {
-                nameSpan.innerHTML = `${esc(genObj.callsign)}`;
-                idBadge.innerText = `NET-ID: ${genObj.radio_id}`; 
-                if (typeBadge && genObj.duplex !== undefined) {
-                    typeBadge.style.display = 'inline-block';
-                    if (genObj.duplex === "1") { typeBadge.innerText = "RPT"; typeBadge.className = "type-badge type-repeater"; } 
-                    else { typeBadge.innerText = "HST"; typeBadge.className = "type-badge type-hotspot"; }
-                }
-            } else {
-                nameSpan.innerHTML = `${esc(c.name)}`;
-                idBadge.innerText = `NET-ID: ${c.id.toUpperCase()}`;
-                if (typeBadge) typeBadge.style.display = 'none';
-            }
-
-            let telemetryObj = data.telemetry[c.id.toLowerCase()] || data.telemetry[c.id] || { ts1: "...", ts2: "...", alt: "", idle: true };
-            if (typeof telemetryObj === 'string') telemetryObj = { ts1: telemetryObj, ts2: "...", alt: "", idle: true };
-
-            const tsContainer = document.getElementById(`ts-container-${c.id}`); const ts1Div = document.getElementById(`dmr-ts1-${c.id}`); const ts2Div = document.getElementById(`dmr-ts2-${c.id}`); const altDiv = document.getElementById(`dmr-alt-${c.id}`);
-            let isTx = false; let activeModeColor = "var(--success)"; let isIdle = telemetryObj.idle === true;
-
-            if (telemetryObj.alt && telemetryObj.alt !== "") {
-                if (tsContainer) tsContainer.style.display = "none";
-                if (altDiv) {
-                    altDiv.style.display = "block"; altDiv.innerText = telemetryObj.alt; let altText = telemetryObj.alt.toUpperCase();
+                let isTx = false; let activeModeColor = "var(--primary)"; let isIdle = telemetryObj.idle === true;
+                
+                if (telemetryObj.alt && telemetryObj.alt !== "") {
+                    let altText = telemetryObj.alt.toUpperCase();
                     if (altText.includes("NXDN")) activeModeColor = "var(--success)"; else if (altText.includes("YSF")) activeModeColor = "var(--primary)"; else if (altText.includes("D-STAR")) activeModeColor = "var(--primary)"; else if (altText.includes("P25")) activeModeColor = "var(--accent)";
                     isTx = altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠");
-                    if (isTx) { altDiv.style.color = activeModeColor; altDiv.style.borderColor = activeModeColor; } 
-                    else { altDiv.style.color = "var(--text-muted)"; altDiv.style.borderColor = "var(--border-light)"; }
-                }
-            } else {
-                if (altDiv) altDiv.style.display = "none";
-                if (tsContainer) tsContainer.style.display = "flex";
-                activeModeColor = "var(--primary)";
-                if (ts1Div && ts2Div) {
-                    let isSimplex = (genObj && genObj.duplex === "0");
-                    ts1Div.style.display = isSimplex ? 'none' : 'block';
-                    [ts1Div, ts2Div].forEach((div, idx) => {
-                        if (isSimplex && idx === 0) return;
-                        const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? '');
-                        div.innerText = `TS${idx + 1}: ${val}`;
-                        if (val.includes("🎙️") || val.includes("TX")) { isTx = true; div.style.color = activeModeColor; div.style.borderColor = activeModeColor; } 
-                        else { div.style.color = "var(--text-muted)"; div.style.borderColor = "var(--border-light)"; }
-                    });
-                }
-            }
-
-            let healthObj = data.health && data.health[c.id.toLowerCase()];
-            let infoObj = data.info && data.info[c.id.toLowerCase()];
-            const freqContainer = document.getElementById(`freq-container-${c.id}`); const freqTx = document.getElementById(`freq-tx-${c.id}`); const freqRx = document.getElementById(`freq-rx-${c.id}`);
-            const metaContainer = document.getElementById(`meta-container-${c.id}`); 
-            const locSpan = document.getElementById(`loc-${c.id}`);
-            const latSpan = document.getElementById(`lat-${c.id}`);
-            const lonSpan = document.getElementById(`lon-${c.id}`);
-
-            if (infoObj && isOnline) {
-                if (freqContainer) { freqContainer.style.display = 'flex'; freqTx.innerText = infoObj.tx; freqRx.innerText = infoObj.rx; }
-                if (metaContainer) { 
-                    metaContainer.style.display = 'block'; 
-                    locSpan.innerText = infoObj.loc; 
-                    cardDiv.dataset.loc = infoObj.loc;
-                    if(latSpan) latSpan.innerText = infoObj.lat;
-                    if(lonSpan) lonSpan.innerText = infoObj.lon;
-                }
-            } else {
-                if (freqContainer) freqContainer.style.display = 'none'; 
-                if (metaContainer) metaContainer.style.display = 'none'; 
-            }
-
-            const healthContainer = document.getElementById(`health-${c.id}`); const cpuSpan = document.getElementById(`cpu-${c.id}`); const tempSpan = document.getElementById(`temp-${c.id}`); const ramSpan = document.getElementById(`ram-${c.id}`); const diskSpan = document.getElementById(`disk-${c.id}`);
-            const gwBar = document.getElementById(`gw-bar-${c.id}`);
-            if (gwBar && healthObj) {
-                let gwHtml = ""; let gwData = data.gateway_states && data.gateway_states[c.id.toLowerCase()] ? data.gateway_states[c.id.toLowerCase()] : {}; let processes = healthObj.processes || {}; let activeGatewaysStr = "";
-                const gwMap = [{ id: 'dmrgateway', label: 'DMR', color: 'var(--primary)', proto: 'DMR' }, { id: 'ysfgateway', label: 'YSF', color: '#8b5cf6', proto: 'YSF' }, { id: 'dstargateway', label: 'D-STAR', color: 'var(--primary)', proto: 'D-STAR' }, { id: 'nxdngateway', label: 'NXDN', color: 'var(--success)', proto: 'NXDN' }, { id: 'p25gateway', label: 'P25', color: 'var(--accent)', proto: 'P25' }];
-                
-                if (isOnline) {
-                    gwMap.forEach(gw => {
-                        let isActiveProc = processes[gw.id] && processes[gw.id].toLowerCase() === 'online';
-                        if (isActiveProc) {
-                            activeGatewaysStr += gw.proto.toLowerCase() + ",";
-                            let stateInfo = gwData[gw.proto] || { action: 'IDLE', dest: '---' }; let action = (stateInfo.action || 'IDLE').toLowerCase(); let dest = stateInfo.dest && stateInfo.dest !== '---' && stateInfo.dest.toUpperCase() !== 'IDLE' ? stateInfo.dest : '';
-                            let badgeColor, badgeBorder, suffix = '';
-                            
-                            if (action === 'linking') { badgeColor = gw.color; badgeBorder = gw.color; suffix = dest ? `: ${dest} [LNK]` : ` [LNK]`; } 
-                            else if (action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed' && action !== 'status')) { badgeColor = '#fff'; badgeBorder = gw.color; if (dest) suffix = `:${dest}`; } 
-                            else if (action === 'failed') { badgeColor = 'var(--danger)'; badgeBorder = 'var(--danger)'; suffix = ' [ERR]'; } 
-                            else if (action === 'unlinked') { badgeColor = 'var(--text-muted)'; badgeBorder = 'var(--border-light)'; suffix = ' [UNL]'; } 
-                            else { badgeColor = gw.color; badgeBorder = gw.color; }
-                            
-                            if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
-                                gwData['DMR_NETS'].forEach(netName => { let netSuffix = (action === 'linking') ? ' [LNK]' : (action === 'failed' ? ' [ERR]' : (dest && action !== 'status' ? `:${dest}` : '')); gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">DMR:${esc(netName)}${esc(netSuffix)}</span>`; });
-                            } else { gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">${gw.label}${esc(suffix)}</span>`; }
-                        }
-                    });
-                }
-                cardDiv.dataset.gateways = activeGatewaysStr; gwBar.innerHTML = gwHtml;
-            } else if (gwBar) { gwBar.innerHTML = ""; cardDiv.dataset.gateways = ""; }
-
-            if (healthObj && isOnline) {
-                healthContainer.style.display = 'grid';
-                cpuSpan.innerText = healthObj.cpu; tempSpan.innerText = healthObj.temp; ramSpan.innerText = healthObj.ram; diskSpan.innerText = healthObj.disk;
-                let upSpan = document.getElementById(`up-${c.id}`); if (upSpan && healthObj.uptime) { upSpan.innerText = fmtAge(healthObj.uptime); }
-                let agentBadge = document.getElementById(`agent-badge-${c.id}`); if (agentBadge && healthObj.agent_version) { agentBadge.innerText = `AGT:v${healthObj.agent_version}`; agentBadge.style.display = 'inline-block'; }
-                
-                const profBtnsDiv = document.getElementById(`prof-btns-${c.id}`);
-                const profKeys = JSON.stringify(healthObj.profiles || {});
-                if (profBtnsDiv && profBtnsDiv.dataset.keys !== profKeys) {
-                    profBtnsDiv.dataset.keys = profKeys;
-                    if (healthObj.profiles && Object.keys(healthObj.profiles).length > 0) {
-                        profBtnsDiv.style.display = 'flex';
-                        let html = ''; const colors = ["var(--accent)", "var(--success)", "var(--primary)"]; let idx = 0;
-                        for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
-                            let col = colors[idx % colors.length];
-                            html += `<button class="btn-cmd" style="border-color: ${col}; color:${col} !important;" onclick="confirmSwitch('${c.id}', ${q(pKey)})">[ ${esc(pLabel)} ]</button>`;
-                            idx++;
-                        }
-                        profBtnsDiv.innerHTML = html;
-                    } else { profBtnsDiv.style.display = 'none'; profBtnsDiv.innerHTML = ''; }
-                }
-            } else { 
-                if (healthContainer) healthContainer.style.display = 'none'; 
-                let agentBadge = document.getElementById(`agent-badge-${c.id}`); if (agentBadge) agentBadge.style.display = 'none';
-            }
-
-            globalHealthData[c.id.toLowerCase()] = healthObj;
-            
-            let hasOfflineService = false;
-            if (healthObj && healthObj.processes) { for (const [svcName, svcStatus] of Object.entries(healthObj.processes)) { if (svcStatus.toLowerCase() !== 'online') { hasOfflineService = true; break; } } }
-            const warnBadge = document.getElementById(`svc-warn-${c.id}`); const btnSvc = document.getElementById(`btn-svc-${c.id}`);
-            if (warnBadge) warnBadge.style.display = hasOfflineService ? 'block' : 'none';
-            if (btnSvc) { if (hasOfflineService) { btnSvc.style.borderColor = 'var(--danger)'; btnSvc.style.color = 'var(--danger)'; } else { btnSvc.style.borderColor = 'var(--text-main)'; btnSvc.style.color = 'var(--text-main)'; } }
-
-            let btnOta = document.getElementById(`btn-ota-${c.id}`); let adminSummary = document.getElementById(`admin-summary-${c.id}`);
-            if (btnOta) {
-                if (healthObj && healthObj.agent_update_available) { 
-                    btnOta.style.setProperty('border-color', 'var(--danger)', 'important'); 
-                    btnOta.style.setProperty('color', 'var(--danger)', 'important'); 
-                    if (adminSummary) { adminSummary.innerHTML = "[ SYS_TOOLS (OTA!) ]"; adminSummary.style.color = "var(--danger)"; adminSummary.style.borderColor = "var(--danger)"; }
-                } else { 
-                    btnOta.style.setProperty('border-color', 'var(--primary)', 'important'); 
-                    btnOta.style.setProperty('color', 'var(--primary)', 'important'); 
-                    if (adminSummary) { adminSummary.innerHTML = "[ SYS_TOOLS ]"; adminSummary.style.color = "var(--text-muted)"; adminSummary.style.borderColor = "var(--border-main)"; }
-                }
-            }
-
-            if (isOnline) {
-                cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline');
-                if (isTx) cardDiv.dataset.lastTx = Date.now(); 
-                let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
-                let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
-                
-                if (showActiveColor) { cardDiv.style.borderColor = activeModeColor; }
-                else { cardDiv.style.borderColor = "var(--border-main)"; }
-            } else {
-                cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline');
-                cardDiv.style.borderColor = "var(--border-light)";
-            }
-
-            const miniCard = document.getElementById(`mini-card-${c.id}`); const miniStatus = document.getElementById(`mini-status-${c.id}`); const miniName = document.getElementById(`mini-name-${c.id}`); const miniId = document.getElementById(`mini-id-${c.id}`);
-            if (miniCard && miniStatus) {
-                if (genObj && isOnline) { if (miniName) miniName.innerText = genObj.callsign; if (miniId) miniId.innerText = `ID:${genObj.radio_id}`; } 
-                else { if (miniName) miniName.innerText = c.name; if (miniId) miniId.innerText = `ID:${c.id.toUpperCase()}`; }
-                
-                if (isOnline) {
-                    let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
-                    let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
-                    if (showActiveColor) {
-                        miniCard.style.borderColor = activeModeColor;
-                        miniStatus.innerText = "( TX )"; miniStatus.title = "Transmitting..."; miniStatus.style.color = activeModeColor; miniStatus.style.borderColor = activeModeColor;
-                    } else if (warns.length > 0) {
-                        miniCard.style.borderColor = "var(--accent)";
-                        miniStatus.innerText = "(!) ALERT"; miniStatus.title = warns.join(" | "); miniStatus.style.color = "var(--accent)"; miniStatus.style.borderColor = "var(--accent)";
-                    } else {
-                        miniCard.style.borderColor = "var(--border-main)";
-                        miniStatus.innerText = stateValue; miniStatus.title = stateValue; miniStatus.style.color = "var(--success)"; miniStatus.style.borderColor = "var(--border-light)";
-                    }
                 } else {
-                    miniCard.style.borderColor = "var(--border-light)";
-                    miniStatus.innerText = "OFFLINE"; miniStatus.title = "OFFLINE"; miniStatus.style.color = "var(--danger)"; miniStatus.style.borderColor = "var(--border-light)";
+                    let v1 = String(telemetryObj.ts1 ?? '');
+                    let v2 = String(telemetryObj.ts2 ?? '');
+                    if (v1.includes("🎙️") || v1.includes("TX") || v2.includes("🎙️") || v2.includes("TX")) {
+                        isTx = true;
+                    }
                 }
-            }
+                
+                // Aggiorna logic card nel grid normale
+                const statusDiv = document.getElementById(`status-${c.id}`); 
+                const cardDiv = document.getElementById(`card-${c.id}`);
+                
+                if (cardDiv) {
+                    cardDiv.dataset.status = isOnline ? 'online' : 'offline';
+                    if (statusDiv) statusDiv.innerText = stateValue;
+                    renderSeen(c, data, isOnline);
+                    
+                    const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
+                    cardDiv.dataset.hasWarn = (warns.length > 0) ? 'true' : 'false';
+                    const diagDiv = document.getElementById(`diag-warn-${c.id}`);
+                    if (diagDiv) {
+                        if (warns.length > 0 && isOnline) {
+                            diagDiv.style.display = 'block';
+                            diagDiv.innerHTML = warns.map(w => `<div>[!] ${esc(w)}</div>`).join('');
+                        } else {
+                            diagDiv.style.display = 'none';
+                            diagDiv.innerHTML = '';
+                        }
+                    }
+
+                    const nameSpan = cardDiv.querySelector('.client-name');
+                    const idBadge = cardDiv.querySelector('.badge-id');
+                    const typeBadge = document.getElementById(`type-badge-${c.id}`);
+
+                    if (genObj && isOnline) {
+                        nameSpan.innerHTML = `${esc(genObj.callsign)}`;
+                        idBadge.innerText = `NET-ID: ${genObj.radio_id}`; 
+                        if (typeBadge && genObj.duplex !== undefined) {
+                            typeBadge.style.display = 'inline-block';
+                            if (genObj.duplex === "1") { typeBadge.innerText = "RPT"; typeBadge.className = "type-badge type-repeater"; } 
+                            else { typeBadge.innerText = "HST"; typeBadge.className = "type-badge type-hotspot"; }
+                        }
+                    } else {
+                        nameSpan.innerHTML = `${esc(c.name)}`;
+                        idBadge.innerText = `NET-ID: ${c.id.toUpperCase()}`;
+                        if (typeBadge) typeBadge.style.display = 'none';
+                    }
+                    
+                    const tsContainer = document.getElementById(`ts-container-${c.id}`); const ts1Div = document.getElementById(`dmr-ts1-${c.id}`); const ts2Div = document.getElementById(`dmr-ts2-${c.id}`); const altDiv = document.getElementById(`dmr-alt-${c.id}`);
+                    
+                    if (telemetryObj.alt && telemetryObj.alt !== "") {
+                        if (tsContainer) tsContainer.style.display = "none";
+                        if (altDiv) {
+                            altDiv.style.display = "block"; altDiv.innerText = telemetryObj.alt; 
+                            if (isTx) { altDiv.style.color = activeModeColor; altDiv.style.borderColor = activeModeColor; } 
+                            else { altDiv.style.color = "var(--text-muted)"; altDiv.style.borderColor = "var(--border-light)"; }
+                        }
+                    } else {
+                        if (altDiv) altDiv.style.display = "none";
+                        if (tsContainer) tsContainer.style.display = "flex";
+                        if (ts1Div && ts2Div) {
+                            let isSimplex = (genObj && genObj.duplex === "0");
+                            ts1Div.style.display = isSimplex ? 'none' : 'block';
+                            [ts1Div, ts2Div].forEach((div, idx) => {
+                                if (isSimplex && idx === 0) return;
+                                const val = String((idx === 0 ? telemetryObj.ts1 : telemetryObj.ts2) ?? '');
+                                div.innerText = `TS${idx + 1}: ${val}`;
+                                if (val.includes("🎙️") || val.includes("TX")) { div.style.color = activeModeColor; div.style.borderColor = activeModeColor; } 
+                                else { div.style.color = "var(--text-muted)"; div.style.borderColor = "var(--border-light)"; }
+                            });
+                        }
+                    }
+                    
+                    const freqContainer = document.getElementById(`freq-container-${c.id}`); const freqTx = document.getElementById(`freq-tx-${c.id}`); const freqRx = document.getElementById(`freq-rx-${c.id}`);
+                    const metaContainer = document.getElementById(`meta-container-${c.id}`); 
+                    const locSpan = document.getElementById(`loc-${c.id}`);
+                    const latSpan = document.getElementById(`lat-${c.id}`);
+                    const lonSpan = document.getElementById(`lon-${c.id}`);
+
+                    if (infoObj && isOnline) {
+                        if (freqContainer) { freqContainer.style.display = 'flex'; freqTx.innerText = infoObj.tx; freqRx.innerText = infoObj.rx; }
+                        if (metaContainer) { 
+                            metaContainer.style.display = 'block'; 
+                            locSpan.innerText = infoObj.loc; 
+                            cardDiv.dataset.loc = infoObj.loc;
+                            if(latSpan) latSpan.innerText = infoObj.lat;
+                            if(lonSpan) lonSpan.innerText = infoObj.lon;
+                        }
+                    } else {
+                        if (freqContainer) freqContainer.style.display = 'none'; 
+                        if (metaContainer) metaContainer.style.display = 'none'; 
+                    }
+
+                    const healthContainer = document.getElementById(`health-${c.id}`); const cpuSpan = document.getElementById(`cpu-${c.id}`); const tempSpan = document.getElementById(`temp-${c.id}`); const ramSpan = document.getElementById(`ram-${c.id}`); const diskSpan = document.getElementById(`disk-${c.id}`);
+                    const gwBar = document.getElementById(`gw-bar-${c.id}`);
+                    let gwHtml = "";
+                    if (gwBar && healthObj) {
+                        let gwData = data.gateway_states && data.gateway_states[c.id.toLowerCase()] ? data.gateway_states[c.id.toLowerCase()] : {}; let processes = healthObj.processes || {}; let activeGatewaysStr = "";
+                        const gwMap = [{ id: 'dmrgateway', label: 'DMR', color: 'var(--primary)', proto: 'DMR' }, { id: 'ysfgateway', label: 'YSF', color: '#8b5cf6', proto: 'YSF' }, { id: 'dstargateway', label: 'D-STAR', color: 'var(--primary)', proto: 'D-STAR' }, { id: 'nxdngateway', label: 'NXDN', color: 'var(--success)', proto: 'NXDN' }, { id: 'p25gateway', label: 'P25', color: 'var(--accent)', proto: 'P25' }];
+                        
+                        if (isOnline) {
+                            gwMap.forEach(gw => {
+                                let isActiveProc = processes[gw.id] && processes[gw.id].toLowerCase() === 'online';
+                                if (isActiveProc) {
+                                    activeGatewaysStr += gw.proto.toLowerCase() + ",";
+                                    let stateInfo = gwData[gw.proto] || { action: 'IDLE', dest: '---' }; let action = (stateInfo.action || 'IDLE').toLowerCase(); let dest = stateInfo.dest && stateInfo.dest !== '---' && stateInfo.dest.toUpperCase() !== 'IDLE' ? stateInfo.dest : '';
+                                    let badgeColor, badgeBorder, suffix = '';
+                                    
+                                    if (action === 'linking') { badgeColor = gw.color; badgeBorder = gw.color; suffix = dest ? `: ${dest} [LNK]` : ` [LNK]`; } 
+                                    else if (action === 'linked' || (dest !== '' && action !== 'unlinked' && action !== 'failed' && action !== 'status')) { badgeColor = '#fff'; badgeBorder = gw.color; if (dest) suffix = `:${dest}`; } 
+                                    else if (action === 'failed') { badgeColor = 'var(--danger)'; badgeBorder = 'var(--danger)'; suffix = ' [ERR]'; } 
+                                    else if (action === 'unlinked') { badgeColor = 'var(--text-muted)'; badgeBorder = 'var(--border-light)'; suffix = ' [UNL]'; } 
+                                    else { badgeColor = gw.color; badgeBorder = gw.color; }
+                                    
+                                    if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
+                                        gwData['DMR_NETS'].forEach(netName => { let netSuffix = (action === 'linking') ? ' [LNK]' : (action === 'failed' ? ' [ERR]' : (dest && action !== 'status' ? `:${dest}` : '')); gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">DMR:${esc(netName)}${esc(netSuffix)}</span>`; });
+                                    } else { gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">${gw.label}${esc(suffix)}</span>`; }
+                                }
+                            });
+                        }
+                        cardDiv.dataset.gateways = activeGatewaysStr; gwBar.innerHTML = gwHtml;
+                    } else if (gwBar) { gwBar.innerHTML = ""; cardDiv.dataset.gateways = ""; }
+
+                    if (healthObj && isOnline) {
+                        healthContainer.style.display = 'grid';
+                        cpuSpan.innerText = healthObj.cpu; tempSpan.innerText = healthObj.temp; ramSpan.innerText = healthObj.ram; diskSpan.innerText = healthObj.disk;
+                        let upSpan = document.getElementById(`up-${c.id}`); if (upSpan && healthObj.uptime) { upSpan.innerText = fmtAge(healthObj.uptime); }
+                        
+                        const profBtnsDiv = document.getElementById(`prof-btns-${c.id}`);
+                        const profKeys = JSON.stringify(healthObj.profiles || {});
+                        if (profBtnsDiv && profBtnsDiv.dataset.keys !== profKeys) {
+                            profBtnsDiv.dataset.keys = profKeys;
+                            if (healthObj.profiles && Object.keys(healthObj.profiles).length > 0) {
+                                profBtnsDiv.style.display = 'flex';
+                                let html = ''; const colors = ["var(--accent)", "var(--success)", "var(--primary)"]; let idx = 0;
+                                for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
+                                    let col = colors[idx % colors.length];
+                                    html += `<button class="btn-cmd" style="border-color: ${col}; color:${col} !important;" onclick="confirmSwitch('${c.id}', ${q(pKey)})">[ ${esc(pLabel)} ]</button>`;
+                                    idx++;
+                                }
+                                profBtnsDiv.innerHTML = html;
+                            } else { profBtnsDiv.style.display = 'none'; profBtnsDiv.innerHTML = ''; }
+                        }
+                    } else { 
+                        if (healthContainer) healthContainer.style.display = 'none'; 
+                    }
+
+                    let hasOfflineService = false;
+                    if (healthObj && healthObj.processes) { for (const [svcName, svcStatus] of Object.entries(healthObj.processes)) { if (svcStatus.toLowerCase() !== 'online') { hasOfflineService = true; break; } } }
+                    const warnBadge = document.getElementById(`svc-warn-${c.id}`); const btnSvc = document.getElementById(`btn-svc-${c.id}`);
+                    if (warnBadge) warnBadge.style.display = hasOfflineService ? 'block' : 'none';
+                    if (btnSvc) { if (hasOfflineService) { btnSvc.style.borderColor = 'var(--danger)'; btnSvc.style.color = 'var(--danger)'; } else { btnSvc.style.borderColor = 'var(--text-main)'; btnSvc.style.color = 'var(--text-main)'; } }
+
+                    let btnOta = document.getElementById(`btn-ota-${c.id}`); let adminSummary = document.getElementById(`admin-summary-${c.id}`);
+                    if (btnOta) {
+                        if (healthObj && healthObj.agent_update_available) { 
+                            btnOta.style.setProperty('border-color', 'var(--danger)', 'important'); 
+                            btnOta.style.setProperty('color', 'var(--danger)', 'important'); 
+                            if (adminSummary) { adminSummary.innerHTML = "[ SYS_TOOLS (OTA!) ]"; adminSummary.style.color = "var(--danger)"; adminSummary.style.borderColor = "var(--danger)"; }
+                        } else { 
+                            btnOta.style.setProperty('border-color', 'var(--primary)', 'important'); 
+                            btnOta.style.setProperty('color', 'var(--primary)', 'important'); 
+                            if (adminSummary) { adminSummary.innerHTML = "[ SYS_TOOLS ]"; adminSummary.style.color = "var(--text-muted)"; adminSummary.style.borderColor = "var(--border-main)"; }
+                        }
+                    }
+
+                    if (isOnline) {
+                        cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline');
+                        if (isTx) cardDiv.dataset.lastTx = Date.now(); 
+                        let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
+                        let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
+                        
+                        if (showActiveColor) { cardDiv.style.borderColor = activeModeColor; }
+                        else { cardDiv.style.borderColor = "var(--border-main)"; }
+                    } else {
+                        cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline');
+                        cardDiv.style.borderColor = "var(--border-light)";
+                    }
+                }
+
+                // Aggiornamento Mini-Cards
+                const miniCard = document.getElementById(`mini-card-${c.id}`); const miniStatus = document.getElementById(`mini-status-${c.id}`); const miniName = document.getElementById(`mini-name-${c.id}`); const miniId = document.getElementById(`mini-id-${c.id}`);
+                if (miniCard && miniStatus) {
+                    if (genObj && isOnline) { if (miniName) miniName.innerText = genObj.callsign; if (miniId) miniId.innerText = `ID:${genObj.radio_id}`; } 
+                    else { if (miniName) miniName.innerText = c.name; if (miniId) miniId.innerText = `ID:${c.id.toUpperCase()}`; }
+                    
+                    if (isOnline) {
+                        let timeSinceTx = (cardDiv && cardDiv.dataset.lastTx) ? Date.now() - parseInt(cardDiv.dataset.lastTx) : 0;
+                        let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
+                        if (showActiveColor) {
+                            miniCard.style.borderColor = activeModeColor;
+                            miniStatus.innerText = "( TX )"; miniStatus.title = "Transmitting..."; miniStatus.style.color = activeModeColor; miniStatus.style.borderColor = activeModeColor;
+                        } else {
+                            const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
+                            if (warns.length > 0) {
+                                miniCard.style.borderColor = "var(--accent)";
+                                miniStatus.innerText = "(!) ALERT"; miniStatus.title = warns.join(" | "); miniStatus.style.color = "var(--accent)"; miniStatus.style.borderColor = "var(--accent)";
+                            } else {
+                                miniCard.style.borderColor = "var(--border-main)";
+                                miniStatus.innerText = stateValue; miniStatus.title = stateValue; miniStatus.style.color = "var(--success)"; miniStatus.style.borderColor = "var(--border-light)";
+                            }
+                        }
+                    } else {
+                        miniCard.style.borderColor = "var(--border-light)";
+                        miniStatus.innerText = "OFFLINE"; miniStatus.title = "OFFLINE"; miniStatus.style.color = "var(--danger)"; miniStatus.style.borderColor = "var(--border-light)";
+                    }
+                }
+                
+                // Aggiornamento Focus View (se il nodo corrente è in focus)
+                if (currentFocusedNode === c.id) {
+                    let timeSinceTx = (cardDiv && cardDiv.dataset.lastTx) ? Date.now() - parseInt(cardDiv.dataset.lastTx) : 0;
+                    let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
+                    
+                    document.getElementById('focus-name').innerHTML = `<span style="display:inline-block; border-radius:50%; width:20px; height:20px; border:2px solid ${isOnline ? (showActiveColor ? activeModeColor : 'var(--success)') : 'var(--border-light)'}; background:${isOnline && showActiveColor ? activeModeColor : 'transparent'}"></span> ${esc(genObj ? genObj.callsign : c.name)}`;
+                    document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
+                    
+                    let focusStatus = document.getElementById('focus-status');
+                    focusStatus.innerText = stateValue;
+                    focusStatus.style.color = isOnline ? (showActiveColor ? activeModeColor : 'var(--success)') : 'var(--danger)';
+                    
+                    document.getElementById('focus-cpu').innerText = healthObj && isOnline ? healthObj.cpu + "%" : "--";
+                    document.getElementById('focus-temp').innerText = healthObj && isOnline ? healthObj.temp + "°C" : "--";
+                    document.getElementById('focus-ram').innerText = healthObj && isOnline ? healthObj.ram + "%" : "--";
+                    document.getElementById('focus-disk').innerText = healthObj && isOnline ? healthObj.disk + "%" : "--";
+                    document.getElementById('focus-up').innerText = healthObj && isOnline ? fmtAge(healthObj.uptime) : "--";
+                    
+                    document.getElementById('focus-tx').innerText = infoObj && isOnline ? infoObj.tx : "--";
+                    document.getElementById('focus-rx').innerText = infoObj && isOnline ? infoObj.rx : "--";
+                    document.getElementById('focus-loc').innerText = infoObj && isOnline ? infoObj.loc : "--";
+                    
+                    // Gateway riciclati dal loop
+                    let gwBar = document.getElementById(`gw-bar-${c.id}`);
+                    document.getElementById('focus-gw').innerHTML = (gwBar && gwBar.innerHTML) ? gwBar.innerHTML : '<span style="color:var(--border-main); font-family:JetBrains Mono;">NO_ACTIVE_GATEWAYS</span>';
+                    
+                    // TS
+                    let focusTsHtml = "";
+                    if (telemetryObj.alt && telemetryObj.alt !== "") {
+                        focusTsHtml = `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${activeModeColor}">${esc(telemetryObj.alt)}</div>`;
+                    } else {
+                        let isSimplex = (genObj && genObj.duplex === "0");
+                        let v1 = String(telemetryObj.ts1 ?? '');
+                        let v2 = String(telemetryObj.ts2 ?? '');
+                        if(!isSimplex) {
+                            focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v1.includes('🎙️')||v1.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS1: ${esc(v1)}</div>`;
+                        }
+                        focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v2.includes('🎙️')||v2.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS2: ${esc(v2)}</div>`;
+                    }
+                    document.getElementById('focus-ts').innerHTML = focusTsHtml || "--";
+                    
+                    // Controlli Admin
+                    const focusControls = document.getElementById('focus-controls');
+                    if (canControl || showReboot) {
+                        focusControls.style.display = 'block';
+                        let btnHtml = '';
+                        
+                        if (canControl) {
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:ON')">[ TG_ON ]</button>`;
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:OFF')">[ TG_OFF ]</button>`;
+                             if (healthObj && healthObj.profiles) {
+                                 const colors = ["var(--accent)", "var(--success)", "var(--primary)"]; let idx = 0;
+                                 for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
+                                     let col = colors[idx % colors.length];
+                                     btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${col}; color:${col} !important;" onclick="confirmSwitch('${c.id}', ${q(pKey)})">[ ${esc(pLabel)} ]</button>`;
+                                     idx++;
+                                 }
+                             }
+                        }
+                        if (showReboot) {
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--primary); color: var(--primary) !important;" onclick="openVersionsModal('${c.id}')">[ INFO ]</button>`;
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--text-main);" onclick="openServicesModal('${c.id}')">[ SVC ]</button>`;
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--accent); color: var(--accent) !important;" onclick="openConfigsModal('${c.id}')">[ CFG ]</button>`;
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmHatReset('${c.id}')">[ HAT ]</button>`;
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmReboot('${c.id}')">[ RBT ]</button>`;
+                             
+                             let otaColor = (healthObj && healthObj.agent_update_available) ? 'var(--danger)' : 'var(--primary)';
+                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${otaColor}; color: ${otaColor} !important;" onclick="confirmUpdateAgent('${c.id}')">[ OTA ]</button>`;
+                        }
+                        document.getElementById('focus-admin-btns').innerHTML = btnHtml;
+                    } else {
+                        focusControls.style.display = 'none';
+                    }
+                }
+                
+                globalHealthData[c.id.toLowerCase()] = healthObj;
+            } catch(err) { console.error("Error updating state for node", c.id, err); }
         });
         
         applyFilters();
@@ -640,15 +772,61 @@ function changeLogLimit(val) {
     refreshLogs();
 }
 
+async function refreshAprs() {
+    try {
+        const res = await fetch('/api/aprs'); 
+        if (!res.ok) return;
+        const logs = await res.json();
+        const tbody = document.getElementById('aprs-body'); 
+        if (!tbody) return;
+        let html = "";
+        logs.forEach(msg => {
+            html += formatAprsRow(msg);
+        });
+        tbody.innerHTML = html;
+    } catch (e) { console.error(e); }
+}
+
+function formatAprsRow(msg) {
+    const time = msg.time || new Date().toLocaleTimeString('it-IT', { hour12: false });
+    const srcHtml = `<a href="https://aprs.fi/info/a/${encodeURIComponent(msg.source)}" target="_blank" style="color: var(--success); text-decoration: none;">${esc(msg.source)}</a>`;
+    return `<tr>
+        <td style="color:var(--text-muted);">${esc(time)}</td>
+        <td style="font-weight:bold;">${srcHtml}</td>
+        <td style="color:var(--primary);">${esc(msg.dest)}</td>
+        <td style="color:var(--border-main); font-size:0.75rem;">${esc(msg.path)}</td>
+        <td style="font-family:'JetBrains Mono',monospace;">${esc(msg.payload)}</td>
+    </tr>`;
+}
+
+function addLiveAprs(msg) {
+    const tbody = document.getElementById('aprs-body');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = formatAprsRow(msg);
+    tbody.insertBefore(tr, tbody.firstChild);
+    // Limita a 100 righe nel frontend per non appesantire il DOM
+    if (tbody.children.length > 100) {
+        tbody.removeChild(tbody.lastChild);
+    }
+}
+
 async function refreshLogs() {
     try {
         const savedLimit = localStorage.getItem('fleetLogLimit') || '';
         const url = savedLimit ? `/api/logs?limit=${encodeURIComponent(savedLimit)}` : '/api/logs';
         const res = await fetch(url); const logs = await res.json();
-        const tbody = document.getElementById('log-body'); let tableHTML = ""; let networkLogs = {};
+        const tbody = document.getElementById('log-body'); 
+        const focusTbody = document.getElementById('focus-lastheard-body');
+        
+        let tableHTML = ""; 
+        let focusTableHTML = "";
+        let networkLogs = {};
+        
         logs.forEach(row => {
             const time = row[0] ? row[0].split(' ')[1] : "--:--"; 
-            const clientId = row[1]; const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
+            const clientId = String(row[1]).toLowerCase(); 
+            const protocol = row[2] || "DMR"; let source = row[3] || "---"; const target = row[4] || "---"; 
             const rawSlot = row[5]; const source_ext = row[8]; const rawRssi = row[9]; const sourceConn = row[10]; const ysfMode = row[11];
             
             let sourceHtml = esc(source);
@@ -677,10 +855,10 @@ async function refreshLogs() {
                 networkLogs[clientId] += `<div><span style="color:var(--text-muted);">[${esc(time)}]</span> <span style="color:${protoColor};">[${esc(protocol)}]</span> ${esc(source.replace("🌐", "").trim())}</div>`;
             } else {
                 const selectedFilter = document.getElementById('stat-node-filter').value;
-                if (selectedFilter === 'all' || String(clientId).toLowerCase() === selectedFilter) {
-                    tableHTML += `<tr>
+                
+                let rowFull = `<tr>
                         <td data-label="${t('thTime')}">${esc(time)}</td>
-                        <td data-label="${t('thRep')}"><b style="color:var(--text-main);">${esc(String(clientId).toUpperCase())}</b></td>
+                        <td data-label="${t('thRep')}"><b style="color:var(--text-main);">${esc(String(row[1]).toUpperCase())}</b></td>
                         <td data-label="${t('thMode')}"><span style="color:${protoColor}; border:1px solid ${protoColor}; padding:2px 4px;">${esc(protocol)}</span></td>
                         <td data-label="YSF Mode" style="text-align:center;">${modeDisplay}</td>
                         <td data-label="Source" style="text-align:center; font-family:'JetBrains Mono',monospace;">${sourceBadge}</td>
@@ -691,11 +869,28 @@ async function refreshLogs() {
                         <td data-label="BER">${esc(row[7])}%</td>
                         <td data-label="RSSI" style="font-family:'JetBrains Mono',monospace;">${rssiDisplay}</td>
                     </tr>`;
+                
+                if (selectedFilter === 'all' || clientId === selectedFilter) {
+                    tableHTML += rowFull;
+                }
+                
+                if (currentFocusedNode && clientId === currentFocusedNode.toLowerCase()) {
+                    focusTableHTML += rowFull;
                 }
             }
         });
         tbody.innerHTML = tableHTML;
-        clients.forEach(c => { const localDiv = document.getElementById(`sys-log-${c.id}`); if (localDiv && networkLogs[c.id]) { localDiv.innerHTML = networkLogs[c.id]; } });
+        if (focusTbody) focusTbody.innerHTML = focusTableHTML;
+        
+        clients.forEach(c => { 
+            const localDiv = document.getElementById(`sys-log-${c.id}`); 
+            if (localDiv && networkLogs[c.id]) { localDiv.innerHTML = networkLogs[c.id]; }
+            
+            if (currentFocusedNode === c.id) {
+                const focusLogDiv = document.getElementById('focus-log');
+                if (focusLogDiv && networkLogs[c.id]) focusLogDiv.innerHTML = networkLogs[c.id];
+            }
+        });
     } catch (e) { console.error(e); }
 }
 
@@ -749,5 +944,7 @@ if (typeof io !== 'undefined') {
     const socket = io();
     socket.on('mqtt_status', function(data) { const badge = document.getElementById('mqtt-badge'); if (badge) { if (data.connected) { badge.innerText = "MQTT: OK"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: ERR"; badge.className = "mqtt-badge mqtt-offline"; } } });
     socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
-    socket.on('dati_aggiornati', refreshStatesSoon); socket.on('log_aggiornato', refreshLogsSoon);      
+    socket.on('dati_aggiornati', refreshStatesSoon); 
+    socket.on('log_aggiornato', refreshLogsSoon);      
+    socket.on('aprs_msg', function(data) { addLiveAprs(data); });
 }
