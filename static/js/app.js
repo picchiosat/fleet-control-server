@@ -1,5 +1,4 @@
 // --- VARIABILI GLOBALI E UI VIEW ---
-const HANG_TIME_MS = 3000;
 let clients = []; 
 let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
 let isAuthenticated = false; 
@@ -892,14 +891,18 @@ async function refreshStates() {
                         }
                     }
 
-                    let timeSinceTx = 0;
-                    if (isTx && isOnline && !isIdle) {
-                        cardDiv.dataset.lastTx = Date.now();
-                    } else {
-                        timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
+                    // --- NESSUN TIMER LOCALE: COMANDA MQTT ---
+                    // Memorizza l'ultimo modo in trasmissione per usarlo durante l'Hangtime
+                    if (isTx && isOnline) {
+                        cardDiv.dataset.lastMode = txModeStr.replace("TX ", "").trim();
+                        cardDiv.dataset.lastColor = activeModeColor;
                     }
-                    
-                    let isHold = (!isTx && !isIdle && timeSinceTx < 6000); 
+
+                    // Se non è in TX e MMDVM NON ha ancora dichiarato 'idle' -> siamo in Hold
+                    let isHold = (!isTx && !isIdle && isOnline); 
+
+                    let holdMode = cardDiv.dataset.lastMode || "DMR";
+                    let holdColor = cardDiv.dataset.lastColor || "var(--primary)";
 
                     let displayState = stateValue; 
                     let statusColor = "";
@@ -909,21 +912,38 @@ async function refreshStates() {
                     if (!isOnline) {
                         displayState = stateValue;
                         cBorder = "var(--border-light)";
-                    } else if (isTx && !isIdle) {
+                    } else if (isTx) {
                         displayState = `( ${txModeStr} )`;
                         statusColor = activeModeColor;
                         statusBorder = activeModeColor;
                         cBorder = activeModeColor;
                     } else if (isHold) {
-                        displayState = `[ ${txModeStr.replace("TX ", "")} ]`;
-                        statusColor = activeModeColor;
-                        statusBorder = activeModeColor;
+                        displayState = `[ ${holdMode} ]`;
+                        statusColor = holdColor;
+                        statusBorder = holdColor;
+                        cBorder = holdColor;
                     } 
                     
                     if (isOnline) {
                         cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline');
+                        cardDiv.style.opacity = "1"; cardDiv.style.filter = "none";
+                        
+                        cardDiv.style.setProperty('border-top-color', (isTx || isHold) ? statusColor : "var(--border-color)", 'important');
+                        if(isTx) {
+                            let shadowRGB = '59, 130, 246'; 
+                            if (activeModeColor === '#10b981') shadowRGB = '16, 185, 129'; 
+                            else if (activeModeColor === '#8b5cf6') shadowRGB = '139, 92, 246'; 
+                            else if (activeModeColor === '#06b6d4') shadowRGB = '6, 182, 212'; 
+                            else if (activeModeColor === '#f59e0b') shadowRGB = '245, 158, 11'; 
+                            cardDiv.style.boxShadow = `0 0 20px rgba(${shadowRGB}, 0.5) !important`;
+                        } else { 
+                            cardDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2) !important'; 
+                        }
                     } else {
-                        cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline');
+                        cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline'); 
+                        cardDiv.style.opacity = "0.7"; cardDiv.style.filter = "grayscale(80%)";
+                        cardDiv.style.setProperty('border-top-color', '#64748b', 'important'); 
+                        cardDiv.style.boxShadow = 'none !important';
                     }
                     
                     cardDiv.style.borderColor = cBorder;
@@ -935,15 +955,19 @@ async function refreshStates() {
                     
                     const miniCard = document.getElementById(`mini-card-${c.id}`); 
                     const miniStatus = document.getElementById(`mini-status-${c.id}`); 
+                    const miniName = document.getElementById(`mini-name-${c.id}`); 
+                    const miniId = document.getElementById(`mini-id-${c.id}`); 
+
                     if (miniCard && miniStatus) {
                         if (genObj && isOnline) { 
-                            const miniName = document.getElementById(`mini-name-${c.id}`); 
-                            const miniId = document.getElementById(`mini-id-${c.id}`);
-                            if (miniName) miniName.innerText = genObj.callsign; 
-                            if (miniId) miniId.innerText = `ID:${genObj.radio_id}`; 
+                            if(miniName) miniName.innerText = genObj.callsign; 
+                            if(miniId) miniId.innerText = `ID:${genObj.radio_id}`; 
                         } 
                         
                         if (isOnline) {
+                            miniCard.style.opacity = "1";
+                            miniCard.style.filter = "none";
+                            
                             if (warns.length > 0 && !isTx && !isHold) {
                                 miniCard.style.borderColor = "var(--accent)";
                                 miniStatus.innerText = "(!) ALERT"; 
@@ -956,15 +980,16 @@ async function refreshStates() {
                                 let mColor = "var(--success)";
                                 let mBorderColor = "var(--border-light)";
                                 
-                                if (isTx && !isIdle) {
+                                if (isTx) {
                                     mcBorder = activeModeColor;
                                     mStatus = `( ${txModeStr} )`;
                                     mColor = activeModeColor;
                                     mBorderColor = activeModeColor;
                                 } else if (isHold) {
-                                    mStatus = `[ ${txModeStr.replace("TX ", "")} ]`;
-                                    mColor = activeModeColor;
-                                    mBorderColor = activeModeColor;
+                                    mcBorder = holdColor;
+                                    mStatus = `[ ${holdMode} ]`;
+                                    mColor = holdColor;
+                                    mBorderColor = holdColor;
                                 }
                                 
                                 miniCard.style.borderColor = mcBorder;
@@ -974,6 +999,8 @@ async function refreshStates() {
                                 miniStatus.style.borderColor = mBorderColor;
                             }
                         } else {
+                            miniCard.style.opacity = "0.7";
+                            miniCard.style.filter = "grayscale(80%)";
                             miniCard.style.borderColor = "var(--border-light)";
                             miniStatus.innerText = "OFFLINE"; 
                             miniStatus.title = "OFFLINE"; 
@@ -989,20 +1016,20 @@ async function refreshStates() {
                         let fsColor = isOnline ? 'var(--success)' : 'var(--danger)';
                         
                         if (isOnline) {
-                            if (isTx && !isIdle) {
+                            if (isTx) {
                                 fsState = `( ${txModeStr} )`;
                                 fsColor = activeModeColor;
                             } else if (isHold) {
-                                fsState = `[ ${txModeStr.replace("TX ", "")} ]`;
-                                fsColor = activeModeColor;
+                                fsState = `[ ${holdMode} ]`;
+                                fsColor = holdColor;
                             }
                         }
                         
                         focusStatus.innerText = fsState;
                         focusStatus.style.color = fsColor;
                         
-                        let focusLedColor = isOnline ? (isTx && !isIdle ? activeModeColor : 'var(--success)') : 'var(--border-light)';
-                        let focusLedBg = (isOnline && isTx && !isIdle) ? activeModeColor : 'transparent';
+                        let focusLedColor = isOnline ? (isTx ? activeModeColor : (isHold ? holdColor : 'var(--success)')) : 'var(--border-light)';
+                        let focusLedBg = (isOnline && isTx) ? activeModeColor : 'transparent';
                         document.getElementById('focus-name').innerHTML = `<span style="display:inline-block; border-radius:50%; width:20px; height:20px; border:2px solid ${focusLedColor}; background:${focusLedBg}"></span> ${esc(genObj ? genObj.callsign : c.name)}`;
                         
                         document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
