@@ -15,7 +15,8 @@
             "dstar-gateway/+/json",
             "mmdvm/+/json",
             "devices/#",
-            "data/#"
+            "data/#",
+            "aprs-gateway/aprs"
         ]
     },
     "web_admin": {

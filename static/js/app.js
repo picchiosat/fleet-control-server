@@ -77,7 +77,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
     checkServerUpdate();
     setInterval(checkServerUpdate, 3600000); 
-    refreshAprs(); // Fetch iniziale APRS
+    refreshAprs();
 });
 
 // --- FUNZIONI FILTRO E LAYOUT ---
@@ -469,16 +469,22 @@ async function refreshStates() {
                 let showReboot = (role === 'admin'); 
 
                 let isTx = false; let activeModeColor = "var(--primary)"; let isIdle = telemetryObj.idle === true;
+                let txModeStr = "TX";
                 
                 if (telemetryObj.alt && telemetryObj.alt !== "") {
                     let altText = telemetryObj.alt.toUpperCase();
-                    if (altText.includes("NXDN")) activeModeColor = "var(--success)"; else if (altText.includes("YSF")) activeModeColor = "var(--primary)"; else if (altText.includes("D-STAR")) activeModeColor = "var(--primary)"; else if (altText.includes("P25")) activeModeColor = "var(--accent)";
+                    if (altText.includes("NXDN")) { activeModeColor = "var(--success)"; txModeStr = "TX NXDN"; }
+                    else if (altText.includes("YSF")) { activeModeColor = "#8b5cf6"; txModeStr = "TX YSF"; }
+                    else if (altText.includes("D-STAR")) { activeModeColor = "#f97316"; txModeStr = "TX D-STAR"; }
+                    else if (altText.includes("P25")) { activeModeColor = "var(--accent)"; txModeStr = "TX P25"; }
                     isTx = altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠");
                 } else {
                     let v1 = String(telemetryObj.ts1 ?? '');
                     let v2 = String(telemetryObj.ts2 ?? '');
                     if (v1.includes("🎙️") || v1.includes("TX") || v2.includes("🎙️") || v2.includes("TX")) {
                         isTx = true;
+                        activeModeColor = "var(--primary)";
+                        txModeStr = "TX DMR";
                     }
                 }
                 
@@ -488,7 +494,6 @@ async function refreshStates() {
                 
                 if (cardDiv) {
                     cardDiv.dataset.status = isOnline ? 'online' : 'offline';
-                    if (statusDiv) statusDiv.innerText = stateValue;
                     renderSeen(c, data, isOnline);
                     
                     const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
@@ -572,7 +577,7 @@ async function refreshStates() {
                     let gwHtml = "";
                     if (gwBar && healthObj) {
                         let gwData = data.gateway_states && data.gateway_states[c.id.toLowerCase()] ? data.gateway_states[c.id.toLowerCase()] : {}; let processes = healthObj.processes || {}; let activeGatewaysStr = "";
-                        const gwMap = [{ id: 'dmrgateway', label: 'DMR', color: 'var(--primary)', proto: 'DMR' }, { id: 'ysfgateway', label: 'YSF', color: '#8b5cf6', proto: 'YSF' }, { id: 'dstargateway', label: 'D-STAR', color: 'var(--primary)', proto: 'D-STAR' }, { id: 'nxdngateway', label: 'NXDN', color: 'var(--success)', proto: 'NXDN' }, { id: 'p25gateway', label: 'P25', color: 'var(--accent)', proto: 'P25' }];
+                        const gwMap = [{ id: 'dmrgateway', label: 'DMR', color: 'var(--primary)', proto: 'DMR' }, { id: 'ysfgateway', label: 'YSF', color: '#8b5cf6', proto: 'YSF' }, { id: 'dstargateway', label: 'D-STAR', color: '#f97316', proto: 'D-STAR' }, { id: 'nxdngateway', label: 'NXDN', color: 'var(--success)', proto: 'NXDN' }, { id: 'p25gateway', label: 'P25', color: 'var(--accent)', proto: 'P25' }];
                         
                         if (isOnline) {
                             gwMap.forEach(gw => {
@@ -646,11 +651,31 @@ async function refreshStates() {
                         let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
                         let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
                         
-                        if (showActiveColor) { cardDiv.style.borderColor = activeModeColor; }
-                        else { cardDiv.style.borderColor = "var(--border-main)"; }
+                        let displayState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                        
+                        if (showActiveColor) { 
+                            cardDiv.style.borderColor = activeModeColor; 
+                            if (statusDiv) {
+                                statusDiv.innerText = `( ${txModeStr} )`;
+                                statusDiv.style.color = activeModeColor;
+                                statusDiv.style.borderColor = activeModeColor;
+                            }
+                        } else { 
+                            cardDiv.style.borderColor = "var(--border-main)"; 
+                            if (statusDiv) {
+                                statusDiv.innerText = displayState;
+                                statusDiv.style.color = "";
+                                statusDiv.style.borderColor = "";
+                            }
+                        }
                     } else {
                         cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline');
                         cardDiv.style.borderColor = "var(--border-light)";
+                        if (statusDiv) {
+                            statusDiv.innerText = stateValue;
+                            statusDiv.style.color = "";
+                            statusDiv.style.borderColor = "";
+                        }
                     }
                 }
 
@@ -665,7 +690,10 @@ async function refreshStates() {
                         let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
                         if (showActiveColor) {
                             miniCard.style.borderColor = activeModeColor;
-                            miniStatus.innerText = "( TX )"; miniStatus.title = "Transmitting..."; miniStatus.style.color = activeModeColor; miniStatus.style.borderColor = activeModeColor;
+                            miniStatus.innerText = `( ${txModeStr} )`; 
+                            miniStatus.title = `Transmitting ${txModeStr}...`; 
+                            miniStatus.style.color = activeModeColor; 
+                            miniStatus.style.borderColor = activeModeColor;
                         } else {
                             const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
                             if (warns.length > 0) {
@@ -673,7 +701,11 @@ async function refreshStates() {
                                 miniStatus.innerText = "(!) ALERT"; miniStatus.title = warns.join(" | "); miniStatus.style.color = "var(--accent)"; miniStatus.style.borderColor = "var(--accent)";
                             } else {
                                 miniCard.style.borderColor = "var(--border-main)";
-                                miniStatus.innerText = stateValue; miniStatus.title = stateValue; miniStatus.style.color = "var(--success)"; miniStatus.style.borderColor = "var(--border-light)";
+                                let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                                miniStatus.innerText = finalState; 
+                                miniStatus.title = finalState; 
+                                miniStatus.style.color = "var(--success)"; 
+                                miniStatus.style.borderColor = "var(--border-light)";
                             }
                         }
                     } else {
@@ -691,7 +723,8 @@ async function refreshStates() {
                     document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
                     
                     let focusStatus = document.getElementById('focus-status');
-                    focusStatus.innerText = stateValue;
+                    let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                    focusStatus.innerText = showActiveColor ? `( ${txModeStr} )` : finalState;
                     focusStatus.style.color = isOnline ? (showActiveColor ? activeModeColor : 'var(--success)') : 'var(--danger)';
                     
                     document.getElementById('focus-cpu').innerText = healthObj && isOnline ? healthObj.cpu + "%" : "--";
