@@ -468,9 +468,12 @@ async function refreshStates() {
                 let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
                 let showReboot = (role === 'admin'); 
 
-                let isTx = false; let activeModeColor = "var(--primary)"; let isIdle = telemetryObj.idle === true;
+                let isTx = false; 
+                let activeModeColor = "var(--primary)"; 
                 let txModeStr = "TX";
+                let isIdle = telemetryObj.idle === true;
                 
+                // 1. Usa la logica ORIGINALE, testando solo il contenuto di ts1, ts2 e alt per capire se stiamo trasmettendo.
                 if (telemetryObj.alt && telemetryObj.alt !== "") {
                     let altText = telemetryObj.alt.toUpperCase();
                     if (altText.includes("NXDN")) { activeModeColor = "var(--success)"; txModeStr = "TX NXDN"; }
@@ -478,19 +481,17 @@ async function refreshStates() {
                     else if (altText.includes("D-STAR")) { activeModeColor = "#f97316"; txModeStr = "TX D-STAR"; }
                     else if (altText.includes("P25")) { activeModeColor = "var(--accent)"; txModeStr = "TX P25"; }
                     
-                    // FIX: Forza isTx a FALSE se il nodo è a riposo (isIdle = true)
-                    isTx = !isIdle && (altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠"));
+                    isTx = (altText.includes("🟢") || altText.includes("🟣") || altText.includes("🔵") || altText.includes("🟠"));
                 } else {
                     let v1 = String(telemetryObj.ts1 ?? '');
                     let v2 = String(telemetryObj.ts2 ?? '');
                     if (v1.includes("🎙️") || v1.includes("TX") || v2.includes("🎙️") || v2.includes("TX")) {
-                        isTx = !isIdle; // FIX anche qui
+                        isTx = true;
                         activeModeColor = "var(--primary)";
                         txModeStr = "TX DMR";
                     }
                 }
                 
-                // Aggiorna logic card nel grid normale
                 const statusDiv = document.getElementById(`status-${c.id}`); 
                 const cardDiv = document.getElementById(`card-${c.id}`);
                 
@@ -498,6 +499,7 @@ async function refreshStates() {
                     cardDiv.dataset.status = isOnline ? 'online' : 'offline';
                     renderSeen(c, data, isOnline);
                     
+                    // Gestione Avvisi
                     const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
                     cardDiv.dataset.hasWarn = (warns.length > 0) ? 'true' : 'false';
                     const diagDiv = document.getElementById(`diag-warn-${c.id}`);
@@ -511,6 +513,7 @@ async function refreshStates() {
                         }
                     }
 
+                    // Intestazione Card
                     const nameSpan = cardDiv.querySelector('.client-name');
                     const idBadge = cardDiv.querySelector('.badge-id');
                     const typeBadge = document.getElementById(`type-badge-${c.id}`);
@@ -529,6 +532,7 @@ async function refreshStates() {
                         if (typeBadge) typeBadge.style.display = 'none';
                     }
                     
+                    // Timeslots
                     const tsContainer = document.getElementById(`ts-container-${c.id}`); const ts1Div = document.getElementById(`dmr-ts1-${c.id}`); const ts2Div = document.getElementById(`dmr-ts2-${c.id}`); const altDiv = document.getElementById(`dmr-alt-${c.id}`);
                     
                     if (telemetryObj.alt && telemetryObj.alt !== "") {
@@ -647,162 +651,185 @@ async function refreshStates() {
                         }
                     }
 
+                    // 2. TIMEOUT LOCALE PER L'EFFETTO CODA VISIVO (Sostituisce il check di isIdle)
+                    let timeSinceTx = 0;
+                    if (isTx && isOnline) {
+                        cardDiv.dataset.lastTx = Date.now();
+                    } else {
+                        timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
+                    }
+                    
+                    // L'interfaccia mantiene lo stato solo se non sta trasmettendo E se sono passati meno di 6 secondi (Hold).
+                    // In questo modo i micro-pacchetti D-STAR che non inviano l'end di chiamata svaniranno dopo 6s per forza.
+                    let isHold = (!isTx && timeSinceTx < 6000); 
+
+                    let displayState = stateValue; 
+                    let statusColor = "";
+                    let statusBorder = "";
+                    let cBorder = "var(--border-main)";
+
+                    if (!isOnline) {
+                        displayState = stateValue;
+                        cBorder = "var(--border-light)";
+                    } else if (isTx) {
+                        displayState = `( ${txModeStr} )`;
+                        statusColor = activeModeColor;
+                        statusBorder = activeModeColor;
+                        cBorder = activeModeColor;
+                    } else if (isHold) {
+                        displayState = `[ ${txModeStr.replace("TX ", "")} ]`;
+                        statusColor = activeModeColor;
+                        statusBorder = activeModeColor;
+                    } else {
+                        // Quando scade l'Hold, FORZIAMO la scomparsa di ogni traccia di D-STAR / YSF
+                        isIdle = true;
+                    }
+                    
+                    // Applica i calcoli alla Card Principale
                     if (isOnline) {
                         cardDiv.classList.add('online'); statusDiv.classList.remove('status-offline');
-                        if (isTx) cardDiv.dataset.lastTx = Date.now(); 
-                        let timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
-                        let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
-                        
-                        let displayState = stateValue === "( TX )" ? "ONLINE" : stateValue;
-                        if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
-                             displayState = `[ ${txModeStr.replace("TX ", "")} ]`;
-                        }
-                        
-                        if (showActiveColor) { 
-                            cardDiv.style.borderColor = activeModeColor; 
-                            if (statusDiv) {
-                                statusDiv.innerText = `( ${txModeStr} )`;
-                                statusDiv.style.color = activeModeColor;
-                                statusDiv.style.borderColor = activeModeColor;
-                            }
-                        } else { 
-                            cardDiv.style.borderColor = "var(--border-main)"; 
-                            if (statusDiv) {
-                                statusDiv.innerText = displayState;
-                                statusDiv.style.color = (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : "";
-                                statusDiv.style.borderColor = (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : "";
-                            }
-                        }
                     } else {
                         cardDiv.classList.remove('online'); statusDiv.classList.add('status-offline');
-                        cardDiv.style.borderColor = "var(--border-light)";
-                        if (statusDiv) {
-                            statusDiv.innerText = stateValue;
-                            statusDiv.style.color = "";
-                            statusDiv.style.borderColor = "";
+                    }
+                    
+                    cardDiv.style.borderColor = cBorder;
+                    if (statusDiv) {
+                        statusDiv.innerText = displayState;
+                        statusDiv.style.color = statusColor;
+                        statusDiv.style.borderColor = statusBorder;
+                    }
+                    
+                    // Applica i calcoli alla Mini Card in HOME
+                    const miniCard = document.getElementById(`mini-card-${c.id}`); 
+                    const miniStatus = document.getElementById(`mini-status-${c.id}`); 
+                    if (miniCard && miniStatus) {
+                        if (genObj && isOnline) { 
+                            const miniName = document.getElementById(`mini-name-${c.id}`); 
+                            const miniId = document.getElementById(`mini-id-${c.id}`);
+                            if (miniName) miniName.innerText = genObj.callsign; 
+                            if (miniId) miniId.innerText = `ID:${genObj.radio_id}`; 
+                        } 
+                        
+                        if (isOnline) {
+                            if (warns.length > 0 && !isTx && !isHold) {
+                                miniCard.style.borderColor = "var(--accent)";
+                                miniStatus.innerText = "(!) ALERT"; 
+                                miniStatus.title = warns.join(" | "); 
+                                miniStatus.style.color = "var(--accent)"; 
+                                miniStatus.style.borderColor = "var(--accent)";
+                            } else {
+                                let mcBorder = "var(--border-main)";
+                                let mStatus = stateValue;
+                                let mColor = "var(--success)";
+                                let mBorderColor = "var(--border-light)";
+                                
+                                if (isTx) {
+                                    mcBorder = activeModeColor;
+                                    mStatus = `( ${txModeStr} )`;
+                                    mColor = activeModeColor;
+                                    mBorderColor = activeModeColor;
+                                } else if (isHold) {
+                                    mStatus = `[ ${txModeStr.replace("TX ", "")} ]`;
+                                    mColor = activeModeColor;
+                                    mBorderColor = activeModeColor;
+                                }
+                                
+                                miniCard.style.borderColor = mcBorder;
+                                miniStatus.innerText = mStatus;
+                                miniStatus.title = mStatus;
+                                miniStatus.style.color = mColor;
+                                miniStatus.style.borderColor = mBorderColor;
+                            }
+                        } else {
+                            miniCard.style.borderColor = "var(--border-light)";
+                            miniStatus.innerText = "OFFLINE"; 
+                            miniStatus.title = "OFFLINE"; 
+                            miniStatus.style.color = "var(--danger)"; 
+                            miniStatus.style.borderColor = "var(--border-light)";
                         }
                     }
-                }
 
-                // Aggiornamento Mini-Cards
-                const miniCard = document.getElementById(`mini-card-${c.id}`); const miniStatus = document.getElementById(`mini-status-${c.id}`); const miniName = document.getElementById(`mini-name-${c.id}`); const miniId = document.getElementById(`mini-id-${c.id}`);
-                if (miniCard && miniStatus) {
-                    if (genObj && isOnline) { if (miniName) miniName.innerText = genObj.callsign; if (miniId) miniId.innerText = `ID:${genObj.radio_id}`; } 
-                    else { if (miniName) miniName.innerText = c.name; if (miniId) miniId.innerText = `ID:${c.id.toUpperCase()}`; }
-                    
-                    if (isOnline) {
-                        let timeSinceTx = (cardDiv && cardDiv.dataset.lastTx) ? Date.now() - parseInt(cardDiv.dataset.lastTx) : 0;
-                        let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
-                        if (showActiveColor) {
-                            miniCard.style.borderColor = activeModeColor;
-                            miniStatus.innerText = `( ${txModeStr} )`; 
-                            miniStatus.title = `Transmitting ${txModeStr}...`; 
-                            miniStatus.style.color = activeModeColor; 
-                            miniStatus.style.borderColor = activeModeColor;
-                        } else {
-                            const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
-                            if (warns.length > 0) {
-                                miniCard.style.borderColor = "var(--accent)";
-                                miniStatus.innerText = "(!) ALERT"; miniStatus.title = warns.join(" | "); miniStatus.style.color = "var(--accent)"; miniStatus.style.borderColor = "var(--accent)";
-                            } else {
-                                miniCard.style.borderColor = "var(--border-main)";
-                                let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
-                                if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
-                                    finalState = `[ ${txModeStr.replace("TX ", "")} ]`;
-                                    miniStatus.style.color = activeModeColor; 
-                                    miniStatus.style.borderColor = activeModeColor;
-                                } else {
-                                    miniStatus.style.color = "var(--success)"; 
-                                    miniStatus.style.borderColor = "var(--border-light)";
-                                }
-                                miniStatus.innerText = finalState; 
-                                miniStatus.title = finalState; 
+                    // Applica i calcoli al Nodo Singolo (Focus Mode)
+                    if (currentFocusedNode === c.id) {
+                        let focusStatus = document.getElementById('focus-status');
+                        
+                        let fsState = stateValue;
+                        let fsColor = isOnline ? 'var(--success)' : 'var(--danger)';
+                        
+                        if (isOnline) {
+                            if (isTx) {
+                                fsState = `( ${txModeStr} )`;
+                                fsColor = activeModeColor;
+                            } else if (isHold) {
+                                fsState = `[ ${txModeStr.replace("TX ", "")} ]`;
+                                fsColor = activeModeColor;
                             }
                         }
-                    } else {
-                        miniCard.style.borderColor = "var(--border-light)";
-                        miniStatus.innerText = "OFFLINE"; miniStatus.title = "OFFLINE"; miniStatus.style.color = "var(--danger)"; miniStatus.style.borderColor = "var(--border-light)";
-                    }
-                }
-                
-                // Aggiornamento Focus View (se il nodo corrente è in focus)
-                if (currentFocusedNode === c.id) {
-                    let timeSinceTx = (cardDiv && cardDiv.dataset.lastTx) ? Date.now() - parseInt(cardDiv.dataset.lastTx) : 0;
-                    let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS);
-                    
-                    document.getElementById('focus-name').innerHTML = `<span style="display:inline-block; border-radius:50%; width:20px; height:20px; border:2px solid ${isOnline ? (showActiveColor ? activeModeColor : 'var(--success)') : 'var(--border-light)'}; background:${isOnline && showActiveColor ? activeModeColor : 'transparent'}"></span> ${esc(genObj ? genObj.callsign : c.name)}`;
-                    document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
-                    
-                    let focusStatus = document.getElementById('focus-status');
-                    let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
-                    
-                    if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
-                         finalState = `[ ${txModeStr.replace("TX ", "")} ]`;
-                    }
-                    
-                    focusStatus.innerText = showActiveColor ? `( ${txModeStr} )` : finalState;
-                    focusStatus.style.color = isOnline ? (showActiveColor || (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : 'var(--success)') : 'var(--danger)';
-                    
-                    document.getElementById('focus-cpu').innerText = healthObj && isOnline ? healthObj.cpu + "%" : "--";
-                    document.getElementById('focus-temp').innerText = healthObj && isOnline ? healthObj.temp + "°C" : "--";
-                    document.getElementById('focus-ram').innerText = healthObj && isOnline ? healthObj.ram + "%" : "--";
-                    document.getElementById('focus-disk').innerText = healthObj && isOnline ? healthObj.disk + "%" : "--";
-                    document.getElementById('focus-up').innerText = healthObj && isOnline ? fmtAge(healthObj.uptime) : "--";
-                    
-                    document.getElementById('focus-tx').innerText = infoObj && isOnline ? infoObj.tx : "--";
-                    document.getElementById('focus-rx').innerText = infoObj && isOnline ? infoObj.rx : "--";
-                    document.getElementById('focus-loc').innerText = infoObj && isOnline ? infoObj.loc : "--";
-                    
-                    // Gateway riciclati dal loop
-                    let gwBar = document.getElementById(`gw-bar-${c.id}`);
-                    document.getElementById('focus-gw').innerHTML = (gwBar && gwBar.innerHTML) ? gwBar.innerHTML : '<span style="color:var(--border-main); font-family:JetBrains Mono;">NO_ACTIVE_GATEWAYS</span>';
-                    
-                    // TS
-                    let focusTsHtml = "";
-                    if (telemetryObj.alt && telemetryObj.alt !== "") {
-                        focusTsHtml = `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${activeModeColor}">${esc(telemetryObj.alt)}</div>`;
-                    } else {
-                        let isSimplex = (genObj && genObj.duplex === "0");
-                        let v1 = String(telemetryObj.ts1 ?? '');
-                        let v2 = String(telemetryObj.ts2 ?? '');
-                        if(!isSimplex) {
-                            focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v1.includes('🎙️')||v1.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS1: ${esc(v1)}</div>`;
-                        }
-                        focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v2.includes('🎙️')||v2.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS2: ${esc(v2)}</div>`;
-                    }
-                    document.getElementById('focus-ts').innerHTML = focusTsHtml || "--";
-                    
-                    // Controlli Admin
-                    const focusControls = document.getElementById('focus-controls');
-                    if (canControl || showReboot) {
-                        focusControls.style.display = 'block';
-                        let btnHtml = '';
                         
-                        if (canControl) {
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:ON')">[ TG_ON ]</button>`;
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:OFF')">[ TG_OFF ]</button>`;
-                             if (healthObj && healthObj.profiles) {
-                                 const colors = ["var(--accent)", "var(--success)", "var(--primary)"]; let idx = 0;
-                                 for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
-                                     let col = colors[idx % colors.length];
-                                     btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${col}; color:${col} !important;" onclick="confirmSwitch('${c.id}', ${q(pKey)})">[ ${esc(pLabel)} ]</button>`;
-                                     idx++;
+                        focusStatus.innerText = fsState;
+                        focusStatus.style.color = fsColor;
+                        
+                        let focusLedColor = isOnline ? (isTx ? activeModeColor : 'var(--success)') : 'var(--border-light)';
+                        let focusLedBg = (isOnline && isTx) ? activeModeColor : 'transparent';
+                        document.getElementById('focus-name').innerHTML = `<span style="display:inline-block; border-radius:50%; width:20px; height:20px; border:2px solid ${focusLedColor}; background:${focusLedBg}"></span> ${esc(genObj ? genObj.callsign : c.name)}`;
+                        
+                        document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
+                        document.getElementById('focus-cpu').innerText = healthObj && isOnline ? healthObj.cpu + "%" : "--";
+                        document.getElementById('focus-temp').innerText = healthObj && isOnline ? healthObj.temp + "°C" : "--";
+                        document.getElementById('focus-ram').innerText = healthObj && isOnline ? healthObj.ram + "%" : "--";
+                        document.getElementById('focus-disk').innerText = healthObj && isOnline ? healthObj.disk + "%" : "--";
+                        document.getElementById('focus-up').innerText = healthObj && isOnline ? fmtAge(healthObj.uptime) : "--";
+                        
+                        document.getElementById('focus-tx').innerText = infoObj && isOnline ? infoObj.tx : "--";
+                        document.getElementById('focus-rx').innerText = infoObj && isOnline ? infoObj.rx : "--";
+                        document.getElementById('focus-loc').innerText = infoObj && isOnline ? infoObj.loc : "--";
+                        
+                        let gwBar = document.getElementById(`gw-bar-${c.id}`);
+                        document.getElementById('focus-gw').innerHTML = (gwBar && gwBar.innerHTML) ? gwBar.innerHTML : '<span style="color:var(--border-main); font-family:JetBrains Mono;">NO_ACTIVE_GATEWAYS</span>';
+                        
+                        let focusTsHtml = "";
+                        if (telemetryObj.alt && telemetryObj.alt !== "") {
+                            focusTsHtml = `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${activeModeColor}">${esc(telemetryObj.alt)}</div>`;
+                        } else {
+                            let isSimplex = (genObj && genObj.duplex === "0");
+                            let v1 = String(telemetryObj.ts1 ?? '');
+                            let v2 = String(telemetryObj.ts2 ?? '');
+                            if(!isSimplex) {
+                                focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v1.includes('🎙️')||v1.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS1: ${esc(v1)}</div>`;
+                            }
+                            focusTsHtml += `<div style="padding: 10px; border: 1px dashed var(--border-light); color: ${v2.includes('🎙️')||v2.includes('TX') ? activeModeColor : 'var(--text-main)'}">TS2: ${esc(v2)}</div>`;
+                        }
+                        document.getElementById('focus-ts').innerHTML = focusTsHtml || "--";
+                        
+                        const focusControls = document.getElementById('focus-controls');
+                        if (canControl || showReboot) {
+                            focusControls.style.display = 'block';
+                            let btnHtml = '';
+                            if (canControl) {
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:ON')">[ TG_ON ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto;" onclick="sendTgCommand('${c.id}', 'TG:OFF')">[ TG_OFF ]</button>`;
+                                 if (healthObj && healthObj.profiles) {
+                                     const colors = ["var(--accent)", "var(--success)", "var(--primary)"]; let idx = 0;
+                                     for (const [pKey, pLabel] of Object.entries(healthObj.profiles)) {
+                                         let col = colors[idx % colors.length];
+                                         btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${col}; color:${col} !important;" onclick="confirmSwitch('${c.id}', ${q(pKey)})">[ ${esc(pLabel)} ]</button>`;
+                                         idx++;
+                                     }
                                  }
-                             }
+                            }
+                            if (showReboot) {
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--primary); color: var(--primary) !important;" onclick="openVersionsModal('${c.id}')">[ INFO ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--text-main);" onclick="openServicesModal('${c.id}')">[ SVC ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--accent); color: var(--accent) !important;" onclick="openConfigsModal('${c.id}')">[ CFG ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmHatReset('${c.id}')">[ HAT ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmReboot('${c.id}')">[ RBT ]</button>`;
+                                 let otaColor = (healthObj && healthObj.agent_update_available) ? 'var(--danger)' : 'var(--primary)';
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${otaColor}; color: ${otaColor} !important;" onclick="confirmUpdateAgent('${c.id}')">[ OTA ]</button>`;
+                            }
+                            document.getElementById('focus-admin-btns').innerHTML = btnHtml;
+                        } else {
+                            focusControls.style.display = 'none';
                         }
-                        if (showReboot) {
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--primary); color: var(--primary) !important;" onclick="openVersionsModal('${c.id}')">[ INFO ]</button>`;
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--text-main);" onclick="openServicesModal('${c.id}')">[ SVC ]</button>`;
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--accent); color: var(--accent) !important;" onclick="openConfigsModal('${c.id}')">[ CFG ]</button>`;
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmHatReset('${c.id}')">[ HAT ]</button>`;
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmReboot('${c.id}')">[ RBT ]</button>`;
-                             
-                             let otaColor = (healthObj && healthObj.agent_update_available) ? 'var(--danger)' : 'var(--primary)';
-                             btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: ${otaColor}; color: ${otaColor} !important;" onclick="confirmUpdateAgent('${c.id}')">[ OTA ]</button>`;
-                        }
-                        document.getElementById('focus-admin-btns').innerHTML = btnHtml;
-                    } else {
-                        focusControls.style.display = 'none';
                     }
                 }
                 
