@@ -652,6 +652,9 @@ async function refreshStates() {
                         let showActiveColor = isTx || (!isIdle && timeSinceTx < HANG_TIME_MS); 
                         
                         let displayState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                        if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
+                             displayState = `[ ${txModeStr.replace("TX ", "")} ]`;
+                        }
                         
                         if (showActiveColor) { 
                             cardDiv.style.borderColor = activeModeColor; 
@@ -664,8 +667,8 @@ async function refreshStates() {
                             cardDiv.style.borderColor = "var(--border-main)"; 
                             if (statusDiv) {
                                 statusDiv.innerText = displayState;
-                                statusDiv.style.color = "";
-                                statusDiv.style.borderColor = "";
+                                statusDiv.style.color = (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : "";
+                                statusDiv.style.borderColor = (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : "";
                             }
                         }
                     } else {
@@ -702,10 +705,16 @@ async function refreshStates() {
                             } else {
                                 miniCard.style.borderColor = "var(--border-main)";
                                 let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                                if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
+                                    finalState = `[ ${txModeStr.replace("TX ", "")} ]`;
+                                    miniStatus.style.color = activeModeColor; 
+                                    miniStatus.style.borderColor = activeModeColor;
+                                } else {
+                                    miniStatus.style.color = "var(--success)"; 
+                                    miniStatus.style.borderColor = "var(--border-light)";
+                                }
                                 miniStatus.innerText = finalState; 
                                 miniStatus.title = finalState; 
-                                miniStatus.style.color = "var(--success)"; 
-                                miniStatus.style.borderColor = "var(--border-light)";
                             }
                         }
                     } else {
@@ -724,8 +733,13 @@ async function refreshStates() {
                     
                     let focusStatus = document.getElementById('focus-status');
                     let finalState = stateValue === "( TX )" ? "ONLINE" : stateValue;
+                    
+                    if (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) {
+                         finalState = `[ ${txModeStr.replace("TX ", "")} ]`;
+                    }
+                    
                     focusStatus.innerText = showActiveColor ? `( ${txModeStr} )` : finalState;
-                    focusStatus.style.color = isOnline ? (showActiveColor ? activeModeColor : 'var(--success)') : 'var(--danger)';
+                    focusStatus.style.color = isOnline ? (showActiveColor || (!isIdle && !isTx && timeSinceTx >= HANG_TIME_MS) ? activeModeColor : 'var(--success)') : 'var(--danger)';
                     
                     document.getElementById('focus-cpu').innerText = healthObj && isOnline ? healthObj.cpu + "%" : "--";
                     document.getElementById('focus-temp').innerText = healthObj && isOnline ? healthObj.temp + "°C" : "--";
