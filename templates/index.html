@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Foglio di Stile Esterno Modularizzato (Cache Buster) -->
-    <link rel="stylesheet" href="/static/css/style.css?v=blueprint-aprs">
+    <link rel="stylesheet" href="/static/css/style.css?v=blueprint-header-fix">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
             <span id="mqtt-badge" class="mqtt-badge mqtt-offline">MQTT: CHK</span>
             <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang">ITA</button>
             <button class="theme-switch" id="push-btn" onclick="subscribeToPush()">PUSH</button>
-            <div id="auth-container" style="display:flex; align-items:center; gap:8px;"></div>
+            <div id="auth-container" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;"></div>
         </div>
     </div>
 </div>
@@ -433,7 +433,7 @@
 
 <!-- MOTORE MODULARIZZATO JS (Cache Buster aggiunto per forzare il refresh) -->
 <script src="/static/js/modals.js?v=blueprint4"></script>
-<script src="/static/js/app.js?v=blueprint-aprs-final"></script>
+<script src="/static/js/app.js?v=blueprint-header-fix2"></script>
 
 <!-- SERVICE WORKER -->
 <script>
