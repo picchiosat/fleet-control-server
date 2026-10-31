@@ -333,6 +333,16 @@ def on_message(client, userdata, msg):
             # Salvataggio nel DB per la console log
             if m and "running" not in m.lower():
                 save_to_sqlite(cid, {'src_id': f"🌐 {m}", 'dst_id': 'NET'}, protocol=proto)
+
+        # --- LETTURA STATO MODI DA TOPIC data/+/MMDVM ---
+        elif len(parts) == 3 and p0 == 'data' and p2 == 'mmdvm':
+            try:
+                cid = parts[1].lower()
+                data = json.loads(payload)
+                state.operating_modes[cid] = data
+                state.notify_update()
+            except Exception as e:
+                logger.error(f"Errore parsing MMDVM modes per {cid}: {e}")
             
         # --- 8. TRAFFICO VOCE MMDVM (DMR & MODI DIGITALI) ---
         elif parts[0] == 'mmdvm':

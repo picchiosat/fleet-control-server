@@ -104,7 +104,8 @@ def get_states():
         "uptime": int(time.time() - state.START_TIME),
         "versions": clean_versions,
         "gateway_states": enriched_gateway_states,
-        "warnings": state.active_warnings
+        "warnings": state.active_warnings,
+        "modes": getattr(state, "operating_modes", {})
     })
 
 @api_bp.route('/api/stats')
@@ -346,6 +347,11 @@ def save_config_file():
     if not mqtt_publish(f"devices/{cid}/config_set/{service}", json.dumps(new_config)):
         return err("Broker MQTT non raggiungibile", 503)
     audit(auth['username'], cid, f"EDIT_CONFIG_{service.upper()}")
+
+    if cid not in state.device_configs:
+        state.device_configs[cid] = {}
+    state.device_configs[cid][service] = new_config
+
     return jsonify({"success": True})
 
 # --- AGGIORNAMENTO SERVER OTA ---

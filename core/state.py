@@ -47,6 +47,7 @@ node_versions = {}
 gateway_states = {}
 active_warnings = {}
 active_calls = {}
+operating_modes = {}
 
 # Caricamento iniziale cache telemetria
 if os.path.exists(CACHE_FILE):
