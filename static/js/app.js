@@ -17,6 +17,9 @@ let fleetMap = null;
 let mapMarkers = {};
 
 let currentFocusedNode = null;
+let currentMmdvmConfig = "";
+let currentMmdvmConfigName = "";
+let currentMmdvmServiceName = "";
 
 function switchView(viewName) {
     currentFocusedNode = null; 
@@ -58,8 +61,11 @@ function openNodeFocus(clientId) {
     document.getElementById('view-focus').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
+    document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--text-muted); font-size: 0.9rem;">FETCHING CONFIG...</span>';
+    
     refreshStates(); 
     refreshLogs();   
+    fetchNodeConfigForModes(clientId);
 }
 
 function closeNodeFocus() {
@@ -216,6 +222,172 @@ function sendTgCommand(clientId, comando) {
     });
 }
 
+// --- LOGICA MODI OPERATIVI (MMDVMHOST.INI) ---
+async function fetchNodeConfigForModes(clientId) {
+    try {
+        const healthObj = globalHealthData[clientId.toLowerCase()];
+        if (!healthObj) {
+            document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--danger); font-size: 0.9rem;">NO DAEMON DATA YET. RETRYING...</span>';
+            setTimeout(() => { if (currentFocusedNode === clientId) fetchNodeConfigForModes(clientId); }, 2000);
+            return;
+        }
+        
+        // 1. TROVA IL NOME DEL FILE INI ATTIVO ESATTO (Ignorando i profili come _A, _B, ecc)
+        const activeNames = ['mmdvmhost.ini', 'mmdvm-host.ini', 'mmdvm.ini', 'mmdvm_bridge.ini'];
+        let confFile = (healthObj.files || healthObj.config_files || []).find(f => activeNames.includes(String(f).toLowerCase()));
+        
+        if (!confFile) {
+            confFile = "MMDVMHost.ini"; // Fallback di default
+        }
+        currentMmdvmConfigName = confFile;
+
+        // 2. TROVA IL NOME DEL PROCESSO/DEMONE DA RIAVVIARE
+        let svcName = Object.keys(healthObj.processes || {}).find(k => k.toLowerCase().includes('mmdvm'));
+        if (!svcName) {
+            svcName = "mmdvmhost"; // Fallback
+        }
+        currentMmdvmServiceName = svcName;
+        
+        const res = await fetch(`/api/config_file/${encodeURIComponent(clientId)}/${encodeURIComponent(confFile)}`);
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.raw_text) {
+            currentMmdvmConfig = data.data.raw_text;
+            renderModeToggles(clientId);
+        } else {
+            document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--danger); font-size: 0.9rem;">CONFIG FETCH FAILED</span>';
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--danger); font-size: 0.9rem;">NETWORK ERROR</span>';
+    }
+}
+
+function renderModeToggles(clientId) {
+    const role = me.role || '';
+    const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    
+    if (!canControl) {
+        document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--danger); font-size: 0.9rem;">[ ACCESS DENIED ]</span>';
+        return;
+    }
+
+    const modes = [
+        { id: 'DMR', label: 'DMR', color: 'var(--primary)' },
+        { id: 'D-Star', label: 'D-STAR', color: '#f97316' },
+        { id: 'System Fusion', label: 'YSF', color: '#8b5cf6' },
+        { id: 'NXDN', label: 'NXDN', color: 'var(--success)' },
+        { id: 'P25', label: 'P25', color: 'var(--accent)' }
+    ];
+    
+    let html = "";
+    let lines = currentMmdvmConfig.split('\n');
+    
+    modes.forEach(m => {
+        let enabled = false;
+        let sectionFound = false;
+        let currentSection = "";
+        
+        // Cerca la sezione corretta e la prima occorrenza di "Enable"
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('[') && line.endsWith(']')) {
+                currentSection = line.substring(1, line.length - 1);
+            }
+            if (currentSection.toLowerCase() === m.id.toLowerCase() && line.toLowerCase().startsWith('enable')) {
+                sectionFound = true;
+                let parts = line.split('=');
+                if (parts.length === 2 && parts[1].trim() === '1') {
+                    enabled = true;
+                }
+                break;
+            }
+        }
+        
+        if (sectionFound) {
+            let btnStyle = enabled 
+                ? `border-color: ${m.color}; color: ${m.color} !important; box-shadow: inset 0 0 8px ${m.color};` 
+                : `border-color: var(--border-light); color: var(--text-muted) !important; opacity: 0.5;`;
+                
+            html += `<button class="btn-cmd" style="padding: 10px 15px; font-size: 1.1rem; width: auto; flex: 1; min-width: 80px; ${btnStyle}" onclick="toggleOperatingMode('${clientId}', '${m.id}', ${!enabled})">${m.label}</button>`;
+        }
+    });
+    
+    if (html === "") html = '<span style="color:var(--text-muted); font-size: 0.9rem;">NO MODES FOUND IN CONFIG</span>';
+    document.getElementById('focus-modes-toggles').innerHTML = html;
+}
+
+function toggleOperatingMode(clientId, section, enable) {
+    const title = currentLang === 'it' ? "[ CAMBIO_MODO ]" : "[ MODE_TOGGLE ]";
+    const msg = currentLang === 'it' 
+        ? `Vuoi ${enable ? 'ABILITARE' : 'DISABILITARE'} il modo <b>${section}</b>?<br><br><span style="font-size:0.8rem; color:var(--text-muted);">L'operazione salverà il file .ini e riavvierà il demone.</span>`
+        : `${enable ? 'ENABLE' : 'DISABLE'} mode <b>${section}</b>?<br><br><span style="font-size:0.8rem; color:var(--text-muted);">This will save the INI file and restart the daemon.</span>`;
+        
+    customConfirm(title, msg, enable ? "var(--success)" : "var(--danger)", async () => {
+        let lines = currentMmdvmConfig.split('\n');
+        let currentSection = "";
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('[') && line.endsWith(']')) {
+                currentSection = line.substring(1, line.length - 1);
+            }
+            if (currentSection.toLowerCase() === section.toLowerCase() && line.toLowerCase().startsWith('enable')) {
+                let parts = lines[i].split('=');
+                if(parts.length === 2) {
+                    lines[i] = parts[0] + "=" + (enable ? "1" : "0");
+                    break;
+                }
+            }
+        }
+        currentMmdvmConfig = lines.join('\n');
+        
+        document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--text-main); font-size: 0.9rem;" class="blink">SAVING & RESTARTING...</span>';
+        
+        try {
+            // 1. Salva file (Usa currentMmdvmConfigName scovato all'inizio)
+            const resSave = await fetch('/api/config_file', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    clientId: clientId, 
+                    service: currentMmdvmConfigName, 
+                    config_data: { "raw_text": currentMmdvmConfig } 
+                }) 
+            });
+            const dataSave = await resSave.json();
+            
+            if (!dataSave.success) {
+                customAlert(t('titleError'), "SAVE ERR: " + esc(dataSave.error), true);
+                fetchNodeConfigForModes(clientId); 
+                return;
+            }
+            
+            // 2. Riavvia servizio (Usa currentMmdvmServiceName)
+            const resRst = await fetch('/api/service_control', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ clientId: clientId, service: currentMmdvmServiceName, action: 'restart' }) 
+            });
+            const dataRst = await resRst.json();
+            
+            if (!dataRst.success) {
+                customAlert(t('titleError'), "RESTART ERR: " + esc(dataRst.error), true);
+            }
+            
+            // Ricarica la configurazione vera dopo 3 secondi per aggiornare la grafica
+            setTimeout(() => { if (currentFocusedNode === clientId) fetchNodeConfigForModes(clientId); }, 3000);
+            
+        } catch (e) {
+            console.error(e);
+            customAlert(t('titleError'), "NETWORK ERROR", true);
+            fetchNodeConfigForModes(clientId);
+        }
+    });
+}
+
+// --- INIT APP ---
 async function initUI() {
     applyTranslations();
     try {
@@ -651,17 +823,16 @@ async function refreshStates() {
                         }
                     }
 
-                    // 2. TIMEOUT LOCALE PER L'EFFETTO CODA VISIVO (Sostituisce il check di isIdle)
+                    // 2. LOGICA HANG TIME E RIPRISTINO
+                    // Se l'MMDVM dice "idle" forziamo sempre lo spegnimento di qualsiasi TX visivo e bypassiamo la coda
                     let timeSinceTx = 0;
-                    if (isTx && isOnline) {
+                    if (isTx && isOnline && !isIdle) {
                         cardDiv.dataset.lastTx = Date.now();
                     } else {
                         timeSinceTx = Date.now() - (parseInt(cardDiv.dataset.lastTx) || 0);
                     }
                     
-                    // L'interfaccia mantiene lo stato solo se non sta trasmettendo E se sono passati meno di 6 secondi (Hold).
-                    // In questo modo i micro-pacchetti D-STAR che non inviano l'end di chiamata svaniranno dopo 6s per forza.
-                    let isHold = (!isTx && timeSinceTx < 6000); 
+                    let isHold = (!isTx && !isIdle && timeSinceTx < 6000); 
 
                     let displayState = stateValue; 
                     let statusColor = "";
@@ -671,7 +842,7 @@ async function refreshStates() {
                     if (!isOnline) {
                         displayState = stateValue;
                         cBorder = "var(--border-light)";
-                    } else if (isTx) {
+                    } else if (isTx && !isIdle) {
                         displayState = `( ${txModeStr} )`;
                         statusColor = activeModeColor;
                         statusBorder = activeModeColor;
@@ -680,10 +851,7 @@ async function refreshStates() {
                         displayState = `[ ${txModeStr.replace("TX ", "")} ]`;
                         statusColor = activeModeColor;
                         statusBorder = activeModeColor;
-                    } else {
-                        // Quando scade l'Hold, FORZIAMO la scomparsa di ogni traccia di D-STAR / YSF
-                        isIdle = true;
-                    }
+                    } 
                     
                     // Applica i calcoli alla Card Principale
                     if (isOnline) {
@@ -723,7 +891,7 @@ async function refreshStates() {
                                 let mColor = "var(--success)";
                                 let mBorderColor = "var(--border-light)";
                                 
-                                if (isTx) {
+                                if (isTx && !isIdle) {
                                     mcBorder = activeModeColor;
                                     mStatus = `( ${txModeStr} )`;
                                     mColor = activeModeColor;
@@ -757,7 +925,7 @@ async function refreshStates() {
                         let fsColor = isOnline ? 'var(--success)' : 'var(--danger)';
                         
                         if (isOnline) {
-                            if (isTx) {
+                            if (isTx && !isIdle) {
                                 fsState = `( ${txModeStr} )`;
                                 fsColor = activeModeColor;
                             } else if (isHold) {
@@ -769,8 +937,8 @@ async function refreshStates() {
                         focusStatus.innerText = fsState;
                         focusStatus.style.color = fsColor;
                         
-                        let focusLedColor = isOnline ? (isTx ? activeModeColor : 'var(--success)') : 'var(--border-light)';
-                        let focusLedBg = (isOnline && isTx) ? activeModeColor : 'transparent';
+                        let focusLedColor = isOnline ? (isTx && !isIdle ? activeModeColor : 'var(--success)') : 'var(--border-light)';
+                        let focusLedBg = (isOnline && isTx && !isIdle) ? activeModeColor : 'transparent';
                         document.getElementById('focus-name').innerHTML = `<span style="display:inline-block; border-radius:50%; width:20px; height:20px; border:2px solid ${focusLedColor}; background:${focusLedBg}"></span> ${esc(genObj ? genObj.callsign : c.name)}`;
                         
                         document.getElementById('focus-id').innerText = `NET-ID: ${genObj ? genObj.radio_id : c.id.toUpperCase()}`;
