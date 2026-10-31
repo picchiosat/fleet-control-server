@@ -2,65 +2,65 @@
 const i18n = {
     en: {
         lblLogLimit: "Rows:",
-        lastTransits: "Lastheard", loginTitle: "🔒 System Login",
+        lastTransits: "Lastheard", loginTitle: "SYSTEM_LOGIN",
         thTime: "Time", thRep: "Repeater", thMode: "Mode", thCall: "Callsign", thDur: "Duration",
         thUser: "User", thRole: "Role", thNodes: "Nodes", thActs: "Actions",
-        btnReqCfg: "🔄 REQ CONFIG", btnGlobal: "🚨 GLOBAL OVERRIDE", btnAdmin: "🛠️ ADMIN", btnPass: "🔑 PASS", btnLogout: "LOGOUT",
-        btnSvc: "⚙️ SVC", btnFile: "📂 FILE", btnBoot: "🔄 BOOT", btnAdd: "+ ADD",
-        waitNet: "> Waiting network...", waitData: "Waiting for node data...", forceUpdate: "🔄 FORCE UPDATE",
-        adminTitle: "🛠️ User & System Management", adminDBSync: "⚙️ Database Sync Config", adminTime: "Daily Update Time:", adminSave: "SAVE CONFIG", roleOp: "Operator",
-        modSvcTitle: "⚙️ System Daemons:", modFileTitle: "📂 Config Files", modEditTitle: "📝 INI Editor:",
-        warnEdit: "⚠️ WARNING: This editor directly manipulates remote node parameters.",
-        btnEdit: "📝 EDIT", btnStart: "▶ START", btnRestart: "🔄 RESTART", btnStop: "🛑 STOP", btnSave: "💾 SAVE & SEND",
-        btnHat: "🔌 RESET HAT", confHat: "Are you sure you want to physically reset the MMDVM board on node ",
+        btnReqCfg: "REQ_CFG", btnGlobal: "GBL_OVR", btnAdmin: "SYS_ADM", btnPass: "CHG_PWD", btnLogout: "LOGOUT",
+        btnSvc: "SVC", btnFile: "CFG", btnBoot: "REBOOT", btnAdd: "ADD",
+        waitNet: "> Waiting network...", waitData: "Waiting for node data...", forceUpdate: "FORCE_UPD",
+        adminTitle: "SYS_ADMIN", adminDBSync: "DB_SYNC_CFG", adminTime: "Daily Update Time:", adminSave: "SAVE_CFG", roleOp: "Operator",
+        modSvcTitle: "DAEMONS:", modFileTitle: "CFG_FILES", modEditTitle: "EDIT:",
+        warnEdit: "[WARN] DIRECT EDIT ACTIVE",
+        btnEdit: "EDIT", btnStart: "START", btnRestart: "RST", btnStop: "STOP", btnSave: "WRITE_FILE",
+        btnHat: "RST_HAT", confHat: "PHYSICAL RESET MMDVM ON: ",
         confOp: "Confirm operation on ", confTgOn: "ENABLE Telegram notifications for ", confTgOff: "MUTE Telegram notifications for ", confOvr: "Are you sure you want to overwrite file on ",
-        warnDaemon: "⚠️ SVC KO - CHECK DAEMONS ⚠️",
+        warnDaemon: "[WARN] DAEMON OFFLINE",
         promptOvr: "GLOBAL OVERRIDE", promptOvrConfirm: "Confirm sending to ENTIRE network?",
-        modUpdateTitle: "🔄 GLOBAL UPDATE", confUpdate: "Do you want to request updated data and configuration files from all nodes in the fleet?", alertUpdateOk: "Request sent successfully!",
-        btnConfReset: "⚠️ CONFIRM RESET", btnCancel: "CANCEL", promptPass: "Enter the new password:",
-        titleError: "❌ ERROR", titleSuccess: "✅ SUCCESS", titleAction: "⚙️ CONFIRM ACTION", titleDelete: "🗑️ DELETE USER", titleSave: "💾 SAVE", titleGlobal: "🚨 GLOBAL OVERRIDE",
-        btnYes: "YES, PROCEED", msgDelUser: "Confirm user deletion?", msgPassOk: "Password updated successfully!", msgPassErr: "Failed to update password.", msgLoginFail: "Login Failed",
-        msgConfigSaved: "Configuration saved!", msgConfigErr: "Error saving configuration", msgNetErr: "Network Error", msgOvrSel: "Select the profile to send to the ENTIRE network:",
-        msgOvrOk: "Command successfully sent to the network!", msgMissUser: "Missing Username", msgMissPass: "Password required for new user", btnSvcKo: "⚠️ DAEMON KO",
-        phNewPass: "New pass (empty to keep)", phPass: "Password",
-        titleSwitch: "SWITCH PROFILE", confSwitch: "Are you sure you want to switch to", titleBoot: "SYSTEM REBOOT", confBoot: "Are you sure you want to REBOOT node ",
-        ttReqCfg: "Request immediate data update", ttGlobal: "Force profile switch on network", ttAdmin: "User and system management", ttPass: "Change your password", ttLogout: "Log out",
-        ttProfA: "Switch to Profile A", ttProfB: "Switch to Profile B", ttTgOn: "Enable Telegram notifications", ttTgOff: "Disable Telegram notifications", ttSvc: "Manage system daemons", ttFile: "Edit .ini configuration files", ttHat: "Send physical reset to modem", ttBoot: "Reboot node operating system",
-        ttSwitchTo: "Switch to profile: ", ttSvcStart: "Start service", ttSvcRestart: "Restart service", ttSvcEdit: "Edit configuration", ttSvcStop: "Stop service", ttLang: "Change language",
-        statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Loading...", statAvgDur: "⏱️ AVERAGE DURATION", statTodayTx: "📡 TRANSITS TODAY", statNoData: "No data",
-        statTitle: "DAILY STATISTICS", statAllNodes: "ALL NODES", modVersions: "Software & Firmware",
-        filtAll: "All Nodes", filtOnline: "Online", filtOffline: "Offline", filtAlerts: "⚠️ Alerts"
+        modUpdateTitle: "GBL_UPDATE", confUpdate: "Do you want to request updated data and configuration files from all nodes in the fleet?", alertUpdateOk: "ACK",
+        btnConfReset: "CONFIRM", btnCancel: "ABORT", promptPass: "NEW PWD:",
+        titleError: "ERR", titleSuccess: "OK", titleAction: "CONFIRM", titleDelete: "DEL_USR", titleSave: "SAVE", titleGlobal: "GBL_OVR",
+        btnYes: "EXECUTE", msgDelUser: "DELETE USER?", msgPassOk: "PWD_UPDATED", msgPassErr: "PWD_ERR", msgLoginFail: "AUTH_FAIL",
+        msgConfigSaved: "CFG_SAVED", msgConfigErr: "CFG_ERR", msgNetErr: "NET_ERR", msgOvrSel: "SELECT_PROF:",
+        msgOvrOk: "CMD_BROADCASTED", msgMissUser: "MISSING_USR", msgMissPass: "MISSING_PWD", btnSvcKo: "DAEMON_ERR",
+        phNewPass: "NEW_PWD (EMPTY=KEEP)", phPass: "PWD",
+        titleSwitch: "SW_PROF", confSwitch: "SWITCH TO ", titleBoot: "SYS_REBOOT", confBoot: "REBOOT NODE ",
+        ttReqCfg: "REQ_DATA", ttGlobal: "GBL_OVR", ttAdmin: "ADMIN", ttPass: "CHG_PWD", ttLogout: "LOGOUT",
+        ttProfA: "PROF_A", ttProfB: "PROF_B", ttTgOn: "TG_ON", ttTgOff: "TG_OFF", ttSvc: "DAEMONS", ttFile: "FILES", ttHat: "RST_HAT", ttBoot: "REBOOT",
+        ttSwitchTo: "SW_TO: ", ttSvcStart: "START", ttSvcRestart: "RST", ttSvcEdit: "EDIT", ttSvcStop: "STOP", ttLang: "LANG",
+        statTopTG: "TOP_TG", statTopCall: "TOP_CALL", statLoading: "LOADING...", statAvgDur: "AVG_DUR", statTodayTx: "TX_TODAY", statNoData: "NO_DATA",
+        statTitle: "DAILY_STATS", statAllNodes: "ALL_NODES", modVersions: "SW_VERSIONS",
+        filtAll: "ALL_NODES", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "ALERTS"
     },
     it: {
         lblLogLimit: "Righe:",
-        lastTransits: "Ultimi ascolti", loginTitle: "🔒 Login di Sistema",
+        lastTransits: "Ultimi ascolti", loginTitle: "SYSTEM_LOGIN",
         thTime: "Ora", thRep: "Ripetitore", thMode: "Modo", thCall: "Nominativo", thDur: "Durata",
         thUser: "Utente", thRole: "Ruolo", thNodes: "Nodi", thActs: "Azioni",
-        btnReqCfg: "🔄 RICHIEDI CONFIG", btnGlobal: "🚨 OVERRIDE GLOBALE", btnAdmin: "🛠️ ADMIN", btnPass: "🔑 PASS", btnLogout: "LOGOUT",
-        btnSvc: "⚙️ SVC", btnFile: "📂 FILE", btnBoot: "🔄 BOOT", btnAdd: "+ AGGIUNGI",
-        waitNet: "> Attesa rete...", waitData: "In attesa dei dati dal nodo...", forceUpdate: "🔄 FORZA AGGIORNAMENTO",
-        adminTitle: "🛠️ Gestione Utenti e Sistema", adminDBSync: "⚙️ Sincronizzazione Database", adminTime: "Orario Aggiornamento:", adminSave: "SALVA CONFIG", roleOp: "Operatore",
-        modSvcTitle: "⚙️ Demoni Sistema:", modFileTitle: "📂 File di Configurazione", modEditTitle: "📝 Editor INI:",
-        warnEdit: "⚠️ ATTENZIONE: Questo editor manipola direttamente i parametri del nodo remoto.",
-        btnEdit: "📝 MODIFICA", btnStart: "▶ START", btnRestart: "🔄 RESTART", btnStop: "🛑 STOP", btnSave: "💾 SALVA ED INVIA",
-        btnHat: "🔌 RESET HAT", confHat: "Sei sicuro di voler resettare fisicamente la scheda MMDVM sul nodo ",
+        btnReqCfg: "REQ_CFG", btnGlobal: "GBL_OVR", btnAdmin: "SYS_ADM", btnPass: "CHG_PWD", btnLogout: "LOGOUT",
+        btnSvc: "SVC", btnFile: "CFG", btnBoot: "REBOOT", btnAdd: "ADD",
+        waitNet: "> Attesa rete...", waitData: "In attesa dei dati dal nodo...", forceUpdate: "FORCE_UPD",
+        adminTitle: "SYS_ADMIN", adminDBSync: "DB_SYNC_CFG", adminTime: "Orario Aggiornamento:", adminSave: "SAVE_CFG", roleOp: "Operatore",
+        modSvcTitle: "DAEMONS:", modFileTitle: "CFG_FILES", modEditTitle: "EDIT:",
+        warnEdit: "[WARN] DIRECT EDIT ACTIVE",
+        btnEdit: "EDIT", btnStart: "START", btnRestart: "RST", btnStop: "STOP", btnSave: "WRITE_FILE",
+        btnHat: "RST_HAT", confHat: "PHYSICAL RESET MMDVM ON: ",
         confOp: "Confermi l'operazione su ", confTgOn: "Vuoi ATTIVARE le notifiche Telegram per il nodo ", confTgOff: "Vuoi SILENZIARE le notifiche Telegram per il nodo ", confOvr: "Sei sicuro di voler sovrascrivere il file su ",
-        warnDaemon: "⚠️ SVC KO - CONTROLLA DEMONI ⚠️",
-        promptOvr: "OVERRIDE GLOBALE", promptOvrConfirm: "Confermi l'invio a TUTTA la rete?",
-        modUpdateTitle: "🔄 AGGIORNAMENTO GLOBALE", confUpdate: "Vuoi richiedere i dati e i file di configurazione aggiornati a tutti i nodi della flotta?", alertUpdateOk: "Richiesta inviata con successo!",
-        btnConfReset: "⚠️ CONFERMA RESET", btnCancel: "ANNULLA", promptPass: "Inserisci la nuova password:",
-        titleError: "❌ ERRORE", titleSuccess: "✅ OK", titleAction: "⚙️ CONFERMA AZIONE", titleDelete: "🗑️ ELIMINA UTENTE", titleSave: "💾 SALVATAGGIO", titleGlobal: "🚨 OVERRIDE GLOBALE",
-        btnYes: "SI, PROCEDI", msgDelUser: "Confermi l'eliminazione dell'utente?", msgPassOk: "Password aggiornata con successo!", msgPassErr: "Errore durante l'aggiornamento della password.", msgLoginFail: "Login Fallito",
-        msgConfigSaved: "Configurazione salvata!", msgConfigErr: "Errore durante il salvataggio", msgNetErr: "Errore di rete", msgOvrSel: "Seleziona il profilo da inviare a TUTTA la rete:",
-        msgOvrOk: "Comando inviato con successo a tutta la rete!", msgMissUser: "Username mancante", msgMissPass: "Password obbligatoria per il nuovo utente", btnSvcKo: "⚠️ DEMONE KO",
-        phNewPass: "Nuova pass (vuota per non cambiare)", phPass: "Password",
-        titleSwitch: "CAMBIO PROFILO", confSwitch: "Sei sicuro di voler passare al", titleBoot: "RIAVVIO SISTEMA", confBoot: "Sei sicuro di voler RIAVVIARE il nodo ",
-        ttReqCfg: "Richiedi aggiornamento dati", ttGlobal: "Forza cambio profilo globale", ttAdmin: "Gestione utenti e sistema", ttPass: "Cambia la tua password", ttLogout: "Disconnetti",
+        warnDaemon: "[WARN] DAEMON OFFLINE",
+        promptOvr: "GBL_OVR", promptOvrConfirm: "Confermi l'invio a TUTTA la rete?",
+        modUpdateTitle: "GBL_UPDATE", confUpdate: "Vuoi richiedere i dati e i file di configurazione aggiornati a tutti i nodi della flotta?", alertUpdateOk: "ACK",
+        btnConfReset: "CONFIRM", btnCancel: "ABORT", promptPass: "NEW PWD:",
+        titleError: "ERR", titleSuccess: "OK", titleAction: "CONFIRM", titleDelete: "DEL_USR", titleSave: "SAVE", titleGlobal: "GBL_OVR",
+        btnYes: "EXECUTE", msgDelUser: "DELETE USER?", msgPassOk: "PWD_UPDATED", msgPassErr: "PWD_ERR", msgLoginFail: "AUTH_FAIL",
+        msgConfigSaved: "CFG_SAVED", msgConfigErr: "CFG_ERR", msgNetErr: "NET_ERR", msgOvrSel: "SELECT_PROF:",
+        msgOvrOk: "CMD_BROADCASTED", msgMissUser: "MISSING_USR", msgMissPass: "MISSING_PWD", btnSvcKo: "DAEMON_ERR",
+        phNewPass: "NEW_PWD (EMPTY=KEEP)", phPass: "PWD",
+        titleSwitch: "SW_PROF", confSwitch: "SWITCH TO ", titleBoot: "SYS_REBOOT", confBoot: "REBOOT NODE ",
+        ttReqCfg: "REQ_DATA", ttGlobal: "GBL_OVR", ttAdmin: "ADMIN", ttPass: "CHG_PWD", ttLogout: "LOGOUT",
         ttProfA: "Passa al Profilo A", ttProfB: "Passa al Profilo B", ttTgOn: "Abilita notifiche Telegram", ttTgOff: "Disabilita notifiche Telegram", ttSvc: "Gestisci demoni di sistema", ttFile: "Modifica file .ini da remoto", ttHat: "Reset fisico scheda modem", ttBoot: "Riavvia sistema operativo",
-        ttSwitchTo: "Passa al profilo: ", ttSvcStart: "Avvia servizio", ttSvcRestart: "Riavvia servizio", ttSvcEdit: "Modifica configurazione", ttSvcStop: "Ferma servizio", ttLang: "Cambia lingua",
-        statTopTG: "🎯 TOP TALKGROUPS", statTopCall: "🗣️ TOP CALLSIGNS", statLoading: "Caricamento...", statAvgDur: "⏱️ DURATA MEDIA", statTodayTx: "📡 TRANSITI OGGI", statNoData: "Nessun dato",
-        statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTA LA RETE", modVersions: "Software & Firmware",
-        filtAll: "Tutti i nodi", filtOnline: "Attivi", filtOffline: "Offline", filtAlerts: "⚠️ Allarmi"
+        ttSwitchTo: "SW_TO: ", ttSvcStart: "START", ttSvcRestart: "RST", ttSvcEdit: "EDIT", ttSvcStop: "STOP", ttLang: "LANG",
+        statTopTG: "TOP_TG", statTopCall: "TOP_CALL", statLoading: "LOADING...", statAvgDur: "AVG_DUR", statTodayTx: "TX_TODAY", statNoData: "NO_DATA",
+        statTitle: "DAILY_STATS", statAllNodes: "ALL_NODES", modVersions: "SW_VERSIONS",
+        filtAll: "ALL_NODES", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "ALERTS"
     }
 };
 
@@ -70,7 +70,7 @@ function toggleLang() { currentLang = currentLang === 'it' ? 'en' : 'it'; localS
 
 function applyTranslations() {
     const langBtn = document.getElementById('lang-btn');
-    if (langBtn) langBtn.innerText = currentLang === 'it' ? "🇬🇧 ENG" : "🇮🇹 ITA";
+    if (langBtn) langBtn.innerText = currentLang === 'it' ? "ENG" : "ITA";
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (i18n[currentLang][key]) el.innerHTML = i18n[currentLang][key];
@@ -90,19 +90,20 @@ function q(s) { return esc(JSON.stringify(String(s ?? ''))); }
 // --- DIALOGHI ALERT & CONFIRM ---
 function customAlert(title, desc, isError = false) {
     const color = isError ? 'var(--danger)' : 'var(--success)';
-    document.getElementById('alert-title').innerHTML = title;
+    document.getElementById('alert-title').innerHTML = '> ' + title;
     document.getElementById('alert-title').style.color = color;
-    document.getElementById('alert-box').style.borderColor = color;
+    document.getElementById('alert-box').style.borderTopColor = color;
     document.getElementById('alert-desc').innerHTML = desc;
     document.getElementById('alert-modal').style.display = 'flex';
 }
 
 function customConfirm(title, desc, color, callback) {
-    document.getElementById('confirm-title').innerHTML = title;
+    document.getElementById('confirm-title').innerHTML = '> ' + title;
     document.getElementById('confirm-title').style.color = color;
-    document.getElementById('confirm-box').style.borderColor = color;
+    document.getElementById('confirm-box').style.borderTopColor = color;
     document.getElementById('confirm-desc').innerHTML = desc;
-    document.getElementById('confirm-yes-btn').style.background = color;
+    document.getElementById('confirm-yes-btn').style.borderColor = color;
+    document.getElementById('confirm-yes-btn').style.color = color;
     document.getElementById('confirm-yes-btn').innerText = t('btnYes');
     document.getElementById('confirm-cancel-btn').innerText = t('btnCancel');
     confirmActionCallback = callback;
@@ -156,10 +157,10 @@ async function loadUsers() {
     const res = await fetch('/api/users'); if (!res.ok) return; const users = await res.json(); usersCache = {}; users.forEach(u => { usersCache[u.id] = u; });
     document.getElementById('users-table-body').innerHTML = users.map(u => `
         <tr>
-            <td>${u.id}</td><td style="font-weight:bold;">${esc(u.username)}</td><td><span style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:6px; font-size:0.8rem;">${esc(String(u.role).toUpperCase())}</span></td><td>${esc(u.allowed_nodes)}</td>
-            <td style="text-align:center;">
-                <button onclick="startEditUser(${Number(u.id)})" class="btn-cmd" style="background:var(--accent); padding:6px; width:auto; display:inline-block; margin-right:5px; border:none; color:white !important;">✏️</button>
-                <button onclick="deleteUser(${u.id})" class="btn-cmd" style="background:var(--danger); padding:6px; width:auto; display:inline-block; border:none; color:white !important;">🗑️</button>
+            <td>${u.id}</td><td style="font-weight:bold;">${esc(u.username)}</td><td>[ ${esc(String(u.role).toUpperCase())} ]</td><td>${esc(u.allowed_nodes)}</td>
+            <td style="text-align:right; min-width: 130px; white-space: nowrap;">
+                <button onclick="startEditUser(${Number(u.id)})" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; display:inline-block; width: 60px; flex: 0 0 60px; margin-right:5px; padding: 6px;">EDIT</button>
+                <button onclick="deleteUser(${u.id})" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; display:inline-block; width: 60px; flex: 0 0 60px; padding: 6px;">DEL</button>
             </td>
         </tr>`).join('');
 }
@@ -167,12 +168,12 @@ async function loadUsers() {
 function startEditUser(id) {
     const u = usersCache[id]; if (!u) return;
     editingUserId = id; document.getElementById('new-user').value = u.username; document.getElementById('new-user').disabled = true; document.getElementById('new-pass').value = ""; document.getElementById('new-pass').placeholder = t('phNewPass'); document.getElementById('new-role').value = u.role; document.getElementById('new-nodes').value = u.allowed_nodes;
-    const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = t('titleSave'); btnSubmit.style.background = "var(--accent)"; document.getElementById('btn-user-cancel').style.display = "block";
+    const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = "UPDATE"; btnSubmit.style.borderColor = "var(--accent)"; btnSubmit.style.color = "var(--accent) !important"; document.getElementById('btn-user-cancel').style.display = "block";
 }
 
 function cancelEdit() {
     editingUserId = null; document.getElementById('new-user').value = ""; document.getElementById('new-user').disabled = false; document.getElementById('new-pass').value = ""; document.getElementById('new-pass').placeholder = t('phPass'); document.getElementById('new-role').value = "operator"; document.getElementById('new-nodes').value = "";
-    const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = t('btnAdd'); btnSubmit.style.background = "var(--success)"; document.getElementById('btn-user-cancel').style.display = "none";
+    const btnSubmit = document.getElementById('btn-user-submit'); btnSubmit.innerHTML = "ADD"; btnSubmit.style.borderColor = "var(--success)"; btnSubmit.style.color = "var(--success) !important"; document.getElementById('btn-user-cancel').style.display = "none";
 }
 
 async function submitUser() {
@@ -208,13 +209,13 @@ function triggerGlobalEmergency() {
             for (const [k, v] of Object.entries(globalHealthData[id].profiles)) { uniqueProfiles[k] = v; }
         } 
     }
-    const container = document.getElementById('global-btn-container'); let html = ''; const colors = ["var(--accent)", "#eab308", "var(--success)", "var(--primary)"]; let idx = 0;
+    const container = document.getElementById('global-btn-container'); let html = ''; const colors = ["var(--accent)", "#00ffcc", "var(--primary)"]; let idx = 0;
     for (const [k, v] of Object.entries(uniqueProfiles)) {
         let col = colors[idx % colors.length];
-        html += `<button onclick="sendGlobalAction(${q(k)})" class="btn-cmd" style="background:${col}; padding:15px; font-size:1.1rem; font-weight:bold; border:none; color:white !important;">${esc(v)}</button>`;
+        html += `<button onclick="sendGlobalAction(${q(k)})" class="btn-cmd" style="border-color:${col}; color:${col} !important;">${esc(v)}</button>`;
         idx++;
     }
-    if (Object.keys(uniqueProfiles).length === 0) { html = `<p style="color:var(--danger); font-weight:bold;">No profiles configured on the network.</p>`; }
+    if (Object.keys(uniqueProfiles).length === 0) { html = `<p style="color:var(--danger); font-weight:400; font-family:'JetBrains Mono',monospace;">NO_PROFS_FOUND</p>`; }
     container.innerHTML = html; document.getElementById('override-desc').innerText = t('msgOvrSel'); document.getElementById('override-modal').style.display = 'flex';
 }
 
@@ -241,34 +242,50 @@ async function executePasswordChange() {
 function fileLabel(stem, names) {
     const key = String(stem).toLowerCase(); const full = (names || []).find(n => String(n).replace(/\.[^.]*$/, '').toLowerCase() === key);
     if (full) { const m = String(full).match(/^(.*?)(\.[^.]*)?$/); return String(m[1]).toUpperCase() + (m[2] || ''); }
-    return String(stem).toUpperCase() + '.ini';
+    return String(stem).toUpperCase() + '.INI';
 }
 
 function openConfigsModal(clientId) {
-    const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('configs-list'); let listaFile = data ? (data.config_files || data.files || []) : []; const fileNames = (data && data.file_names) || [];
-    if (listaFile.length === 0) listDiv.innerHTML = `<div style="text-align:center; padding:20px;"><p style="color:var(--text-muted); margin-bottom:15px;">${t('waitData')}</p><button onclick="sendGlobalUpdate(); closeConfigsModal();" class="btn-cmd" style="background:var(--accent);">${t('forceUpdate')}</button></div>`;
-    else listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px solid var(--border-color); margin-bottom:8px;"><span style="font-family:'JetBrains Mono',monospace; font-weight:bold;">${esc(fileLabel(f, fileNames))}</span><button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="background:#8e44ad; max-width:120px; border:none; color:white !important;">${t('btnEdit')}</button></div>`).join('');
+    const data = globalHealthData[clientId.toLowerCase()]; 
+    const listDiv = document.getElementById('configs-list'); 
+    let listaFile = data ? (data.config_files || data.files || []) : []; 
+    const fileNames = (data && data.file_names) || [];
+    
+    if (listaFile.length === 0) {
+        listDiv.innerHTML = `<p>${t('waitData')}</p><button onclick="sendGlobalUpdate(); closeConfigsModal();" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important;">${t('forceUpdate')}</button>`;
+    } else {
+        listDiv.innerHTML = listaFile.map(f => `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--border-light); width:100%;">
+            <span style="font-weight:400; font-family:'JetBrains Mono',monospace; flex: 1; text-align: left; overflow:hidden; text-overflow:ellipsis; padding-right:20px;">${esc(fileLabel(f, fileNames))}</span>
+            <button onclick="closeConfigsModal(); openEditorModal(${q(clientId)}, ${q(f)})" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; width: 100px; flex: 0 0 100px; padding: 8px;">${t('btnEdit')}</button>
+        </div>`).join('');
+    }
     document.getElementById('configs-modal').style.display = 'flex';
 }
 function closeConfigsModal() { document.getElementById('configs-modal').style.display = 'none'; }
 
 // --- MODALE GESTIONE DEMONI/SERVIZI ---
-function openServicesModal(clientId) { document.getElementById('svc-modal-title').innerText = clientId.toUpperCase(); document.getElementById('services-modal').style.display = 'flex'; renderServicesList(clientId); }
+function openServicesModal(clientId) { 
+    document.getElementById('svc-modal-title').innerText = clientId.toUpperCase(); 
+    document.getElementById('services-modal').style.display = 'flex'; 
+    renderServicesList(clientId); 
+}
 function closeServicesModal() { document.getElementById('services-modal').style.display = 'none'; }
 
 function renderServicesList(clientId) {
-    const data = globalHealthData[clientId.toLowerCase()]; const listDiv = document.getElementById('services-list');
-    if (!data || !data.processes || Object.keys(data.processes).length === 0) { listDiv.innerHTML = "<p style='text-align:center; color:var(--text-muted);'>No service data available.</p>"; return; }
+    const data = globalHealthData[clientId.toLowerCase()]; 
+    const listDiv = document.getElementById('services-list');
+    
+    if (!data || !data.processes || Object.keys(data.processes).length === 0) { listDiv.innerHTML = "<p>NO_DATA</p>"; return; }
     let html = "";
     for (const [name, status] of Object.entries(data.processes)) {
         const isOnline = status.toLowerCase() === 'online'; const statusColor = isOnline ? 'var(--success)' : 'var(--danger)'; 
-        html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border-color); background:rgba(255,255,255,0.02); border-radius:12px; margin-bottom:8px; border-left: 5px solid ${statusColor};">
-                    <div><strong style="font-size:1.1rem; display:block; font-family:'JetBrains Mono',monospace;">${esc(name)}</strong><span class="${isOnline?'':'blink'}" style="color:${statusColor}; font-size:0.8rem; font-weight:800;">${esc(String(status).toUpperCase())}</span></div>
-                    <div style="display:flex; gap:8px;">
-                        ${!isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'start')" class="btn-cmd" style="background:var(--success); border:none; color:white !important;">▶</button>` : ''}
-                        <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="background:#f59e0b; border:none; color:white !important;">🔄</button>
-                        <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="background:#8e44ad; border:none; color:white !important;">📝</button>
-                        ${isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'stop')" class="btn-cmd" style="background:var(--danger); border:none; color:white !important;">🛑</button>` : ''}
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--border-light); width: 100%;">
+                    <div style="font-weight:400; color:${statusColor}; font-family:'JetBrains Mono',monospace; flex: 1; text-align: left; overflow:hidden; text-overflow:ellipsis; padding-right:20px;">${esc(name)} [${esc(String(status).toUpperCase())}]</div>
+                    <div style="display:flex; gap:8px; flex: 0 0 auto; justify-content: flex-end;">
+                        ${!isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'start')" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important; width: 70px; flex: 0 0 70px; padding: 6px 0;">START</button>` : ''}
+                        <button onclick="controlService(${q(clientId)}, ${q(name)}, 'restart')" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; width: 70px; flex: 0 0 70px; padding: 6px 0;">RST</button>
+                        <button onclick="openEditorModal(${q(clientId)}, ${q(name)})" class="btn-cmd" style="width: 70px; flex: 0 0 70px; padding: 6px 0;">EDIT</button>
+                        ${isOnline ? `<button onclick="controlService(${q(clientId)},${q(name)}, 'stop')" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 70px; flex: 0 0 70px; padding: 6px 0;">STOP</button>` : ''}
                     </div>
                 </div>`;
     }
@@ -278,7 +295,7 @@ function renderServicesList(clientId) {
 function controlService(clientId, service, action) { 
     customConfirm(t('titleAction'), `${t('confOp')}<b>${esc(service)}</b>?`, "var(--accent)", async () => {
         try { const res = await fetch('/api/service_control', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ clientId, service, action }) }); const data = await res.json(); 
-            if(!data.success) customAlert(t('titleError'), "Error: " + esc(data.error), true); 
+            if(!data.success) customAlert(t('titleError'), "ERR: " + esc(data.error), true); 
         } catch(e) { console.error(e); } 
     });
 }
@@ -287,28 +304,38 @@ function controlService(clientId, service, action) {
 let currentEditClient = ""; let currentEditService = "";
 async function openEditorModal(clientId, service) {
     currentEditClient = clientId; currentEditService = service; document.getElementById('editor-title').innerText = `${service.toUpperCase()} @ ${clientId.toUpperCase()}`;
-    document.getElementById('config-textarea').value = "Connecting to server..."; document.getElementById('editor-status').innerText = ""; document.getElementById('editor-modal').style.display = 'flex';
-    try { const res = await fetch(`/api/config_file/${encodeURIComponent(clientId)}/${encodeURIComponent(service)}`); const data = await res.json(); if (data.success) document.getElementById('config-textarea').value = data.data.raw_text || "Empty file"; else document.getElementById('config-textarea').value = "ERROR:\n" + data.error; } catch(e) { document.getElementById('config-textarea').value = "Connection error."; }
+    document.getElementById('config-textarea').value = "AWAITING_STREAM..."; document.getElementById('editor-status').innerText = ""; document.getElementById('editor-modal').style.display = 'flex';
+    try { 
+        const res = await fetch(`/api/config_file/${encodeURIComponent(clientId)}/${encodeURIComponent(service)}`); 
+        const data = await res.json(); 
+        if (data.success) {
+            document.getElementById('config-textarea').value = data.data.raw_text || "EMPTY"; 
+        } else {
+            document.getElementById('config-textarea').value = "ERR:\n" + data.error; 
+        }
+    } catch(e) { 
+        document.getElementById('config-textarea').value = "NET_ERR"; 
+    }
 }
 function closeEditorModal() { document.getElementById('editor-modal').style.display = 'none'; }
 
 function saveConfig() {
     const textValue = document.getElementById('config-textarea').value; const statusSpan = document.getElementById('editor-status');
     customConfirm(t('titleSave'), `${t('confOvr')}<b>${currentEditClient.toUpperCase()}</b>?`, "var(--danger)", async () => {
-        statusSpan.innerText = "Sending..."; statusSpan.style.color = "var(--success)";
+        statusSpan.innerText = "WRITING..."; statusSpan.style.color = "var(--success)";
         try {
             const res = await fetch('/api/config_file', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ clientId: currentEditClient, service: currentEditService, config_data: { "raw_text": textValue } }) });
             const data = await res.json();
-            if (data.success) { customAlert(t('titleSuccess'), "File updated!"); closeEditorModal(); } else { customAlert(t('titleError'), "Server error: " + esc(data.error), true); statusSpan.innerText = "❌ Error"; }
-        } catch(e) { customAlert(t('titleError'), t('msgNetErr'), true); statusSpan.innerText = "❌ Network Error"; }
+            if (data.success) { customAlert(t('titleSuccess'), "FILE_WRITTEN"); closeEditorModal(); } else { customAlert(t('titleError'), "ERR: " + esc(data.error), true); statusSpan.innerText = "ERR"; }
+        } catch(e) { customAlert(t('titleError'), t('msgNetErr'), true); statusSpan.innerText = "NET_ERR"; }
     });
 }
 
 // --- MODALE VERSIONI SOFTWARE ---
 function openVersionsModal(clientId) {
     const versions = globalVersionsData[clientId.toLowerCase()]; const listDiv = document.getElementById('versions-list');
-    if (!versions || Object.keys(versions).length === 0) { listDiv.innerHTML = "<span style='color: var(--text-muted);'>Nessun dato ancora ricevuto. Usa il tasto 🔄 RESTART sui servizi del nodo per forzare l'invio del log di avvio.</span>"; } 
-    else { let html = ""; for (const [software, version] of Object.entries(versions)) { html += `<div><strong style="color: var(--primary); display: inline-block; width: 140px;">${esc(software)}:</strong> <span style="color: var(--success); font-weight: bold;">${esc(version)}</span></div>`; } listDiv.innerHTML = html; }
+    if (!versions || Object.keys(versions).length === 0) { listDiv.innerHTML = "<p style='font-family:\"JetBrains Mono\",monospace;'>NO_DATA. RESTART SVCS TO PUSH LOGS.</p>"; } 
+    else { let html = ""; for (const [software, version] of Object.entries(versions)) { html += `<div style="border-bottom:1px dashed var(--border-light); padding:5px 0;"><strong style="color: var(--primary); display: inline-block; width: 140px;">${esc(software)}:</strong> <span style="color: var(--success); font-weight: 400;">${esc(version)}</span></div>`; } listDiv.innerHTML = html; }
     document.getElementById('versions-modal').style.display = 'flex';
 }
 function closeVersionsModal() { document.getElementById('versions-modal').style.display = 'none'; }

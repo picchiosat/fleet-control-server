@@ -6,24 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fleet Control Console</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0d1117">
+    <meta name="theme-color" content="#06246f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-512.png">
     <meta name="apple-mobile-web-app-title" content="Fleet C2">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Blueprint -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <!-- Libreria Mappa Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <!-- Foglio di Stile Esterno Modularizzato -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=blueprint3">
 </head>
 <body>
 
 <div id="top-bar-container">
     <div id="top-bar">
-        <div class="title-brand">FLEET CONTROL CONSOLE</div>
+        <div class="title-brand">SCHEMATIC // FLEET C2</div>
         
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>
@@ -31,10 +33,10 @@
             <button class="nav-tab" onclick="switchView('map')" id="tab-map">MAP</button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span id="mqtt-badge" class="mqtt-badge mqtt-offline">MQTT: CHECKING...</span>
-            <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang">🇮🇹 ITA</button>
-            <button class="theme-switch" id="push-btn" onclick="subscribeToPush()">🔔 PUSH</button>
+        <div class="top-bar-right">
+            <span id="mqtt-badge" class="mqtt-badge mqtt-offline">MQTT: CHK</span>
+            <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang">ITA</button>
+            <button class="theme-switch" id="push-btn" onclick="subscribeToPush()">PUSH</button>
             <div id="auth-container" style="display:flex; align-items:center; gap:8px;"></div>
         </div>
     </div>
@@ -50,19 +52,19 @@
     <div style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
         <div class="filter-bar">
             <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="node-filters">
-                <button class="filter-pill active" onclick="setFilter('all')" data-i18n="filtAll">All Nodes</button>
-                <button class="filter-pill" onclick="setFilter('online')" data-i18n="filtOnline">Online</button>
-                <button class="filter-pill" onclick="setFilter('offline')" data-i18n="filtOffline">Offline</button>
-                <button class="filter-pill pill-warn" onclick="setFilter('alerts')" data-i18n="filtAlerts">⚠️ Alerts</button>
-                <div style="width: 1px; background: var(--border-color); margin: 0 5px;"></div>
-                <button class="filter-pill" onclick="setFilter('dmr')" style="color: #3b82f6; border-color: rgba(59,130,246,0.3);">DMR</button>
-                <button class="filter-pill" onclick="setFilter('ysf')" style="color: #8b5cf6; border-color: rgba(139,92,246,0.3);">YSF</button>
-                <button class="filter-pill" onclick="setFilter('d-star')" style="color: #06b6d4; border-color: rgba(6,182,212,0.3);">D-STAR</button>
-                <button class="filter-pill" onclick="setFilter('nxdn')" style="color: #10b981; border-color: rgba(16,185,129,0.3);">NXDN</button>
+                <button class="filter-pill active" onclick="setFilter('all')" data-i18n="filtAll">ALL_NODES</button>
+                <button class="filter-pill" onclick="setFilter('online')" data-i18n="filtOnline">ONLINE</button>
+                <button class="filter-pill" onclick="setFilter('offline')" data-i18n="filtOffline">OFFLINE</button>
+                <button class="filter-pill pill-warn" onclick="setFilter('alerts')" data-i18n="filtAlerts">ALERTS</button>
+                <div style="width: 1px; background: var(--border-light); margin: 0 5px;"></div>
+                <button class="filter-pill" onclick="setFilter('dmr')">DMR</button>
+                <button class="filter-pill" onclick="setFilter('ysf')">YSF</button>
+                <button class="filter-pill" onclick="setFilter('d-star')">D-STAR</button>
+                <button class="filter-pill" onclick="setFilter('nxdn')">NXDN</button>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; width: auto; flex-grow: 1; justify-content: flex-end;">
-                <input type="text" id="node-search" placeholder="Search ID / Callsign..." onkeyup="applyFilters()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white; flex-grow: 1; max-width: 200px;">
-                <button id="view-toggle-btn" class="btn-cmd" style="background: rgba(255,255,255,0.1); padding: 8px 12px; flex: 0 0 auto; width: auto;" onclick="toggleViewMode()" title="Toggle Grid/List View">🔲 GRID</button>
+                <input type="text" id="node-search" placeholder="SEARCH ID/CALL..." onkeyup="applyFilters()" style="flex-grow: 1; max-width: 200px;">
+                <button id="view-toggle-btn" class="btn-cmd" style="flex: 0 0 auto; width: auto;" onclick="toggleViewMode()" title="Toggle Grid/List View">[ GRID ]</button>
             </div>
         </div>
     </div>
@@ -72,30 +74,30 @@
 
 <!-- VISTA HOME -->
 <div id="view-home">
+    <!-- STATUS RAPIDO NODI -->
     <div style="max-width: 1400px; margin: 0 auto 20px auto; padding: 0 20px;">
-        <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-            <span style="font-size: 1.2rem;">🟢</span> <span>FLEET STATUS</span>
+        <h3 style="margin: 0 0 15px 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main); border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;">
+            [ FLEET_STATUS ]
         </h3>
         <div id="home-mini-nodes" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;"></div>
     </div>
 
+    <!-- LASTHEARD -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto;">
-        <div style="padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-                <span style="font-size: 1.5rem;">📡</span> <span data-i18n="lastTransits">Lastheard</span>
-            </h3>
+        <div style="padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;">
+            <h3 style="margin: 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main);" data-i18n="lastTransits">[ LASTHEARD ]</h3>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <label for="log-limit-select" data-i18n="lblLogLimit" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Righe:</label>
-                    <select id="log-limit-select" onchange="changeLogLimit(this.value)" style="font-weight: bold; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main);">
+                    <label for="log-limit-select" data-i18n="lblLogLimit" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 300;">ROWS:</label>
+                    <select id="log-limit-select" onchange="changeLogLimit(this.value)" style="font-weight: 400; cursor: pointer;">
                         <option value="30">30</option>
                         <option value="60">60</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
                     </select>
                 </div>
-                <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="font-weight: bold; cursor: pointer;">
-                    <option value="all">🌐 ALL NODES</option>
+                <select id="stat-node-filter" onchange="refreshStats(); refreshLogs();" style="font-weight: 400; cursor: pointer;">
+                    <option value="all">ALL_NODES</option>
                 </select>
             </div>
         </div>
@@ -103,15 +105,15 @@
             <table>
                 <thead>
                     <tr>
-                        <th data-i18n="thTime">Time</th>
-                        <th data-i18n="thRep">Repeater</th>
-                        <th data-i18n="thMode">Mode</th>
-                        <th style="text-align: center;">YSF Mode</th>
-                        <th style="text-align: center;">Source</th>
-                        <th style="text-align: center;">REF / SLOT</th>
-                        <th data-i18n="thCall">Callsign</th>
-                        <th>Target / TG</th>
-                        <th data-i18n="thDur">Duration</th>
+                        <th data-i18n="thTime">TIME</th>
+                        <th data-i18n="thRep">REPEATER</th>
+                        <th data-i18n="thMode">MODE</th>
+                        <th style="text-align: center;">YSF_MODE</th>
+                        <th style="text-align: center;">SOURCE</th>
+                        <th style="text-align: center;">REF/SLOT</th>
+                        <th data-i18n="thCall">CALLSIGN</th>
+                        <th>TARGET</th>
+                        <th data-i18n="thDur">DUR</th>
                         <th>BER</th>
                         <th>RSSI</th>
                     </tr>
@@ -121,30 +123,29 @@
         </div>
     </div>
 
+    <!-- DAILY STATISTICS -->
     <div style="max-width: 1400px; margin: 0 auto 30px auto; padding: 0 20px;">
-        <h3 style="margin: 0 0 15px 0; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
-            <span style="font-size: 1.5rem;">📊</span> <span data-i18n="statTitle">DAILY STATISTICS</span>
-        </h3>
+        <h3 style="margin: 0 0 15px 0; font-weight: 300; letter-spacing: 2px; color: var(--text-main); border-bottom: 1px dashed var(--border-main); padding-bottom: 5px;" data-i18n="statTitle">[ DAILY_STATISTICS ]</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div class="card" style="padding: 15px; border-top-color: var(--accent) !important;">
-                <h4 style="margin: 0 0 10px 0; color: var(--accent);" data-i18n="statTopTG">🎯 TOP TALKGROUPS</h4>
-                <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+            <div class="card" style="border-left: 1px solid var(--accent) !important; padding: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--accent); font-weight: 300; letter-spacing: 1px;" data-i18n="statTopTG">TOP_TALKGROUPS</h4>
+                <div id="stat-tgs" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">LOADING...</div>
             </div>
             
-            <div class="card" style="padding: 15px; border-top-color: var(--success) !important;">
-                <h4 style="margin: 0 0 10px 0; color: var(--success);" data-i18n="statTopCall">🗣️ TOP CALLSIGNS</h4>
-                <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">Loading...</div>
+            <div class="card" style="border-left: 1px solid var(--success) !important; padding: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--success); font-weight: 300; letter-spacing: 1px;" data-i18n="statTopCall">TOP_CALLSIGNS</h4>
+                <div id="stat-calls" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8;" data-i18n="statLoading">LOADING...</div>
             </div>
             
-            <div class="card" style="padding: 15px; border-top-color: var(--primary) !important; display: flex; justify-content: space-around; align-items: center; text-align: center; flex-direction: row;">
+            <div class="card" style="border-left: 1px solid var(--primary) !important; padding: 15px; display: flex; justify-content: space-around; align-items: center; text-align: center; flex-direction: row;">
                 <div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statAvgDur">⏱️ AVERAGE DURATION</div>
+                    <div style="font-size: 1.8rem; font-weight: 300; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-avg">--</span>s</div>
+                    <div style="font-size: 0.75rem; color: var(--border-main); text-transform: uppercase; font-weight: 300; letter-spacing: 1px;" data-i18n="statAvgDur">AVG_DURATION</div>
                 </div>
-                <div style="width: 1px; height: 50px; background: var(--border-color);"></div> 
+                <div style="width: 1px; height: 50px; border-left: 1px dashed var(--border-light);"></div> 
                 <div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;" data-i18n="statTodayTx">📡 TRANSITS TODAY</div>
+                    <div style="font-size: 1.8rem; font-weight: 300; color: var(--text-main); font-family: 'JetBrains Mono', monospace;"><span id="stat-today">--</span></div>
+                    <div style="font-size: 0.75rem; color: var(--border-main); text-transform: uppercase; font-weight: 300; letter-spacing: 1px;" data-i18n="statTodayTx">TRANSITS_TODAY</div>
                 </div>
             </div>
         </div>
@@ -152,65 +153,60 @@
 </div>
 
 <footer>
-    <div style="text-align: center; padding: 25px; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
-        <span>&copy; 2026 <strong>IV3JDV @ ARIFVG</strong></span>
-        <span style="opacity: 0.5;">|</span>
-        <a href="https://git.arifvg.it/iv3jdv/fleet-control-server" target="_blank" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.2s;">
-            <span>Gitea Home</span>
-        </a>
-        <span style="opacity: 0.5;">|</span>
-        <span style="font-family: 'JetBrains Mono', monospace; color: var(--accent);">Rev: {{ git_commit }}</span>
-        <span style="opacity: 0.5;">|</span>
-        <span id="last-update">Sync: --:--</span>
+    <div style="text-align: center; padding: 25px; color: var(--border-light); font-size: 0.85rem; font-weight: 300; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <span>SYS_OP: IV3JDV @ ARIFVG</span>
+        <span>|</span>
+        <a href="https://git.arifvg.it/iv3jdv/fleet-control-server" target="_blank" style="color: inherit; text-decoration: none;">GITEA_REPO</a>
+        <span>|</span>
+        <span style="color: var(--accent);">REV: {{ git_commit }}</span>
+        <span>|</span>
+        <span id="last-update">SYNC: --:--</span>
     </div>
 </footer>
 
 <!-- MODALI -->
 <div id="login-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:400px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:20px;">
-            <h2 style="margin:0; color:var(--primary);" data-i18n="loginTitle">🔒 System Login</h2>
-            <button onclick="closeLoginModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:400px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--primary); font-weight:300;" data-i18n="loginTitle">[ SYSTEM_LOGIN ]</h2>
+            <button onclick="closeLoginModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:15px;">
-            <input type="text" id="modal-username" placeholder="Username" style="width:100%; padding:12px; font-size:1rem;" onkeypress="handleLoginEnter(event)">
-            <input type="password" id="modal-password" placeholder="Password" style="width:100%; padding:12px; font-size:1rem;" onkeypress="handleLoginEnter(event)">
-            <button onclick="performLogin()" class="btn-cmd" style="background:var(--success); width:100%; padding:12px; margin-top:10px; font-size:1rem;">LOGIN</button>
+        <div style="display:flex; flex-direction:column; gap:15px; margin-top: 20px;">
+            <input type="text" id="modal-username" placeholder="USR" onkeypress="handleLoginEnter(event)">
+            <input type="password" id="modal-password" placeholder="PWD" onkeypress="handleLoginEnter(event)">
+            <button onclick="performLogin()" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important;">EXECUTE_LOGIN</button>
         </div>
     </div>
 </div>
 
 <div id="admin-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:900px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:20px;">
-            <h2 style="margin:0;" data-i18n="adminTitle">🛠️ User & System Management</h2>
-            <button onclick="closeAdmin()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:900px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:20px;">
+            <h2 style="margin:0; color:var(--text-main); font-weight:300;" data-i18n="adminTitle">[ SYS_ADMIN ]</h2>
+            <button onclick="closeAdmin()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:15px; border-radius:16px; align-items:center;">
-            <input type="text" id="new-user" placeholder="Username" style="flex:1; min-width:120px;">
-            <input type="password" id="new-pass" placeholder="Password" style="flex:1; min-width:120px;">
-            <select id="new-role" style="flex:0.5; min-width:100px;">
-                <option value="operator" data-i18n="roleOp">Operator</option>
-                <option value="admin">Admin</option>
-            </select>
-            <input type="text" id="new-nodes" placeholder="Nodes (eg: ir3uic,ir3q)" style="flex:2; min-width:150px;">
-            <button id="btn-user-submit" onclick="submitUser()" class="btn-cmd" style="background:var(--success); flex:0.5;" data-i18n="btnAdd">+ ADD</button>
-            <button id="btn-user-cancel" onclick="cancelEdit()" class="btn-cmd" style="background:var(--text-muted); flex:0.2; display:none;">✖</button>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:15px; align-items:center; border: 1px solid var(--border-light);">
+            <input type="text" id="new-user" placeholder="USR" style="flex:1; min-width:120px;">
+            <input type="password" id="new-pass" placeholder="PWD" style="flex:1; min-width:120px;">
+            <select id="new-role" style="flex:none; width: 80px;"><option value="operator" data-i18n="roleOp">OP</option><option value="admin">ADM</option></select>
+            <input type="text" id="new-nodes" placeholder="NODES (IR3UIC,IR3Q)" style="flex:2; min-width:150px;">
+            <button id="btn-user-submit" onclick="submitUser()" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important; flex:none; width: 80px;" data-i18n="btnAdd">ADD</button>
+            <button id="btn-user-cancel" onclick="cancelEdit()" class="btn-cmd" style="display:none; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div style="margin-bottom:20px; background:rgba(59, 130, 246, 0.05); padding:20px; border-radius:16px; border: 1px solid var(--primary);">
-            <h4 style="margin:0 0 15px 0; color:var(--primary);" data-i18n="adminDBSync">⚙️ Database Sync Configuration</h4>
+        <div style="margin-bottom:20px; background:rgba(0,0,0,0.2); padding:20px; border: 1px solid var(--border-light);">
+            <h4 style="margin:0 0 15px 0; color:var(--primary); font-weight:300;" data-i18n="adminDBSync">[ DB_SYNC_CFG ]</h4>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                <div><label style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:5px;">URL DB DMR (.dat):</label><input type="text" id="url-dmr-input" style="width:100%;"></div>
-                <div><label style="font-size:0.8rem; font-weight:bold; display:block; margin-bottom:5px;">URL DB NXDN (.csv):</label><input type="text" id="url-nxdn-input" style="width:100%;"></div>
+                <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_DMR (.dat):</label><input type="text" id="url-dmr-input" style="width:100%;"></div>
+                <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_NXDN (.csv):</label><input type="text" id="url-nxdn-input" style="width:100%;"></div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:15px;">
-                <div style="display:flex; align-items:center; gap:10px;"><label style="font-size:0.8rem; font-weight:bold;" data-i18n="adminTime">Daily Update Time:</label><input type="time" id="update-time-input"></div>
-                <button onclick="saveSettings()" class="btn-cmd" style="background:var(--accent); max-width: 250px;" data-i18n="adminSave">SAVE CONFIGURATION</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-light); padding-top:15px;">
+                <div style="display:flex; align-items:center; gap:10px;"><label style="font-size:0.8rem; font-weight:300;" data-i18n="adminTime">CRON_TIME:</label><input type="time" id="update-time-input"></div>
+                <button onclick="saveSettings()" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; max-width: 250px; flex: none;" data-i18n="adminSave">SAVE_CFG</button>
             </div>
         </div>
         <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; text-align:left;">
-                <thead><tr><th>ID</th><th data-i18n="thUser">User</th><th data-i18n="thRole">Role</th><th data-i18n="thNodes">Nodes</th><th style="text-align:center;" data-i18n="thActs">Actions</th></tr></thead>
+                <thead style="background: transparent;"><tr><th>ID</th><th data-i18n="thUser">USR</th><th data-i18n="thRole">ROLE</th><th data-i18n="thNodes">NODES</th><th style="text-align:center;" data-i18n="thActs">CMD</th></tr></thead>
                 <tbody id="users-table-body"></tbody>
             </table>
         </div>
@@ -218,112 +214,108 @@
 </div>
 
 <div id="services-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:550px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:15px;">
-            <h2 style="margin:0; color:var(--accent);"><span data-i18n="modSvcTitle">⚙️ System Daemons:</span> <span id="svc-modal-title" style="color:var(--text-main);"></span></h2>
-            <button onclick="closeServicesModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:550px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--accent); font-weight:300;">[ <span data-i18n="modSvcTitle">DAEMONS:</span> <span id="svc-modal-title" style="color:var(--text-main);"></span> ]</h2>
+            <button onclick="closeServicesModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div id="services-list" style="max-height: 400px; overflow-y: auto; padding-right:10px;"></div>
+        <div id="services-list" style="max-height: 400px; overflow-y: auto;"></div>
     </div>
 </div>
 
 <div id="configs-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:500px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:15px;">
-            <h2 style="margin:0; color:#8e44ad;" data-i18n="modFileTitle">📂 Configuration Files</h2>
-            <button onclick="closeConfigsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:500px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--primary); font-weight:300;" data-i18n="modFileTitle">[ CFG_FILES ]</h2>
+            <button onclick="closeConfigsModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div id="configs-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <div id="configs-list" style="display:flex; flex-direction:column; gap:0;"></div>
     </div>
 </div>
 
 <div id="editor-modal" class="modal-overlay">
-    <div class="modal-content" style="width:95%; max-width:900px; border: 1px solid var(--accent);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="margin:0; color:var(--accent);"><span data-i18n="modEditTitle">📝 INI File Editor:</span> <span id="editor-title" style="color:var(--text-main);"></span></h3>
-            <button onclick="closeEditorModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:900px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom: 1px dashed var(--border-main); padding-bottom: 10px;">
+            <h3 style="margin:0; color:var(--accent); font-weight:300;">[ <span data-i18n="modEditTitle">EDIT:</span> <span id="editor-title" style="color:var(--text-main);"></span> ]</h3>
+            <button onclick="closeEditorModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div style="background:rgba(239, 68, 68, 0.1); border-left:4px solid var(--danger); padding:10px; margin-bottom:15px; font-size:0.85rem; font-weight:bold; border-radius: 8px;" data-i18n="warnEdit">
-            ⚠️ WARNING: This editor directly manipulates remote node parameters.
-        </div>
-        <textarea id="config-textarea" spellcheck="false" style="width:100%; height:55vh; background:#0f172a; color:#10b981; font-family:'JetBrains Mono', monospace; font-size:0.95rem; padding:15px; border-radius:12px; border:1px solid #334155; resize:none; box-sizing:border-box; outline:none;"></textarea>
+        <textarea id="config-textarea" spellcheck="false" style="width:100%; height:55vh; background:rgba(0,0,0,0.3); color:var(--text-main); font-family:'JetBrains Mono', monospace; font-size:0.85rem; padding:15px; border:1px solid var(--border-light); resize:none; outline:none; margin-top: 15px;"></textarea>
         <div style="display:flex; justify-content:space-between; margin-top:20px; align-items:center;">
-            <span id="editor-status" style="font-size:0.9rem; font-weight:bold;"></span>
-            <button onclick="saveConfig()" class="btn-cmd" style="background:var(--danger); max-width: 250px;" data-i18n="btnSave">💾 SAVE & SEND</button>
+            <span id="editor-status" style="font-size:0.9rem; font-weight:300; font-family:'JetBrains Mono',monospace;"></span>
+            <button onclick="saveConfig()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; max-width: 250px; flex: none;" data-i18n="btnSave">WRITE_FILE</button>
         </div>
     </div>
 </div>
 
 <div id="alert-modal" class="modal-overlay modal-top">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 2px solid var(--primary);" id="alert-box">
-        <h2 style="margin-top:0;" id="alert-title">ℹ️ INFO</h2>
-        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 600;" id="alert-desc">Message</p>
-        <button onclick="document.getElementById('alert-modal').style.display='none'" class="btn-cmd" style="background:var(--primary); padding:12px; width:100%;">OK</button>
+    <div class="modal-content" style="max-width:400px; text-align:center; border: 1px solid var(--primary);" id="alert-box">
+        <h2 style="margin-top:0; font-weight:300;" id="alert-title">[ INFO ]</h2>
+        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 300;" id="alert-desc">MSG</p>
+        <button onclick="document.getElementById('alert-modal').style.display='none'" class="btn-cmd" style="border-color:var(--primary); color:var(--primary) !important; width:100%;">ACK</button>
     </div>
 </div>
 
 <div id="confirm-modal" class="modal-overlay modal-top">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 2px solid var(--danger);" id="confirm-box">
-        <h2 style="margin-top:0;" id="confirm-title">⚠️ WARNING</h2>
-        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 600;" id="confirm-desc">Are you sure?</p>
-        <div style="display:flex; flex-direction:column; gap:15px;">
-            <button id="confirm-yes-btn" onclick="executeConfirmAction()" class="btn-cmd" style="background:var(--danger); padding:15px; font-size:1.1rem; font-weight:800;">YES, PROCEED</button>
-            <button id="confirm-cancel-btn" onclick="document.getElementById('confirm-modal').style.display='none'" class="btn-cmd" style="background:var(--text-muted); padding:12px; margin-top:10px;">CANCEL</button>
+    <div class="modal-content" style="max-width:400px; text-align:center; border: 1px solid var(--danger);" id="confirm-box">
+        <h2 style="margin-top:0; font-weight:300;" id="confirm-title">[ WARN ]</h2>
+        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 300;" id="confirm-desc">SURE?</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button id="confirm-yes-btn" onclick="executeConfirmAction()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important;">EXECUTE</button>
+            <button id="confirm-cancel-btn" onclick="document.getElementById('confirm-modal').style.display='none'" class="btn-cmd">ABORT</button>
         </div>
     </div>
 </div>
 
 <div id="password-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 1px solid var(--accent);">
-        <h2 style="margin-top:0; color:var(--accent);">🔑 <span data-i18n="btnPass">PASSWORD CHANGE</span></h2>
-        <p style="margin-bottom:20px; color:var(--text-main); font-weight: 600;" data-i18n="promptPass">Enter the new password:</p>
-        <input type="password" id="new-password-input" style="width:100%; padding:12px; font-size:1rem; margin-bottom:20px; text-align:center;" placeholder="***">
+    <div class="modal-content" style="max-width:400px; text-align:center;">
+        <h2 style="margin-top:0; color:var(--accent); border-bottom: 1px dashed var(--border-main); padding-bottom: 10px; font-weight:300;" data-i18n="btnPass">[ CHG_PWD ]</h2>
+        <p style="margin-bottom:20px; font-weight: 300;" data-i18n="promptPass">NEW PWD:</p>
+        <input type="password" id="new-password-input" style="width:100%; text-align:center; margin-bottom: 20px;">
         <div style="display:flex; flex-direction:column; gap:10px;">
-            <button onclick="executePasswordChange()" class="btn-cmd" style="background:var(--success); padding:15px; font-size:1.1rem; font-weight:800;" data-i18n="titleSave">💾 SAVE</button>
-            <button onclick="closePasswordModal()" class="btn-cmd" style="background:var(--text-muted); padding:12px;" data-i18n="btnCancel">CANCEL</button>
+            <button onclick="executePasswordChange()" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important;" data-i18n="titleSave">SAVE</button>
+            <button onclick="closePasswordModal()" class="btn-cmd" data-i18n="btnCancel">ABORT</button>
         </div>
     </div>
 </div>
 
 <div id="override-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center;">
-        <h2 style="margin-top:0; color:var(--danger);">🚨 <span data-i18n="titleGlobal">GLOBAL OVERRIDE</span> 🚨</h2>
-        <p style="margin-bottom:25px; color:var(--text-muted); font-weight: 600;" id="override-desc">Select the profile to send to the ENTIRE network:</p>
-        <div id="global-btn-container" style="display:flex; flex-direction:column; gap:15px; margin-bottom: 15px;"></div>
-        <button onclick="document.getElementById('override-modal').style.display='none'" class="btn-cmd" style="background:var(--text-muted); padding:12px; width:100%;" data-i18n="btnCancel">CANCEL</button>
+    <div class="modal-content" style="max-width:400px; text-align:center; border: 1px solid var(--danger);">
+        <h2 style="margin-top:0; color:var(--danger); font-weight:300;" data-i18n="titleGlobal">[ GBL_OVR ]</h2>
+        <p style="margin-bottom:25px; font-weight: 300; color:var(--text-muted);" id="override-desc">SELECT PROF:</p>
+        <div id="global-btn-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 15px;"></div>
+        <button onclick="document.getElementById('override-modal').style.display='none'" class="btn-cmd" data-i18n="btnCancel">ABORT</button>
     </div>
 </div>
 
 <div id="reset-hat-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 1px solid var(--danger);">
-        <h2 style="margin-top:0; color:var(--danger);">🔌 <span data-i18n="btnHat">RESET HAT</span> 🔌</h2>
-        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 600;" id="reset-hat-desc">Do you want to send a PHYSICAL RESET to the radio board?</p>
-        <div style="display:flex; flex-direction:column; gap:15px;">
-            <button onclick="executeHatReset()" class="btn-cmd blink" style="background:var(--danger); padding:15px; font-size:1.1rem; font-weight:800;" data-i18n="btnConfReset">⚠️ CONFIRM RESET</button>
-            <button onclick="closeHatResetModal()" class="btn-cmd" style="background:var(--text-muted); padding:12px; margin-top:10px;" data-i18n="btnCancel">CANCEL</button>
+    <div class="modal-content" style="max-width:400px; text-align:center; border: 1px solid var(--danger);">
+        <h2 style="margin-top:0; color:var(--danger); font-weight:300;" data-i18n="btnHat">[ RST_HAT ]</h2>
+        <p style="margin-bottom:25px; font-weight: 300;" id="reset-hat-desc">PHYSICAL RESET?</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button onclick="executeHatReset()" class="btn-cmd blink" style="border-color:var(--danger); color:var(--danger) !important;" data-i18n="btnConfReset">CONFIRM</button>
+            <button onclick="closeHatResetModal()" class="btn-cmd" data-i18n="btnCancel">ABORT</button>
         </div>
     </div>
 </div>
 
 <div id="update-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:400px; text-align:center; border: 1px solid var(--accent);">
-        <h2 style="margin-top:0; color:var(--accent);">🔄 <span data-i18n="modUpdateTitle">GLOBAL UPDATE</span> 🔄</h2>
-        <p style="margin-bottom:25px; color:var(--text-main); font-weight: 600;" data-i18n="confUpdate">Do you want to request updated data from all nodes in the fleet?</p>
-        <div style="display:flex; flex-direction:column; gap:15px;">
-            <button onclick="executeUpdateRequest()" class="btn-cmd" style="background:var(--accent); padding:15px; font-size:1.1rem; font-weight:800;" data-i18n="btnReqCfg">🔄 REQ CONFIG</button>
-            <button onclick="closeUpdateModal()" class="btn-cmd" style="background:var(--text-muted); padding:12px; margin-top:10px;" data-i18n="btnCancel">CANCEL</button>
+    <div class="modal-content" style="max-width:400px; text-align:center;">
+        <h2 style="margin-top:0; color:var(--primary); border-bottom: 1px dashed var(--border-main); padding-bottom: 10px; font-weight:300;" data-i18n="modUpdateTitle">[ GBL_UPDATE ]</h2>
+        <p style="margin-bottom:25px; font-weight: 300;" data-i18n="confUpdate">REQ DATA?</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button onclick="executeUpdateRequest()" class="btn-cmd" style="border-color:var(--primary); color:var(--primary) !important;" data-i18n="btnReqCfg">EXECUTE</button>
+            <button onclick="closeUpdateModal()" class="btn-cmd" data-i18n="btnCancel">ABORT</button>
         </div>
     </div>
 </div>
 
 <div id="versions-modal" class="modal-overlay">
-    <div class="modal-content" style="width:90%; max-width:450px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:15px; margin-bottom:15px;">
-            <h2 style="margin:0; color:var(--primary);">ℹ️ <span data-i18n="modVersions">Software & Firmware</span></h2>
-            <button onclick="closeVersionsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--danger);">✖</button>
+    <div class="modal-content" style="max-width:450px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:15px;">
+            <h2 style="margin:0; color:var(--primary); font-weight:300;" data-i18n="modVersions">[ SW_VERSIONS ]</h2>
+            <button onclick="closeVersionsModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div id="versions-list" style="background: #010409; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8; color: var(--text-main);">
-        </div>
+        <div id="versions-list" style="background: transparent; padding: 15px; border: 1px solid var(--border-light); font-size: 0.85rem; line-height: 1.8;"></div>
     </div>
 </div>
 
@@ -331,16 +323,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- MOTORE MODULARIZZATO JS -->
-<script src="/static/js/modals.js"></script>
-<script src="/static/js/app.js"></script>
+<!-- MOTORE MODULARIZZATO JS (Cache Buster aggiunto per forzare il refresh) -->
+<script src="/static/js/modals.js?v=blueprint3"></script>
+<script src="/static/js/app.js?v=blueprint2"></script>
 
 <!-- SERVICE WORKER -->
 <script>
     if ('serviceWorker' in navigator) { 
         window.addEventListener('load', () => { 
             navigator.serviceWorker.register('/sw.js').catch(err => { 
-                console.log('ServiceWorker fallita: ', err); 
+                console.log('SW_ERR: ', err); 
             }); 
         }); 
     }
