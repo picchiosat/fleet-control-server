@@ -974,6 +974,7 @@ async function refreshStates() {
                                 miniStatus.title = warns.join(" | "); 
                                 miniStatus.style.color = "var(--accent)"; 
                                 miniStatus.style.borderColor = "var(--accent)";
+                                miniCard.style.boxShadow = 'none';
                             } else {
                                 let mcBorder = "var(--border-main)";
                                 let mStatus = stateValue;
@@ -985,11 +986,15 @@ async function refreshStates() {
                                     mStatus = `( ${txModeStr} )`;
                                     mColor = activeModeColor;
                                     mBorderColor = activeModeColor;
+                                    miniCard.style.boxShadow = `0 0 12px ${activeModeColor}60`; // GLOW in TX
                                 } else if (isHold) {
-                                    mcBorder = holdColor;
+                                    mcBorder = "var(--border-main)"; // Bordo grigio per non confonderlo con TX
                                     mStatus = `[ ${holdMode} ]`;
-                                    mColor = holdColor;
-                                    mBorderColor = holdColor;
+                                    mColor = holdColor;               // Solo testo colorato
+                                    mBorderColor = "var(--border-light)";
+                                    miniCard.style.boxShadow = 'none'; // Nessun glow in hold
+                                } else {
+                                    miniCard.style.boxShadow = 'none';
                                 }
                                 
                                 miniCard.style.borderColor = mcBorder;
@@ -1006,6 +1011,7 @@ async function refreshStates() {
                             miniStatus.title = "OFFLINE"; 
                             miniStatus.style.color = "var(--danger)"; 
                             miniStatus.style.borderColor = "var(--border-light)";
+                            miniCard.style.boxShadow = 'none';
                         }
                     }
 
