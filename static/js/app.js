@@ -70,16 +70,29 @@ function openNodeFocus(clientId) {
     document.getElementById('view-focus').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--text-muted); font-size: 0.9rem;" class="blink">FETCHING CONFIG...</span>';
+    const role = me.role || '';
+    const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    
+    const modesCard = document.getElementById('focus-modes-card');
+    if (modesCard) {
+        modesCard.style.display = canControl ? 'block' : 'none';
+    }
+    
+    if (canControl) {
+        document.getElementById('focus-modes-toggles').innerHTML = '<span style="color:var(--text-muted); font-size: 0.9rem;" class="blink">FETCHING CONFIG...</span>';
+        fetchNodeConfigForModes(clientId);
+    }
     
     refreshStates(); 
     refreshLogs();   
-    fetchNodeConfigForModes(clientId);
 }
 
 function closeNodeFocus() {
     currentFocusedNode = null;
     document.getElementById('view-focus').style.display = 'none';
+    const modesCard = document.getElementById('focus-modes-card');
+    if (modesCard) modesCard.style.display = 'none';
     switchView(localStorage.getItem('fleetDefaultView') || 'home');
 }
 
@@ -233,6 +246,16 @@ function sendTgCommand(clientId, comando) {
 
 // --- LOGICA MODI OPERATIVI E GATEWAYS ---
 async function fetchNodeConfigForModes(clientId) {
+    const role = me.role || '';
+    const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    const modesCard = document.getElementById('focus-modes-card');
+    if (!canControl) {
+        if (modesCard) modesCard.style.display = 'none';
+        return;
+    }
+    if (modesCard) modesCard.style.display = 'block';
+
     try {
         const healthObj = globalHealthData[clientId.toLowerCase()];
         if (!healthObj) {
@@ -286,6 +309,11 @@ function renderModeToggles(clientId, statusMsg = "") {
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
     let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
     
+    const modesCard = document.getElementById('focus-modes-card');
+    if (modesCard) {
+        modesCard.style.display = canControl ? 'block' : 'none';
+    }
+
     let container = document.getElementById('focus-modes-toggles');
     if (!container) return;
 
@@ -1005,6 +1033,11 @@ async function refreshStates() {
                         }
                         document.getElementById('focus-ts').innerHTML = focusTsHtml || "--";
                         
+                        const modesCard = document.getElementById('focus-modes-card');
+                        if (modesCard) {
+                            modesCard.style.display = canControl ? 'block' : 'none';
+                        }
+
                         const focusControls = document.getElementById('focus-controls');
                         if (canControl || showReboot) {
                             focusControls.style.display = 'block';
