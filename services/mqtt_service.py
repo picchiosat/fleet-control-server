@@ -305,6 +305,36 @@ def on_message(client, userdata, msg):
                 save_to_sqlite(cid, {'src_id': f"🌐 {m}", 'dst_id': 'NET'}, protocol=proto)
             
         
+
+        # --- 7.5 EVENTI APRS ---
+        elif p0 == 'aprsgateway' and len(parts) >= 2 and parts[1].lower() == 'aprs':
+            try:
+                if not payload:
+                    return
+                
+                # Payload RAW APRS: CALLSIGN>DEST,PATH:PAYLOAD
+                data = {"source": "---", "dest": "---", "path": "", "payload": payload, "time": ""}
+                
+                if ">" in payload and ":" in payload:
+                    src_part, rest = payload.split(">", 1)
+                    header_part, pld_part = rest.split(":", 1)
+                    
+                    header_tokens = header_part.split(",")
+                    dest_part = header_tokens[0]
+                    path_str = ",".join(header_tokens[1:]) if len(header_tokens) > 1 else ""
+                    
+                    data["source"] = src_part.strip()
+                    data["dest"] = dest_part.strip()
+                    data["path"] = path_str.strip()
+                    data["payload"] = pld_part.strip()
+                else:
+                    logger.warning(f"Formato APRS non decodificato: {payload}")
+                
+                logger.info(f"📍 Inoltro pacchetto APRS al frontend: {data['source']} -> {data['dest']} via [{data['path']}]")
+                state.socketio.emit('aprs_msg', data)
+            except Exception as e:
+                logger.error(f"Errore parsing APRS: {e}")
+
         # --- MODI OPERATIVI MMDVM ---
         elif len(parts) == 3 and p0 == 'data' and p2 == 'mmdvm':
             try:
