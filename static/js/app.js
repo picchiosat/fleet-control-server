@@ -622,7 +622,10 @@ function initOrUpdateMap() {
             const isOnline = !state.toUpperCase().includes("OFF") && state !== "";
             const health = latestStatesData.health && latestStatesData.health[cid];
             const card = document.getElementById(`card-${c.id}`);
-            const isTx = card && card.dataset.lastTx && (Date.now() - parseInt(card.dataset.lastTx) < 3000);
+            
+            // Recupariamo lo stato calcolato in refreshStates()
+            const isTx = card && card.dataset.isTx === 'true';
+            const isHold = card && card.dataset.isHold === 'true';
             const warns = (latestStatesData.warnings && latestStatesData.warnings[cid]) || [];
 
             if (info && info.lat && info.lon && parseFloat(info.lat) !== 0 && parseFloat(info.lon) !== 0) {
@@ -631,7 +634,7 @@ function initOrUpdateMap() {
                 bounds.push([lat, lon]);
 
                 let pinClass = isOnline ? (warns.length > 0 ? 'pin-warn' : 'pin-online') : 'pin-offline';
-                if (isTx) pinClass += ' pin-tx';
+                if (isTx || isHold) pinClass += ' pin-tx';
 
                 let iconSymbol = "+";
                 if (warns.length > 0 && !isTx) iconSymbol = "!";
@@ -900,6 +903,10 @@ async function refreshStates() {
 
                     // Se non è in TX e MMDVM NON ha ancora dichiarato 'idle' -> siamo in Hold
                     let isHold = (!isTx && !isIdle && isOnline); 
+                    
+                    // Salviamo lo stato sul DOM per la mappa
+                    cardDiv.dataset.isTx = isTx ? 'true' : 'false';
+                    cardDiv.dataset.isHold = isHold ? 'true' : 'false';
 
                     let holdMode = cardDiv.dataset.lastMode || "DMR";
                     let holdColor = cardDiv.dataset.lastColor || "var(--primary)";
