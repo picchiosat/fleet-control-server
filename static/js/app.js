@@ -892,8 +892,8 @@ async function refreshStates() {
                     }
 
                     // --- NESSUN TIMER LOCALE: COMANDA MQTT ---
-                    // Memorizza l'ultimo modo in trasmissione per usarlo durante l'Hangtime
-                    if (isTx && isOnline) {
+                    // Memorizza l'ultimo modo dedotto per usarlo durante l'Hangtime o i Beacon
+                    if (!isIdle && isOnline) {
                         cardDiv.dataset.lastMode = txModeStr.replace("TX ", "").trim();
                         cardDiv.dataset.lastColor = activeModeColor;
                     }

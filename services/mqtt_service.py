@@ -1,6 +1,5 @@
 import json
 import re
-import datetime
 from paho.mqtt import client as mqtt_client
 from core.config import config, logger
 from core.database import save_to_sqlite
@@ -19,7 +18,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         default_topics = [
             "servizi/+/stat", "dmr-gateway/+/json", "devices/+/services",
             "nxdn-gateway/+/json", "ysf-gateway/+/json", "p25-gateway/+/json",
-            "dstar-gateway/+/json", "mmdvm/+/json", "data/#", "aprs-gateway/aprs"
+            "dstar-gateway/+/json", "mmdvm/+/json", "data/#"
         ]
         
         topics_list = config.get('mqtt', {}).get('topics', default_topics)
@@ -43,35 +42,6 @@ def on_message(client, userdata, msg):
     try:
         topic = msg.topic
         payload = msg.payload.decode('utf-8', errors='replace').strip()
-        
-        # NUOVO BLOCCO APRS
-        if topic == "aprs-gateway/aprs":
-            try:
-                raw_aprs = payload
-                # Formato atteso: SOURCE>DEST,PATH:PAYLOAD
-                if ">" in raw_aprs and ":" in raw_aprs:
-                    header, aprs_payload = raw_aprs.split(":", 1)
-                    source, rest = header.split(">", 1)
-                    
-                    if "," in rest:
-                        dest, path = rest.split(",", 1)
-                    else:
-                        dest = rest
-                        path = ""
-                    
-                    aprs_data = {
-                        "time": datetime.datetime.now().strftime("%H:%M:%S"),
-                        "source": source.strip(),
-                        "dest": dest.strip(),
-                        "path": path.strip(),
-                        "payload": aprs_payload.strip()
-                    }
-                    
-                    state.socketio.emit('aprs_msg', aprs_data)
-            except Exception as e:
-                logger.error(f"Errore decodifica APRS: {e}")
-            return # Esci per non processare il resto della logica su questo topic
-        
         parts = topic.split('/')
         if len(parts) < 2:
             return
@@ -333,17 +303,17 @@ def on_message(client, userdata, msg):
             # Salvataggio nel DB per la console log
             if m and "running" not in m.lower():
                 save_to_sqlite(cid, {'src_id': f"🌐 {m}", 'dst_id': 'NET'}, protocol=proto)
-
-        # --- LETTURA STATO MODI DA TOPIC data/+/MMDVM ---
+            
+        
+        # --- MODI OPERATIVI MMDVM ---
         elif len(parts) == 3 and p0 == 'data' and p2 == 'mmdvm':
             try:
                 cid = parts[1].lower()
-                data = json.loads(payload)
-                state.operating_modes[cid] = data
+                state.operating_modes[cid] = json.loads(payload)
                 state.notify_update()
             except Exception as e:
                 logger.error(f"Errore parsing MMDVM modes per {cid}: {e}")
-            
+
         # --- 8. TRAFFICO VOCE MMDVM (DMR & MODI DIGITALI) ---
         elif parts[0] == 'mmdvm':
             data = json.loads(payload)
@@ -358,6 +328,16 @@ def on_message(client, userdata, msg):
                 return 
 
             state.client_telemetry[cid]["idle"] = False
+
+            # --- ALLINEAMENTO MODI PER BEACON ---
+            curr_mode = data.get('MMDVM', {}).get('mode', '')
+            if curr_mode:
+                if curr_mode.upper() == 'DMR':
+                    state.client_telemetry[cid]["alt"] = ""
+                else:
+                    old_alt = state.client_telemetry[cid].get("alt", "")
+                    if not any(i in old_alt for i in ['🟢','🟣','🔵','🟠']):
+                        state.client_telemetry[cid]["alt"] = f"📡 {curr_mode.upper()} BEACON"
 
             if 'DMR' in data:
                 d = data['DMR']
