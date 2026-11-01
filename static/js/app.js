@@ -388,14 +388,20 @@ function renderModeToggles(clientId, statusMsg = "") {
                 ? `border-color: ${m.color}; color: ${m.color} !important; box-shadow: inset 0 0 8px ${m.color}; font-weight: bold;` 
                 : `border-color: var(--border-light); color: var(--text-muted) !important; opacity: 0.4;`;
                 
-            html += `<button class="btn-cmd" style="padding: 10px 15px; font-size: 1.1rem; width: auto; flex: 1; min-width: 80px; transition: all 0.2s ease; ${btnStyle}" onclick="toggleOperatingMode('${clientId}', '${m.id}', ${!enabled})">${m.label}</button>`;
+            // Rimosso flex:1 per evitare che l'ultimo bottone si allarghi al 100% sulla riga vuota
+            html += `<button class="btn-cmd" style="padding: 10px; font-size: 1.1rem; width: 100%; transition: all 0.2s ease; ${btnStyle}" onclick="toggleOperatingMode('${clientId}', '${m.id}', ${!enabled})">${m.label}</button>`;
         }
     });
     
-    if (html === "") html = '<span style="color:var(--text-muted); font-size: 0.9rem;">NO MODES FOUND IN CONFIG</span>';
+    if (html === "") {
+        html = '<span style="color:var(--text-muted); font-size: 0.9rem;">NO MODES FOUND IN CONFIG</span>';
+    } else {
+        // Avvolgiamo i bottoni in una CSS Grid per un allineamento perfetto e proporzionato
+        html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(75px, 1fr)); gap: 10px; width: 100%;">${html}</div>`;
+    }
     
     if (statusMsg) {
-        html += `<div style="width: 100%; margin-top: 8px; font-family: 'JetBrains Mono', monospace;">${statusMsg}</div>`;
+        html += `<div style="width: 100%; margin-top: 12px; font-family: 'JetBrains Mono', monospace;">${statusMsg}</div>`;
     }
     
     container.innerHTML = html;
