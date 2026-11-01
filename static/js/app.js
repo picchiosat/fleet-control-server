@@ -862,9 +862,26 @@ async function refreshStates() {
                                     else if (action === 'unlinked') { badgeColor = 'var(--text-muted)'; badgeBorder = 'var(--border-light)'; suffix = ' [UNL]'; } 
                                     else { badgeColor = gw.color; badgeBorder = gw.color; }
                                     
+                                    const chipBase = "display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; font-family:'JetBrains Mono',monospace; padding:2px 6px; margin:2px 4px 2px 0; border-radius:3px; background:rgba(0,0,0,0.5); border:1px solid ";
+                                    
                                     if (gw.proto === 'DMR' && gwData['DMR_NETS'] && gwData['DMR_NETS'].length > 0) {
-                                        gwData['DMR_NETS'].forEach(netName => { let netSuffix = (action === 'linking') ? ' [LNK]' : (action === 'failed' ? ' [ERR]' : (dest && action !== 'status' ? `:${dest}` : '')); gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">DMR:${esc(netName)}${esc(netSuffix)}</span>`; });
-                                    } else { gwHtml += `<span style="font-size:0.65rem; font-family:'JetBrains Mono', monospace; font-weight:400; padding:2px 4px; border:1px dashed ${badgeBorder}; background:transparent; color:${badgeColor} !important; margin-right: 4px; display: inline-block;">${gw.label}${esc(suffix)}</span>`; }
+                                        gwData['DMR_NETS'].forEach(netName => {
+                                            let tagStatus = (action === 'linking') ? '<span style="color:#f59e0b;font-weight:700;">LNK</span>' : (action === 'failed' ? '<span style="color:var(--danger);font-weight:700;">ERR</span>' : (dest && action !== 'status' ? `<span style="color:#ffffff;font-weight:600;">${esc(dest)}</span>` : ''));
+                                            gwHtml += `<span style="${chipBase}${badgeBorder};"><b style="color:${gw.color};">DMR</b><span style="color:#e2e8f0;">${esc(netName)}</span>${tagStatus ? '<span style="color:var(--text-muted);opacity:0.6;">·</span>' + tagStatus : ''}</span>`;
+                                        });
+                                    } else {
+                                        let destText = dest ? `<span style="color:#ffffff; font-weight:600;">${esc(dest)}</span>` : '';
+                                        let statusPill = '';
+                                        if (action === 'linking') statusPill = '<span style="color:#f59e0b; font-weight:700;">LNK</span>';
+                                        else if (action === 'failed') statusPill = '<span style="color:var(--danger); font-weight:700;">ERR</span>';
+                                        else if (action === 'unlinked') statusPill = '<span style="color:var(--text-muted);">UNL</span>';
+                                        
+                                        let content = `<b style="color:${gw.color};">${gw.label}</b>`;
+                                        if (destText) content += `<span style="color:var(--text-muted);opacity:0.6;">·</span>${destText}`;
+                                        if (statusPill) content += `<span style="color:var(--text-muted);opacity:0.6;">·</span>${statusPill}`;
+
+                                        gwHtml += `<span style="${chipBase}${badgeBorder};">${content}</span>`;
+                                    }
                                 }
                             });
                         }
