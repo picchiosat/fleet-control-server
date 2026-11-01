@@ -1,0 +1,279 @@
+/* =========================================
+   LAYOUT 2: TACTICAL (Ispirato alla versione dark/ambra)
+   ========================================= */
+body.layout-tactical {
+    --bg-main: #111318;
+    --card-bg: #1c2128;
+    --primary: #f5b041; /* Giallo/Ambra */
+    --accent: #c0392b;  /* Rosso scuro */
+    --success: #2ecc71; /* Verde */
+    --danger: #e74c3c;
+    --text-main: #e6edf3;
+    --text-muted: #7d8590;
+    --border-main: #444c56;
+    --border-light: #30363d;
+    background-color: var(--bg-main);
+}
+body.layout-tactical .card, body.layout-tactical .modal-content {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-light) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4) !important;
+}
+body.layout-tactical .title-brand {
+    color: var(--primary);
+}
+body.layout-tactical .tactical-led {
+    border-radius: 2px !important; /* LED quadrati e rigidi */
+}
+body.layout-tactical .terminal-log {
+    background: #0d1117;
+    border-color: var(--border-light);
+}
+
+/* =========================================
+   LAYOUT 3: LIGHT (Clean & Bright - Modalità diurna)
+   ========================================= */
+body.layout-light {
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --primary: #0ea5e9; /* Azzurro pulito */
+    --accent: #8b5cf6;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-main: #cbd5e1;
+    --border-light: #e2e8f0;
+    
+    background-color: var(--bg-main) !important;
+    background-image: none !important; /* Rimozione della griglia blueprint! */
+    color: var(--text-main);
+}
+
+/* --- Override for the main layout grid from original style.css --- */
+body.layout-light div.card, 
+body.layout-light div.modal-content,
+body.layout-light div.mini-card {
+    background: #ffffff !important;
+    border: 1px solid var(--border-main) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+}
+
+body.layout-light .filter-bar {
+    background: #ffffff !important;
+    border: 1px solid var(--border-main) !important;
+}
+
+body.layout-light .filter-pill {
+    color: var(--text-muted) !important;
+    border-color: var(--border-main) !important;
+}
+body.layout-light .filter-pill.active {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    background: #f0f9ff !important;
+}
+body.layout-light .filter-pill:hover {
+    background: #f8fafc !important;
+}
+
+/* Fix per la mappa */
+body.layout-light .dark-tiles {
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
+body.layout-light .custom-map-pin.pin-online {
+    background: var(--success);
+    border-color: #059669;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    color: white;
+}
+body.layout-light .custom-map-pin.pin-offline {
+    background: var(--danger);
+    border-color: #b91c1c;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    color: white;
+}
+
+/* --- Top Bar --- */
+body.layout-light #top-bar-container,
+body.layout-light #top-bar {
+    background: #ffffff !important;
+    border-bottom: 1px solid var(--border-main) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+body.layout-light .title-brand {
+    color: var(--primary) !important;
+    text-shadow: none !important;
+}
+
+/* Testi scuri sulle mini card */
+body.layout-light .mini-card-name {
+    color: var(--text-main) !important;
+    font-weight: 600;
+}
+body.layout-light .mini-card[style*="grayscale"] {
+    opacity: 0.5 !important;
+    background: #f1f5f9 !important;
+}
+
+/* Bottoni, Tab e Navigazione */
+body.layout-light .nav-tab { color: var(--text-muted); }
+body.layout-light .nav-tab.active {
+    color: var(--primary) !important;
+    border-bottom: 2px solid var(--primary) !important;
+    background: transparent !important;
+}
+body.layout-light .theme-switch {
+    border: 1px solid var(--border-main) !important;
+    color: var(--text-muted) !important;
+    background: transparent !important;
+}
+body.layout-light .btn-cmd {
+    color: var(--text-main) !important;
+    border-color: var(--border-main) !important;
+    background: #ffffff;
+}
+body.layout-light .btn-cmd:hover {
+    background: #f1f5f9;
+}
+
+/* Fix per i pannelli informativi a bordo */
+body.layout-light .freq-bar,
+body.layout-light .node-meta,
+body.layout-light .health-bar {
+    border-color: var(--border-light) !important;
+    color: var(--text-muted) !important;
+}
+body.layout-light .health-bar span {
+    border-right-color: var(--border-light) !important;
+}
+body.layout-light .seen-bar {
+    border-color: var(--border-light) !important;
+}
+
+/* Testo interno delle Card dei Nodi */
+body.layout-light .client-name {
+    color: var(--text-main) !important;
+}
+body.layout-light .badge-id {
+    color: var(--text-muted) !important;
+}
+body.layout-light .type-badge.type-repeater {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    background: transparent;
+}
+
+body.layout-light .status-display {
+    color: var(--text-main) !important;
+    border-color: var(--border-light) !important;
+}
+
+/* Fix tabelle */
+body.layout-light table { background: transparent; }
+body.layout-light thead th, body.layout-light thead tr {
+    background: #f1f5f9 !important;
+    color: var(--text-muted) !important;
+    border-bottom: 2px solid var(--border-main) !important;
+    font-weight: 600;
+}
+body.layout-light tbody tr, body.layout-light td {
+    background: #ffffff !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    color: var(--text-main) !important;
+}
+body.layout-light tbody tr:nth-child(even), body.layout-light tbody tr:nth-child(even) td {
+    background: #f8fafc !important;
+}
+body.layout-light tbody tr:hover, body.layout-light tbody tr:hover td { 
+    background: #f1f5f9 !important; 
+}
+
+/* Input */
+body.layout-light select, body.layout-light input, body.layout-light textarea {
+    background: #ffffff !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-main) !important;
+}
+body.layout-light .terminal-log {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: var(--border-main) !important;
+}
+
+/* Fix visibilità dei pin mappa nel tema chiaro */
+body.layout-light .custom-map-pin {
+    color: #ffffff !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    line-height: 24px !important;
+}
+body.layout-light .custom-map-pin.pin-online {
+    background-color: var(--success) !important;
+    border: 2px solid #059669 !important;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+}
+body.layout-light .custom-map-pin.pin-offline {
+    background-color: var(--danger) !important;
+    border: 2px solid #b91c1c !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6) !important;
+}
+body.layout-light .custom-map-pin.pin-tx {
+    background-color: var(--primary) !important;
+    border: 2px solid #0284c7 !important;
+    box-shadow: 0 0 15px rgba(2, 132, 199, 0.8) !important;
+}
+body.layout-light .custom-map-pin.pin-warn {
+    background-color: var(--accent) !important;
+    border: 2px solid #7c3aed !important;
+}
+
+/* Fix per i container delle popup di Leaflet */
+body.layout-light .leaflet-popup-content-wrapper,
+body.layout-light .leaflet-popup-tip {
+    background: #ffffff !important;
+    color: var(--text-main) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+body.layout-light .leaflet-popup-content div {
+    color: var(--text-main);
+}
+/* =========================================
+   LAYOUT 4: GLASSMORPHISM & NEON
+   Layout moderno, traslucido con sfocature
+   ========================================= */
+body.layout-glass {
+    --bg-main: #0f172a;
+    --primary: #38bdf8;
+    --accent: #c084fc;
+    --success: #34d399;
+    --danger: #fb7185;
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --border-light: rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    background-attachment: fixed;
+}
+body.layout-glass .card, body.layout-glass .modal-content {
+    background: var(--card-bg) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+body.layout-glass .btn-cmd, body.layout-glass .filter-pill { 
+    border-radius: 12px; 
+}
+body.layout-glass .card-header { 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    padding-bottom: 15px; 
+}
+body.layout-glass input, body.layout-glass select, body.layout-glass textarea {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+}

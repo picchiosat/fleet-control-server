@@ -20,6 +20,33 @@ let currentMmdvmConfig = "";
 let currentMmdvmConfigAlias = ""; 
 let currentMmdvmServiceName = "";
 
+// --- LAYOUT SWITCHER ---
+const layouts = ['layout-blueprint', 'layout-tactical', 'layout-light', 'layout-glass'];
+const layoutLabels = ['[ L: BLU ]', '[ L: TAC ]', '[ L: LGT ]', '[ L: GLASS ]'];
+let currentLayoutIdx = 0;
+
+function initLayout() {
+    const saved = localStorage.getItem('fleetLayout') || 'layout-blueprint';
+    currentLayoutIdx = layouts.indexOf(saved) > -1 ? layouts.indexOf(saved) : 0;
+    applyLayout();
+}
+
+function cycleLayout() {
+    currentLayoutIdx = (currentLayoutIdx + 1) % layouts.length;
+    localStorage.setItem('fleetLayout', layouts[currentLayoutIdx]);
+    applyLayout();
+}
+
+function applyLayout() {
+    document.body.classList.remove(...layouts);
+    if (layouts[currentLayoutIdx] !== 'layout-blueprint') {
+        document.body.classList.add(layouts[currentLayoutIdx]);
+    }
+    const btn = document.getElementById('layout-btn');
+    if (btn) btn.innerText = layoutLabels[currentLayoutIdx];
+}
+
+
 // Mappatura Modo -> Gateway service name
 const MODE_GATEWAYS = {
     'DMR': ['dmrgateway'],
@@ -98,6 +125,7 @@ function closeNodeFocus() {
 window.addEventListener('DOMContentLoaded', () => {
     const savedView = localStorage.getItem('fleetDefaultView') || 'home';
     switchView(savedView);
+    initLayout();
     initUI(); 
     checkPushStatus();
     setInterval(refreshStates, 15000); 

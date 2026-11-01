@@ -20,6 +20,8 @@
     
     <!-- Foglio di Stile Esterno Modularizzato (Cache Buster) -->
     <link rel="stylesheet" href="/static/css/style.css?v=blueprint-header-fix">
+    <!-- Foglio Stili Layout Alternativi -->
+    <link rel="stylesheet" href="/static/css/layouts.css?v=6">
 </head>
 <body>
 
@@ -36,6 +38,7 @@
 
         <div class="top-bar-right">
             <span id="mqtt-badge" class="mqtt-badge mqtt-offline">MQTT: CHK</span>
+            <button class="theme-switch" id="layout-btn" onclick="cycleLayout()" title="Cambia Layout">[ L: BLU ]</button>
             <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang">ITA</button>
             <button class="theme-switch" id="push-btn" onclick="subscribeToPush()">PUSH</button>
             <div id="auth-container" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;"></div>
@@ -268,7 +271,7 @@
 </div>
 
 <footer>
-    <div style="text-align: center; padding: 25px; color: var(--border-light); font-size: 0.85rem; font-weight: 300; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
+    <div style="text-align: center; padding: 25px; color: var(--text-muted); font-size: 0.85rem; font-weight: 300; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
         <span>SYS_OP: IV3JDV @ ARIFVG</span>
         <span>|</span>
         <a href="https://git.arifvg.it/iv3jdv/fleet-control-server" target="_blank" style="color: inherit; text-decoration: none;">GITEA_REPO</a>
