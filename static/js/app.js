@@ -53,7 +53,8 @@ const MODE_GATEWAYS = {
     'NXDN': ['nxdngateway'],
     'System Fusion': ['ysfgateway'],
     'D-Star': ['dstargateway', 'dstar-gateway'],
-    'P25': ['p25gateway']
+    'P25': ['p25gateway'],
+    'M17': ['m17gateway', 'm17-gateway']
 };
 
 function switchView(viewName) {
@@ -354,7 +355,9 @@ function renderModeToggles(clientId, statusMsg = "") {
         { id: 'D-Star', label: 'D-STAR', color: '#f97316' },
         { id: 'System Fusion', label: 'YSF', color: '#8b5cf6' },
         { id: 'NXDN', label: 'NXDN', color: 'var(--success)' },
-        { id: 'P25', label: 'P25', color: 'var(--accent)' }
+        { id: 'P25', label: 'P25', color: 'var(--accent)' },
+        { id: 'FM', label: 'FM', color: '#14b8a6' },
+        { id: 'M17', label: 'M17', color: '#ec4899' } // Aggiunto modo M17 (Rosa/Pink)
     ];
     
     let html = "";
