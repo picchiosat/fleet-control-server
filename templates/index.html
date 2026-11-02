@@ -27,7 +27,10 @@
 
 <div id="top-bar-container">
     <div id="top-bar">
-        <div class="title-brand">SCHEMATIC // FLEET C2</div>
+        <div class="brand-container" style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+            <div class="title-brand" style="line-height: 1.1; padding-bottom: 2px;">SCHEMATIC // FLEET C2</div>
+            <div id="live-clock" style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 1px; padding-left: 2px;">SYS_TIME: --:--:--</div>
+        </div>
         
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchView('home')" id="tab-home">HOME</button>

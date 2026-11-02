@@ -1,3 +1,13 @@
+function updateClock() {
+    const clockEl = document.getElementById('live-clock');
+    if (clockEl) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('it-IT', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+        clockEl.innerHTML = `<span style="color:var(--primary);">SYS_TIME:</span> ${dateStr} // <b style="color:var(--text-main);">${timeStr}</b> LOC`;
+    }
+}
+
 // --- VARIABILI GLOBALI E UI VIEW ---
 let clients = []; 
 let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
@@ -129,6 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initLayout();
     initUI(); 
     checkPushStatus();
+    setInterval(updateClock, 1000); updateClock();
     setInterval(refreshStates, 15000); 
     setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
     checkServerUpdate();
