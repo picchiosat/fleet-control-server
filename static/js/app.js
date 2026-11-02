@@ -619,12 +619,13 @@ async function initUI() {
         const miniGrid = document.getElementById('home-mini-nodes');
         if (miniGrid) {
             miniGrid.innerHTML = clients.map(c => `
-                <div id="mini-card-${c.id}" class="mini-card" onclick="openNodeFocus('${c.id}')">
-                    <div class="mini-card-content">
+                <div id="mini-card-${c.id}" class="mini-card" onclick="openNodeFocus('${c.id}')" style="height: 125px !important; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 12px; box-sizing: border-box;">
+                    <div class="mini-card-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                         <div id="mini-name-${c.id}" class="mini-card-name" title="${esc(c.name)}">${esc(c.name)}</div>
                         <div id="mini-id-${c.id}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">ID: ${c.id.toUpperCase()}</div>
+                        <div id="mini-caller-${c.id}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: bold; margin-top: 6px; display: none; text-align: center; line-height: 1.1;"></div>
                     </div>
-                    <div id="mini-status-${c.id}" class="mini-card-status" title="OFFLINE">OFFLINE</div>
+                    <div id="mini-status-${c.id}" class="mini-card-status" title="OFFLINE" style="position: relative !important; bottom: auto !important; left: auto !important; transform: none !important; width: 90%; margin: 0 auto; flex-shrink: 0;">OFFLINE</div>
                 </div>
             `).join('');
         }
@@ -1029,6 +1030,7 @@ async function refreshStates() {
                     const miniStatus = document.getElementById(`mini-status-${c.id}`); 
                     const miniName = document.getElementById(`mini-name-${c.id}`); 
                     const miniId = document.getElementById(`mini-id-${c.id}`); 
+                    const miniCaller = document.getElementById(`mini-caller-${c.id}`); 
 
                     if (miniCard && miniStatus) {
                         if (genObj && isOnline) { 
@@ -1039,6 +1041,28 @@ async function refreshStates() {
                         if (isOnline) {
                             miniCard.style.opacity = "1";
                             miniCard.style.filter = "none";
+                            
+                            if (miniCaller) {
+                                let activeCaller = "";
+                                if (isTx) {
+                                    let rawStr = (telemetryObj.alt && telemetryObj.alt !== "") ? telemetryObj.alt : ((String(telemetryObj.ts1 ?? '').includes("🎙️") || String(telemetryObj.ts1 ?? '').includes("TX")) ? String(telemetryObj.ts1) : String(telemetryObj.ts2 ?? ''));
+                                    // Rimuove emoji, prefissi come "D-Star:", "YSF:" e pulisce
+                                    let cleaned = rawStr.replace(/[^\x00-\x7F]/g, '') 
+                                                        .replace(/(TX)?\s*(D-STAR|YSF|NXDN|P25|DMR|FM|M17)\s*:/ig, '')
+                                                        .replace(/TX/ig, '')
+                                                        .trim();
+                                    if (cleaned) activeCaller = cleaned.split(' ')[0];
+                                }
+                                
+                                if (isTx && activeCaller) {
+                                    miniCaller.innerText = activeCaller;
+                                    miniCaller.style.display = "block";
+                                    miniCaller.style.color = activeModeColor;
+                                } else {
+                                    miniCaller.style.display = "none";
+                                    miniCaller.innerText = "";
+                                }
+                            }
                             
                             if (warns.length > 0 && !isTx && !isHold) {
                                 miniCard.style.borderColor = "var(--accent)";
