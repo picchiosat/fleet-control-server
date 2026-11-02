@@ -619,7 +619,7 @@ async function initUI() {
         const miniGrid = document.getElementById('home-mini-nodes');
         if (miniGrid) {
             miniGrid.innerHTML = clients.map(c => `
-                <div id="mini-card-${c.id}" class="mini-card" onclick="openNodeFocus('${c.id}')" style="height: 125px !important; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 12px; box-sizing: border-box;">
+                <div id="mini-card-${c.id}" class="mini-card" onclick="openNodeFocus('${c.id}')" style="min-width: 140px !important; height: 125px !important; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 12px; box-sizing: border-box;">
                     <div class="mini-card-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                         <div id="mini-name-${c.id}" class="mini-card-name" title="${esc(c.name)}">${esc(c.name)}</div>
                         <div id="mini-id-${c.id}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">ID: ${c.id.toUpperCase()}</div>
