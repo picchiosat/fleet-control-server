@@ -19,18 +19,19 @@ The server acts as the brain of the network, built on a highly scalable foundati
 * **Core Engine:** Flask (Python) with `gevent` for high-concurrency WebSocket handling.
 * **Database:** SQLite (WAL mode) for robust User Management, Audit Logs, and Radio Traffic storage.
 * **Communication:** MQTT for instant data routing + WebSockets (SocketIO) for zero-latency UI updates.
-* **Frontend:** Vanilla JS with a modern *Glassmorphism* NOC (Network Operations Center) design and separated logic (`app.js`, `modals.js`).
+* **Frontend:** Vanilla JS with a modern *Glassmorphism Borderless Executive* NOC (Network Operations Center) design and fully separated logic (`app.js`, `modals.js`). Full i18n (Internationalization) support.
 
 ### ✨ Ultimate Features
 
-#### 🛡️ Proactive Diagnostics (Watchdog)
-* **Hardware Monitoring:** Continuous analysis of remote CPU temperatures and disk space saturation. Automatically triggers Push Notifications before critical failures (e.g., CPU throttling or log overflow) occur.
+#### 🛡️ Proactive Diagnostics (Watchdog) & Global Alerts
+* **Hardware Monitoring:** Continuous analysis of remote CPU temperatures and disk space saturation. Automatically triggers Push Notifications before critical failures occur.
 * **RF Anomaly Detection:** Real-time monitoring of local RF BER (Bit Error Rate). Detects hardware RF degradation on local transits and alerts admins instantly.
+* **Global Service Alerts (v5.3+):** Daemon crashes (e.g., `SVC KO: MMDVMHOST`) are instantly propagated to the global Dashboard grid and interactive Fleet Map for immediate visibility.
 
 #### ⚡ Zero-Latency Real-Time Dashboard
 * **WebSocket Powered:** The dashboard updates instantly upon radio traffic or telemetry changes. No heavy HTTP polling, no page reloads.
-* **Live MQTT Status:** A real-time badge continuously monitors the connection to the MQTT broker, instantly alerting you if the backend loses connectivity.
-* **PWA Ready v6:** Install the dashboard as a Progressive Web App on iOS/Android for a native, full-screen mobile experience with offline asset caching.
+* **Live MQTT Status:** A real-time badge continuously monitors the connection to the MQTT broker.
+* **PWA Ready:** Install the dashboard as a Progressive Web App on iOS/Android for a native, full-screen mobile experience with offline asset caching.
 
 #### 🔔 Web Push Notifications
 * Get instant, native alerts directly on your desktop or mobile device when:
@@ -40,22 +41,23 @@ The server acts as the brain of the network, built on a highly scalable foundati
 * Works securely even when the web app is closed or in the background.
 
 #### 🛠️ Advanced Remote Control & Maintenance
-* **OTA Server Updates:** Apply server-side Git updates with a single click directly from the admin dashboard (Over-The-Air) without SSH access.
+* **OTA Server Updates:** Apply server-side Git updates with a single click directly from the admin dashboard (Over-The-Air) without SSH access, featuring a synchronous, cache-bypassing update checker.
 * **Remote .INI Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface.
 * **Service Management:** Start, Stop, or Restart remote system daemons.
-* **Global Overrides:** Switch profiles (e.g., Profile A/B) or force updates simultaneously on all nodes in the fleet.
+* **Scoped Global Overrides:** Switch profiles (e.g., Profile A/B) simultaneously on multiple nodes, dynamically scoped to the operator's authorized repeaters.
 * **Hardware Interventions:** Trigger a physical OS reboot or a hard GPIO reset of the MMDVM HAT directly from the web panel.
 
 #### 📊 Unified Monitoring & Statistics
-* **Interactive Fleet Map:** Real-time GIS map showing repeater locations, online/offline status, active TX states (pulsing pins), and active watchdog warnings.
+* **Interactive Fleet Map:** Real-time GIS map showing repeater locations, online/offline status, active TX states (pulsing pins), and active watchdog/service warnings.
 * **Live Heard Log:** A centralized view of radio traffic across the entire network, auto-resolving DMR and NXDN IDs into callsigns.
 * **Software & Firmware Tracking:** Instantly view MMDVM firmware versions and Pi-Star/Gateway component versions for each node.
 * **Daily Analytics:** Automatically tracks Top Talkgroups, Top Callsigns, Average duration, and daily transit counts.
 
 #### 🔐 Security & Access Control
-* **Role-Based Access Control (RBAC):** Create `admin` and `operator` accounts.
-* **Granular Permissions:** Restrict operators to view/control only specific repeaters.
-* **Audit Trail:** Every critical action (reboots, config edits, daemon restarts) is logged with the username, timestamp, and target node.
+* **Strict Role-Based Access Control (RBAC):** True Zero-Trust architecture. 
+* **Granular Permissions:** Node management (reboots, config edits, service controls) is strictly bound to explicitly assigned nodes in `allowed_nodes`, uniformly enforced for both *Operators* and *Admins*.
+* **System Administration:** Admins retain exclusive rights to global server settings and user management, separated from node-level control.
+* **Audit Trail:** Every critical action is securely logged with username, timestamp, and target node.
 
 ### ⚠️ Security Requirement: HTTPS
 Please note that **Web Push Notifications** and the **Service Worker** require a secure connection to function. For security reasons, modern browsers only enable these features over **HTTPS**. If you are accessing the console via HTTP (outside of `localhost`), the "Push" button and notification registration will not work. We recommend using a reverse proxy (like Nginx, Caddy, or Traefik) with an SSL certificate.
@@ -136,18 +138,19 @@ Il server agisce da cervello della rete, basato su fondamenta altamente scalabil
 * **Motore Core:** Flask (Python) con `gevent` per la gestione ad alta concorrenza dei WebSocket.
 * **Database:** SQLite (in modalità WAL) per gestire in sicurezza Utenti, Log operativi e traffico radio.
 * **Comunicazione:** MQTT per il routing istantaneo dei dati + WebSockets (SocketIO) per aggiornare la UI a latenza zero.
-* **Frontend:** Vanilla JS con un moderno design *Glassmorphism* in stile NOC (Network Operations Center) e logica completamente separata (`app.js`, `modals.js`).
+* **Frontend:** Vanilla JS con layout *Borderless Executive* in stile NOC (Network Operations Center), logica completamente separata (`app.js`, `modals.js`) e supporto nativo **i18n** (internazionalizzazione multilingua dinamica).
 
 ### ✨ Funzionalità Principali
 
-#### 🛡️ Diagnostica Proattiva (Watchdog)
-* **Monitoraggio Hardware:** Analisi continua delle temperature CPU e della saturazione disco da remoto. Innesca automaticamente notifiche Push prima che si verifichino guasti critici (es. thermal throttling o blocco log MMDVM).
+#### 🛡️ Diagnostica Proattiva (Watchdog) & Avvisi Globali
+* **Monitoraggio Hardware:** Analisi continua delle temperature CPU e della saturazione disco da remoto. Innesca automaticamente notifiche Push prima che si verifichino guasti critici.
 * **Rilevamento Anomalie RF:** Monitoraggio in tempo reale del BER (Bit Error Rate) sul traffico RF locale. Rileva il degrado hardware in radiofrequenza avvisando istantaneamente gli amministratori.
+* **Propagazione Service Alerts (v5.3+):** Il crash di un demone remoto (es. `SVC KO: MMDVMHOST`) viene segnalato in tempo reale sulla griglia principale e sulla Mappa di Flotta, senza dover ispezionare il singolo nodo.
 
 #### ⚡ Dashboard Real-Time a Latenza Zero
 * **Motore WebSocket:** La dashboard scatta all'istante al passaggio di traffico radio o ai cambi di telemetria. Nessun polling HTTP pesante, nessun refresh della pagina.
-* **Stato MQTT Live:** Un badge in tempo reale monitora continuamente la connessione al broker MQTT, avvisandoti istantaneamente in caso di problemi di rete.
-* **PWA Ready v6:** Installabile su smartphone Android e iOS come Progressive Web App per un'esperienza nativa a schermo intero con cache offline intelligente.
+* **Stato MQTT Live:** Un badge in tempo reale monitora continuamente la connessione al broker MQTT.
+* **PWA Ready:** Installabile su smartphone Android e iOS come Progressive Web App per un'esperienza nativa a schermo intero con cache offline intelligente.
 
 #### 🔔 Notifiche Web Push
 * Ricevi avvisi nativi e immediati su PC o smartphone quando:
@@ -157,21 +160,21 @@ Il server agisce da cervello della rete, basato su fondamenta altamente scalabil
 * Funzionano in modo sicuro anche quando la web app è chiusa o in background.
 
 #### 🛠️ Controllo Remoto & Manutenzione Avanzata
-* **Aggiornamenti Server OTA:** Applica gli aggiornamenti del server tramite Git direttamente dalla dashboard di amministrazione (Over-The-Air) con un clic, senza usare SSH.
+* **Aggiornamenti Server OTA:** Applica gli aggiornamenti del server tramite Git direttamente dalla dashboard (Over-The-Air) con un clic. Controllo aggiornamenti sincrono e possibilità di bypass della cache di sicurezza.
 * **Editor .INI Remoto:** Modifica i file di configurazione (es. MMDVMHost.ini) direttamente dal pannello web.
 * **Gestione Demoni:** Avvia, arresta o riavvia i servizi di sistema remoti.
-* **Override Globali:** Cambia i profili operativi (es. Profilo A/B) simultaneamente su tutta la rete.
+* **Override Globali Scoped:** Cambia i profili operativi simultaneamente su più nodi, filtrati dinamicamente in base ai nodi assegnati all'operatore in uso.
 * **Interventi Hardware:** Innesca un riavvio del sistema operativo o un reset fisico (tramite pin GPIO) della scheda MMDVM.
 
 #### 📊 Monitoraggio & Statistiche
-* **Mappa Interattiva di Flotta:** Mappa GIS in tempo reale che mostra la posizione dei ripetitori, stato online/offline, trasmissione attiva (pin lampeggianti) e allarmi diagnostici in corso.
+* **Mappa Interattiva di Flotta:** Mappa GIS in tempo reale che mostra la posizione dei ripetitori, stato online/offline, trasmissione attiva (pin lampeggianti) e allarmi diagnostici di servizio in corso.
 * **Log Ascolti Live:** Vista unificata in tempo reale del traffico radio di tutta la rete, con traduzione automatica degli ID DMR e NXDN in nominativi.
-* **Tracciamento Versioni:** Controlla all'istante le versioni firmware MMDVM e software (Pi-Star/Gateway) a bordo di ciascun nodo.
+* **Tracciamento Versioni:** Controlla all'istante le versioni firmware MMDVM e software a bordo di ciascun nodo.
 * **Analisi Giornaliera:** Statistiche automatiche su Top Talkgroups, Top Callsign, durata media e numero totale di transiti.
 
 #### 🔐 Sicurezza e Controllo Accessi
-* **Gestione Ruoli (RBAC):** Creazione di account `admin` e `operator`.
-* **Permessi Granulari:** Limita un operatore al controllo e alla visualizzazione di specifici ripetitori.
+* **Strict Role-Based Access Control (RBAC):** Architettura Zero-Trust reale. La gestione del sistema (System Admin) è nettamente separata dalla gestione dei nodi.
+* **Permessi Granulari Ferrei:** Anche un utente `admin` può interagire o configurare *esclusivamente* i nodi che gli sono stati esplicitamente assegnati nella lista `allowed_nodes`, con barriera di sicurezza verificata lato backend ad ogni chiamata API.
 * **Audit Trail:** Ogni azione critica (riavvii, modifiche file, gestione demoni) viene registrata con data, ora, utente e nodo di destinazione.
 
 ### ⚠️ Sicurezza Richiesta: HTTPS
