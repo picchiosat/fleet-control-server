@@ -789,7 +789,22 @@ async function refreshStates() {
                     cardDiv.dataset.status = isOnline ? 'online' : 'offline';
                     renderSeen(c, data, isOnline);
                     
-                    const warns = (data.warnings && data.warnings[c.id.toLowerCase()]) || [];
+                    let warns = (data.warnings && data.warnings[c.id.toLowerCase()]) ? [...data.warnings[c.id.toLowerCase()]] : [];
+                    
+                    let hasOfflineService = false;
+                    if (healthObj && healthObj.processes) { 
+                        for (const [svcName, svcStatus] of Object.entries(healthObj.processes)) { 
+                            let s = svcStatus.toLowerCase();
+                            if (s !== 'online' && s !== 'standby') { 
+                                hasOfflineService = true; 
+                                warns.push(`SVC KO: ${svcName.toUpperCase()}`);
+                            } 
+                        } 
+                    }
+                    
+                    if (!latestStatesData.warnings) latestStatesData.warnings = {};
+                    latestStatesData.warnings[c.id.toLowerCase()] = warns;
+                    
                     cardDiv.dataset.hasWarn = (warns.length > 0) ? 'true' : 'false';
                     const diagDiv = document.getElementById(`diag-warn-${c.id}`);
                     if (diagDiv) {
@@ -936,16 +951,7 @@ async function refreshStates() {
                         if (healthContainer) healthContainer.style.display = 'none'; 
                     }
 
-                    // Logica tollerante per i Gateway in standby (spenti dalla UI)
-                    let hasOfflineService = false;
-                    if (healthObj && healthObj.processes) { 
-                        for (const [svcName, svcStatus] of Object.entries(healthObj.processes)) { 
-                            let s = svcStatus.toLowerCase();
-                            if (s !== 'online' && s !== 'standby') { 
-                                hasOfflineService = true; break; 
-                            } 
-                        } 
-                    }
+                    // Logica tollerante per i Gateway in standby (hasOfflineService calcolato in alto)
                     const warnBadge = document.getElementById(`svc-warn-${c.id}`); const btnSvc = document.getElementById(`btn-svc-${c.id}`);
                     if (warnBadge) warnBadge.style.display = hasOfflineService ? 'block' : 'none';
                     if (btnSvc) { if (hasOfflineService) { btnSvc.style.borderColor = 'var(--danger)'; btnSvc.style.color = 'var(--danger)'; } else { btnSvc.style.borderColor = 'var(--text-main)'; btnSvc.style.color = 'var(--text-main)'; } }
