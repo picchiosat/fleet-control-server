@@ -112,7 +112,7 @@ function openNodeFocus(clientId) {
     
     const role = me.role || '';
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
     
     const modesCard = document.getElementById('focus-modes-card');
     if (modesCard) {
@@ -290,7 +290,7 @@ function sendTgCommand(clientId, comando) {
 async function fetchNodeConfigForModes(clientId) {
     const role = me.role || '';
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
     const modesCard = document.getElementById('focus-modes-card');
     if (!canControl) {
         if (modesCard) modesCard.style.display = 'none';
@@ -349,7 +349,7 @@ async function fetchNodeConfigForModes(clientId) {
 function renderModeToggles(clientId, statusMsg = "") {
     const role = me.role || '';
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
+    let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(clientId.toLowerCase()));
     
     const modesCard = document.getElementById('focus-modes-card');
     if (modesCard) {
@@ -530,7 +530,7 @@ async function initUI() {
         const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 
         if (isAuthenticated) {
-            const hasAllNodes = role === 'admin' || allowedList.includes('all');
+            const hasAllNodes = allowedList.includes('all');
             const canOverride = hasAllNodes;
 
             let actionBtns = '';
@@ -554,8 +554,8 @@ async function initUI() {
         }
 
         grid.innerHTML = clients.map(c => {
-            let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
-            let showReboot = (role === 'admin'); 
+            let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
+            let showReboot = (role === 'admin' && canControl); 
 
             return `
                 <div class="card" id="card-${c.id}" data-status="offline" data-gateways="" data-loc="" data-has-warn="false">
@@ -765,8 +765,8 @@ async function refreshStates() {
                 
                 const role = me.role || '';
                 const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-                let canControl = isAuthenticated && (role === 'admin' || allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
-                let showReboot = (role === 'admin'); 
+                let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
+                let showReboot = (role === 'admin' && canControl); 
 
                 let isTx = false; 
                 let activeModeColor = "var(--primary)"; 

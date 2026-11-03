@@ -232,7 +232,7 @@ async function saveSettings() {
 function triggerGlobalEmergency() {
     const role = me.role || '';
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    const hasAll = role === 'admin' || allowedList.includes('all');
+    const hasAll = allowedList.includes('all');
 
     let uniqueProfiles = {};
     for (const id in globalHealthData) { 
@@ -259,7 +259,7 @@ function sendGlobalAction(action) {
     document.getElementById('override-modal').style.display = 'none';
     const role = me.role || '';
     const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-    const hasAll = role === 'admin' || allowedList.includes('all');
+    const hasAll = allowedList.includes('all');
 
     const confirmMsg = hasAll 
         ? t('promptOvrConfirm') 

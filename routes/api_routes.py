@@ -226,6 +226,9 @@ def service_control():
 
     d = json_body()
     cid = str(d.get('clientId', '')).strip().lower()
+    
+    if not check_node_allowed(auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
     action = str(d.get('action', '')).strip().lower()
     service = str(d.get('service', '')).strip()
     if not CID_RE.match(cid):
@@ -323,6 +326,8 @@ def get_config_file(cid, service):
     if not auth or auth['role'] != 'admin':
         return err("Non autorizzato", 403)
     cid = cid.lower()
+    if not check_node_allowed(auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
     service = service.lower()
     if not CID_RE.match(cid) or not SERVICE_RE.match(service):
         return err("Parametri non validi")
@@ -339,6 +344,9 @@ def save_config_file():
 
     d = json_body()
     cid = str(d.get('clientId', '')).strip().lower()
+    
+    if not check_node_allowed(auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
     service = str(d.get('service', '')).strip().lower()
     new_config = d.get('config_data')
     if not CID_RE.match(cid) or not SERVICE_RE.match(service):
