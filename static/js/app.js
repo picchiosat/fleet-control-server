@@ -530,13 +530,22 @@ async function initUI() {
         const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
 
         if (isAuthenticated) {
-            let adminBtn = role === 'admin' ? `
-                <button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn" style="border-color:var(--danger); color:var(--danger) !important; display:none;" title="Aggiornamento Server Disponibile">[ UPD_SERVER ]</button>
-                <button onclick="sendGlobalUpdate()" class="auth-btn" style="color:var(--accent);" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">[ ${t('btnReqCfg')} ]</button>
-                <button onclick="triggerGlobalEmergency()" class="auth-btn" style="color:var(--danger);" data-i18n-title="ttGlobal" title="${t('ttGlobal')}">[ ${t('btnGlobal')} ]</button>
-                <button onclick="openAdmin()" class="auth-btn" style="color:var(--primary);" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">[ ${t('btnAdmin')} ]</button>` : '';
+            const hasAllNodes = role === 'admin' || allowedList.includes('all');
+            const canOverride = hasAllNodes;
+
+            let actionBtns = '';
+            if (role === 'admin') {
+                actionBtns += `<button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn" style="border-color:var(--danger); color:var(--danger) !important; display:none;" title="Aggiornamento Server Disponibile">[ UPD_SERVER ]</button>`;
+                actionBtns += `<button onclick="sendGlobalUpdate()" class="auth-btn" style="color:var(--accent);" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">[ ${t('btnReqCfg')} ]</button>`;
+            }
+            if (canOverride) {
+                actionBtns += `<button onclick="triggerGlobalEmergency()" class="auth-btn" style="color:var(--danger);" data-i18n-title="ttGlobal" title="${t('ttGlobal')}">[ ${t('btnGlobal')} ]</button>`;
+            }
+            if (role === 'admin') {
+                actionBtns += `<button onclick="openAdmin()" class="auth-btn" style="color:var(--primary);" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">[ ${t('btnAdmin')} ]</button>`;
+            }
             
-            authContainer.innerHTML = `${adminBtn}
+            authContainer.innerHTML = `${actionBtns}
                                        <span style="font-weight:300; font-size:0.85rem; margin: 0 10px; font-family:'JetBrains Mono', monospace; color:var(--primary);">USR: ${esc(String(me.user).toUpperCase())}</span>
                                        <button onclick="changeMyPassword()" class="auth-btn" data-i18n-title="ttPass" title="${t('ttPass')}">[ ${t('btnPass')} ]</button>
                                        <button onclick="logout()" class="auth-btn" data-i18n-title="ttLogout" title="${t('ttLogout')}">[ ${t('btnLogout')} ]</button>`;

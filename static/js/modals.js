@@ -230,8 +230,13 @@ async function saveSettings() {
 
 // --- GLOBAL OVERRIDE ---
 function triggerGlobalEmergency() {
+    const role = me.role || '';
+    const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    const hasAll = role === 'admin' || allowedList.includes('all');
+
     let uniqueProfiles = {};
     for (const id in globalHealthData) { 
+        if (!hasAll && !allowedList.includes(id.toLowerCase())) continue;
         if (globalHealthData[id] && globalHealthData[id].profiles) { 
             for (const [k, v] of Object.entries(globalHealthData[id].profiles)) { uniqueProfiles[k] = v; }
         } 
@@ -243,14 +248,36 @@ function triggerGlobalEmergency() {
         idx++;
     }
     if (Object.keys(uniqueProfiles).length === 0) { html = `<p style="color:var(--danger); font-weight:400; font-family:'JetBrains Mono',monospace;">NO_PROFS_FOUND</p>`; }
-    container.innerHTML = html; document.getElementById('override-desc').innerText = t('msgOvrSel'); document.getElementById('override-modal').style.display = 'flex';
+    container.innerHTML = html; 
+
+    const descText = hasAll ? t('msgOvrSel') : (currentLang === 'it' ? `SELEZIONA PROFILO (NODI ASSEGNATI: ${allowedList.length}):` : `SELECT PROFILE (NODES: ${allowedList.length}):`);
+    document.getElementById('override-desc').innerText = descText; 
+    document.getElementById('override-modal').style.display = 'flex';
 }
 
 function sendGlobalAction(action) {
     document.getElementById('override-modal').style.display = 'none';
-    customConfirm(t('titleGlobal'), t('promptOvrConfirm'), "var(--danger)", async () => {
-        try { const res = await fetch('/api/global_command', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: action}) }); const d = await res.json(); 
-            if(d.success) customAlert(t('titleSuccess'), t('msgOvrOk')); else customAlert(t('titleError'), esc(d.error), true); refreshStates();
+    const role = me.role || '';
+    const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    const hasAll = role === 'admin' || allowedList.includes('all');
+
+    const confirmMsg = hasAll 
+        ? t('promptOvrConfirm') 
+        : (currentLang === 'it' 
+            ? `Confermi l'invio ai tuoi nodi autorizzati (${allowedList.map(n => n.toUpperCase()).join(', ')})?` 
+            : `Confirm sending to your authorized nodes (${allowedList.map(n => n.toUpperCase()).join(', ')})?`);
+
+    customConfirm(t('titleGlobal'), confirmMsg, "var(--danger)", async () => {
+        try { 
+            const res = await fetch('/api/global_command', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({type: action}) 
+            }); 
+            const d = await res.json(); 
+            if(d.success) customAlert(t('titleSuccess'), t('msgOvrOk')); 
+            else customAlert(t('titleError'), esc(d.error), true); 
+            refreshStates();
         } catch(e) { console.error(e); }
     });
 }
