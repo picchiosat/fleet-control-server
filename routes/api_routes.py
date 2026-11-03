@@ -360,29 +360,25 @@ def save_config_file():
 
 # --- AGGIORNAMENTO SERVER OTA ---
 
-def background_gitea_check():
-    global GLOBAL_SERVER_UPDATE_AVAILABLE, LAST_GITEA_CHECK_TIME
-    try:
-        subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
-        local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
-        remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
-        GLOBAL_SERVER_UPDATE_AVAILABLE = (local_hash != remote_hash)
-        LAST_GITEA_CHECK_TIME = time.time()
-    except Exception as e:
-        logger.error(f"Errore controllo Gitea in background: {e}")
-
 @api_bp.route('/api/server_update/check', methods=['GET'])
 def get_server_update_status():
-    global LAST_GITEA_CHECK_TIME
+    global LAST_GITEA_CHECK_TIME, GLOBAL_SERVER_UPDATE_AVAILABLE
     auth = get_auth()
     if not auth or auth['role'] != 'admin':
         return err("Non autorizzato", 403)
     
-    # Se è passata più di un'ora (3600 secondi) dall'ultimo controllo, avvia il thread
+    # Eseguiamo il controllo sincrono (ci mette max 1-2 secondi) ogni ora
+    # In questo modo il frontend riceve subito il risultato VERO, non quello della cache precedente
     if time.time() - LAST_GITEA_CHECK_TIME > 3600:
-        import threading
-        threading.Thread(target=background_gitea_check, daemon=True).start()
-        
+        try:
+            subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
+            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
+            remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
+            GLOBAL_SERVER_UPDATE_AVAILABLE = (local_hash != remote_hash)
+            LAST_GITEA_CHECK_TIME = time.time()
+        except Exception as e:
+            logger.error(f"Errore controllo Gitea: {e}")
+            
     return jsonify({"success": True, "update_available": GLOBAL_SERVER_UPDATE_AVAILABLE})
 
 @api_bp.route('/api/server_update/apply', methods=['POST'])
