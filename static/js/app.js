@@ -1372,7 +1372,7 @@ function urlB64ToUint8Array(base64String) { const padding = '='.repeat((4 - base
 
 async function checkServerUpdate() {
     if (!isAuthenticated || me.role !== 'admin') return;
-    try { const res = await fetch('/api/server_update/check'); const data = await res.json(); const btn = document.getElementById('server-update-btn'); if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } } catch (e) { console.error(e); }
+    try { const res = await fetch('/api/server_update/check'); if (!res.ok) return; const data = await res.json(); const btn = document.getElementById('server-update-btn'); if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } } catch (e) { console.error(e); }
 }
 
 function confirmServerUpdate() {

@@ -371,7 +371,7 @@ def background_gitea_check():
     except Exception as e:
         logger.error(f"Errore controllo Gitea in background: {e}")
 
-@api_bp.route('/api/server_update/status', methods=['GET'])
+@api_bp.route('/api/server_update/check', methods=['GET'])
 def get_server_update_status():
     global LAST_GITEA_CHECK_TIME
     auth = get_auth()
