@@ -15,6 +15,10 @@ from services.mqtt_service import mqtt_publish
 from services.push_service import node_allowed
 from routes.auth_routes import get_auth, json_body, err
 
+# --- AGGIUNTE PER GITEA BACKGROUND CHECK ---
+GLOBAL_SERVER_UPDATE_AVAILABLE = False
+LAST_GITEA_CHECK_TIME = 0
+
 api_bp = Blueprint('api', __name__)
 
 # --- REGEX & COSTANTI COMANDI ---
@@ -128,7 +132,7 @@ def get_stats():
     top_tgs = [{"target": row[0], "count": row[1]} for row in c.fetchall()]
     
     c.execute(f"""SELECT source_id, COUNT(*) as cnt FROM radio_logs 
-                 WHERE source_id NOT LIKE '🌐%' 
+                 WHERE source_id NOT LIKE '倹%' 
                  AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY source_id ORDER BY cnt DESC LIMIT 5""", params)
     top_calls = [{"call": row[0], "count": row[1]} for row in c.fetchall()]
@@ -182,7 +186,7 @@ def cmd():
         return err("Broker MQTT non raggiungibile - comando non inviato", 503)
 
     audit(auth['username'], cid, cmd_type)
-    state.client_telemetry[cid] = {"ts1": "🔄 Inviato...", "ts2": "🔄 Inviato...", "alt": ""}
+    state.client_telemetry[cid] = {"ts1": "売 Inviato...", "ts2": "売 Inviato...", "alt": ""}
     return jsonify({"success": True})
 
 @api_bp.route('/api/global_command', methods=['POST'])
@@ -243,7 +247,7 @@ def update_nodes():
         return err("Non autorizzato", 403)
     if not mqtt_publish("devices/control/request", "update"):
         return err("Broker MQTT non raggiungibile", 503)
-    logger.info(f"📢 REQ CONFIG inviata a tutta la flotta da {auth['username']}")
+    logger.info(f"討 REQ CONFIG inviata a tutta la flotta da {auth['username']}")
     audit(auth['username'], '*', 'REQ_CONFIG_ALL')
     return jsonify({"success": True})
 
@@ -356,21 +360,30 @@ def save_config_file():
 
 # --- AGGIORNAMENTO SERVER OTA ---
 
-@api_bp.route('/api/server_update/check', methods=['GET'])
-def check_server_update():
-    auth = get_auth()
-    if not auth or auth['role'] != 'admin':
-        return err("Non autorizzato", 403)
-    
+def background_gitea_check():
+    global GLOBAL_SERVER_UPDATE_AVAILABLE, LAST_GITEA_CHECK_TIME
     try:
         subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
         local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
         remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
-        update_available = local_hash != remote_hash
-        return jsonify({"success": True, "update_available": update_available})
+        GLOBAL_SERVER_UPDATE_AVAILABLE = (local_hash != remote_hash)
+        LAST_GITEA_CHECK_TIME = time.time()
     except Exception as e:
-        logger.error(f"Errore controllo aggiornamenti server: {e}")
-        return jsonify({"success": False, "error": "Impossibile verificare aggiornamenti"})
+        logger.error(f"Errore controllo Gitea in background: {e}")
+
+@api_bp.route('/api/server_update/status', methods=['GET'])
+def get_server_update_status():
+    global LAST_GITEA_CHECK_TIME
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Non autorizzato", 403)
+    
+    # Se è passata più di un'ora (3600 secondi) dall'ultimo controllo, avvia il thread
+    if time.time() - LAST_GITEA_CHECK_TIME > 3600:
+        import threading
+        threading.Thread(target=background_gitea_check, daemon=True).start()
+        
+    return jsonify({"success": True, "update_available": GLOBAL_SERVER_UPDATE_AVAILABLE})
 
 @api_bp.route('/api/server_update/apply', methods=['POST'])
 def apply_server_update():
