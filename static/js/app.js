@@ -105,6 +105,9 @@ function openNodeFocus(clientId) {
     document.getElementById('tab-aprs').classList.remove('active');
     
     document.getElementById('view-focus').style.display = 'block';
+    
+
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     const role = me.role || '';
@@ -1369,13 +1372,7 @@ function urlB64ToUint8Array(base64String) { const padding = '='.repeat((4 - base
 
 async function checkServerUpdate() {
     if (!isAuthenticated || me.role !== 'admin') return;
-    try { 
-        // Modifica: la dashboard chiede solo al backend senza innescare comandi git
-        const res = await fetch('/api/server_update/status'); 
-        const data = await res.json(); 
-        const btn = document.getElementById('server-update-btn'); 
-        if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } 
-    } catch (e) { console.error(e); }
+    try { const res = await fetch('/api/server_update/check'); const data = await res.json(); const btn = document.getElementById('server-update-btn'); if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } } catch (e) { console.error(e); }
 }
 
 function confirmServerUpdate() {
