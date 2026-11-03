@@ -171,10 +171,10 @@ function applyViewMode() {
     const btnToggle = document.getElementById('view-toggle-btn');
     if (viewMode === 'list') {
         gridDiv.className = 'list-view';
-        btnToggle.innerText = '[ LIST ]';
+        btnToggle.innerText = t('btnList') || '[ LIST ]';
     } else {
         gridDiv.className = 'grid';
-        btnToggle.innerText = '[ GRID ]';
+        btnToggle.innerText = t('btnGrid') || '[ GRID ]';
     }
 }
 

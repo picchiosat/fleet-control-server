@@ -30,39 +30,59 @@ const i18n = {
         ttSwitchTo: "SW_TO: ", ttSvcStart: "START", ttSvcRestart: "RST", ttSvcEdit: "EDIT", ttSvcStop: "STOP", ttLang: "LANG",
         statTopTG: "TOP_TG", statTopCall: "TOP_CALL", statLoading: "LOADING...", statAvgDur: "AVG_DUR", statTodayTx: "TX_TODAY", statNoData: "NO_DATA",
         statTitle: "DAILY_STATS", statAllNodes: "ALL_NODES", modVersions: "SW_VERSIONS",
-        filtAll: "ALL_NODES", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "ALERTS"
+        filtAll: "ALL_NODES", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "ALERTS",
+        fleetStatus: "[ FLEET_STATUS ]", aprsTraffic: "[ APRS_TRAFFIC ]", btnClear: "[ CLEAR ]", btnReturn: "[ < RETURN TO OVERVIEW ]",
+        hwTelemetry: "[ HARDWARE_TELEMETRY ]", rfConfig: "[ RF_CONFIGURATION ]", opModes: "[ OPERATING_MODES ]", actGateways: "[ ACTIVE_GATEWAYS ]",
+        tsModes: "[ TIMESLOTS_MODES ]", liveTerminal: "[ LIVE_TERMINAL ]", nodeLastheard: "[ NODE_LASTHEARD ]", adminControls: "[ ADMIN_CONTROLS ]",
+        cpuLoad: "CPU_LOAD:", sysTemp: "SYS_TEMP:", ramUsage: "RAM_USAGE:", diskSpace: "DISK_SPACE:", sysUptime: "UPTIME:",
+        txFreq: "TX_FREQ:", rxFreq: "RX_FREQ:", nodeLoc: "LOCATION:",
+        statusOffline: "OFFLINE", statusAlert: "(!) ALERT", awaitingStream: "> AWAITING_STREAM...", focusNode: "FOCUS_NODE", noActiveGw: "NO_ACTIVE_GATEWAYS",
+        lblSysUptime: "System Uptime", lblSwVersions: "Software Versions", lblOtaUpdate: "OTA Update", waitConfig: "WAITING FOR CONFIG...",
+        noDaemonData: "NO DAEMON DATA YET. RETRYING...", cfgEmpty: "[!] CFG MEMORY EMPTY", netError: "NETWORK ERROR", noModesFound: "NO MODES FOUND IN CONFIG",
+        accessDenied: "[ ACCESS DENIED ]", savingRestart: "⏳ SAVING & RESTARTING...", stateUpdated: "✅ STATE UPDATED SUCCESSFULLY!",
+        phSearch: "SEARCH ID/CALL...", btnGrid: "[ GRID ]", btnList: "[ LIST ]"
     },
     it: {
         lblLogLimit: "Righe:",
-        lastTransits: "Ultimi ascolti", loginTitle: "SYSTEM_LOGIN",
+        lastTransits: "Ultimi ascolti", loginTitle: "ACCESSO SISTEMA",
         thTime: "Ora", thRep: "Ripetitore", thMode: "Modo", thCall: "Nominativo", thDur: "Durata",
         thUser: "Utente", thRole: "Ruolo", thNodes: "Nodi", thActs: "Azioni",
-        btnReqCfg: "REQ_CFG", btnGlobal: "GBL_OVR", btnAdmin: "SYS_ADM", btnPass: "CHG_PWD", btnLogout: "LOGOUT",
-        btnSvc: "SVC", btnFile: "CFG", btnBoot: "REBOOT", btnAdd: "ADD",
-        waitNet: "> Attesa rete...", waitData: "In attesa dei dati dal nodo...", forceUpdate: "FORCE_UPD",
-        adminTitle: "SYS_ADMIN", adminDBSync: "DB_SYNC_CFG", adminTime: "Orario Aggiornamento:", adminSave: "SAVE_CFG", roleOp: "Operatore",
-        modSvcTitle: "DAEMONS:", modFileTitle: "CFG_FILES", modEditTitle: "EDIT:",
-        warnEdit: "[WARN] DIRECT EDIT ACTIVE",
-        btnEdit: "EDIT", btnStart: "START", btnRestart: "RST", btnStop: "STOP", btnSave: "WRITE_FILE",
-        btnHat: "RST_HAT", confHat: "PHYSICAL RESET MMDVM ON: ",
-        confOta: "ESEGUIRE GIT PULL SUL NODO ",
+        btnReqCfg: "REQ_CFG", btnGlobal: "GBL_OVR", btnAdmin: "SYS_ADM", btnPass: "CHG_PWD", btnLogout: "ESCI",
+        btnSvc: "SERVIZI", btnFile: "CFG", btnBoot: "RIAVVIA", btnAdd: "AGGIUNGI",
+        waitNet: "> Attesa rete...", waitData: "In attesa dei dati dal nodo...", forceUpdate: "FORZA AGGIORNAMENTO",
+        adminTitle: "AMMINISTRAZIONE SISTEMA", adminDBSync: "SINCRONIZZAZIONE DB", adminTime: "Orario Aggiornamento:", adminSave: "SALVA CONFIG", roleOp: "Operatore",
+        modSvcTitle: "DEMONI:", modFileTitle: "FILE CONFIGURAZIONE", modEditTitle: "MODIFICA:",
+        warnEdit: "[ATTENZIONE] MODIFICA DIRETTA ATTIVA",
+        btnEdit: "MODIFICA", btnStart: "AVVIA", btnRestart: "RIAVVIA", btnStop: "FERMA", btnSave: "SALVA FILE",
+        btnHat: "RESET HAT", confHat: "Reset hardware modem MMDVM su: ",
+        confOta: "Eseguire git pull sul nodo ",
         confOp: "Confermi l'operazione su ", confTgOn: "Vuoi ATTIVARE le notifiche Telegram per il nodo ", confTgOff: "Vuoi SILENZIARE le notifiche Telegram per il nodo ", confOvr: "Sei sicuro di voler sovrascrivere il file su ",
-        warnDaemon: "[WARN] DAEMON OFFLINE",
-        promptOvr: "GBL_OVR", promptOvrConfirm: "Confermi l'invio a TUTTA la rete?",
-        modUpdateTitle: "GBL_UPDATE", confUpdate: "Vuoi richiedere i dati e i file di configurazione aggiornati a tutti i nodi della flotta?", alertUpdateOk: "ACK",
-        btnConfReset: "CONFIRM", btnCancel: "ABORT", promptPass: "NEW PWD:",
-        titleError: "ERR", titleSuccess: "OK", titleAction: "CONFIRM", titleDelete: "DEL_USR", titleSave: "SAVE", titleGlobal: "GBL_OVR",
-        btnYes: "EXECUTE", msgDelUser: "DELETE USER?", msgPassOk: "PWD_UPDATED", msgPassErr: "PWD_ERR", msgLoginFail: "AUTH_FAIL",
-        msgConfigSaved: "CFG_SAVED", msgConfigErr: "CFG_ERR", msgNetErr: "NET_ERR", msgOvrSel: "SELECT_PROF:",
-        msgOvrOk: "CMD_BROADCASTED", msgMissUser: "MISSING_USR", msgMissPass: "MISSING_PWD", btnSvcKo: "DAEMON_ERR",
-        phNewPass: "NEW_PWD (EMPTY=KEEP)", phPass: "PWD",
-        titleSwitch: "SW_PROF", confSwitch: "SWITCH TO ", titleBoot: "SYS_REBOOT", confBoot: "REBOOT NODE ",
-        ttReqCfg: "REQ_DATA", ttGlobal: "GBL_OVR", ttAdmin: "ADMIN", ttPass: "CHG_PWD", ttLogout: "LOGOUT",
+        warnDaemon: "[ATTENZIONE] DEMONE OFFLINE",
+        promptOvr: "OVERRIDE GLOBALE", promptOvrConfirm: "Confermi l'invio a TUTTA la rete?",
+        modUpdateTitle: "AGGIORNAMENTO FLOTTA", confUpdate: "Vuoi richiedere i dati e i file di configurazione aggiornati a tutti i nodi della flotta?", alertUpdateOk: "CONFERMATO",
+        btnConfReset: "CONFERMA", btnCancel: "ANNULLA", promptPass: "NUOVA PASSWORD:",
+        titleError: "ERRORE", titleSuccess: "OK", titleAction: "CONFERMA", titleDelete: "ELIMINA UTENTE", titleSave: "SALVA", titleGlobal: "OVERRIDE GLOBALE",
+        btnYes: "ESEGUI", msgDelUser: "Eliminare definitivamente l'utente?", msgPassOk: "PASSWORD AGGIORNATA", msgPassErr: "ERRORE AGGIORNAMENTO PASSWORD", msgLoginFail: "CREDENZIALI NON VALIDE",
+        msgConfigSaved: "CONFIGURAZIONE SALVATA", msgConfigErr: "ERRORE SALVATAGGIO CONFIG", msgNetErr: "ERRORE DI RETE", msgOvrSel: "SELEZIONA PROFILO:",
+        msgOvrOk: "COMANDO INVIATO ALLA RETE", msgMissUser: "SPECIFICARE NOME UTENTE", msgMissPass: "SPECIFICARE PASSWORD", btnSvcKo: "ERRORE DEMONE",
+        phNewPass: "NUOVA PWD (VUOTA = INVARIATA)", phPass: "PASSWORD",
+        titleSwitch: "CAMBIO PROFILO", confSwitch: "Passa al profilo ", titleBoot: "RIAVVIO NODO", confBoot: "Riavviare il nodo ",
+        ttReqCfg: "Richiedi dati nodi", ttGlobal: "Override globale profili", ttAdmin: "Pannello amministrazione", ttPass: "Cambia password", ttLogout: "Disconnetti",
         ttProfA: "Passa al Profilo A", ttProfB: "Passa al Profilo B", ttTgOn: "Abilita notifiche Telegram", ttTgOff: "Disabilita notifiche Telegram", ttSvc: "Gestisci demoni di sistema", ttFile: "Modifica file .ini da remoto", ttHat: "Reset fisico scheda modem", ttBoot: "Riavvia sistema operativo",
-        ttSwitchTo: "SW_TO: ", ttSvcStart: "START", ttSvcRestart: "RST", ttSvcEdit: "EDIT", ttSvcStop: "STOP", ttLang: "LANG",
-        statTopTG: "TOP_TG", statTopCall: "TOP_CALL", statLoading: "LOADING...", statAvgDur: "AVG_DUR", statTodayTx: "TX_TODAY", statNoData: "NO_DATA",
-        statTitle: "DAILY_STATS", statAllNodes: "ALL_NODES", modVersions: "SW_VERSIONS",
-        filtAll: "ALL_NODES", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "ALERTS"
+        ttSwitchTo: "Passa a: ", ttSvcStart: "Avvia demone", ttSvcRestart: "Riavvia demone", ttSvcEdit: "Modifica configurazione", ttSvcStop: "Arresta demone", ttLang: "Lingua",
+        statTopTG: "TOP TALKGROUP", statTopCall: "TOP NOMINATIVI", statLoading: "CARICAMENTO...", statAvgDur: "DURATA MEDIA", statTodayTx: "PASSAGGI OGGI", statNoData: "NESSUN DATO",
+        statTitle: "STATISTICHE GIORNALIERE", statAllNodes: "TUTTI I NODI", modVersions: "VERSIONI SOFTWARE",
+        filtAll: "TUTTI I NODI", filtOnline: "ONLINE", filtOffline: "OFFLINE", filtAlerts: "AVVISI",
+        fleetStatus: "[ STATO FLOTTA ]", aprsTraffic: "[ TRAFFICO APRS ]", btnClear: "[ PULISCI ]", btnReturn: "[ < TORNA ALLA DASHBOARD ]",
+        hwTelemetry: "[ TELEMETRIA HARDWARE ]", rfConfig: "[ CONFIGURAZIONE RF ]", opModes: "[ MODI OPERATIVI ]", actGateways: "[ GATEWAY ATTIVI ]",
+        tsModes: "[ TIMESLOT E MODI ]", liveTerminal: "[ TERMINALE LIVE ]", nodeLastheard: "[ ULTIMI ASCOLTI NODO ]", adminControls: "[ CONTROLLI AMMINISTRATORE ]",
+        cpuLoad: "CARICO CPU:", sysTemp: "TEMP. SIS:", ramUsage: "UTILIZZO RAM:", diskSpace: "SPAZIO DISCO:", sysUptime: "ATTIVITÀ:",
+        txFreq: "FREQ. TX:", rxFreq: "FREQ. RX:", nodeLoc: "POSIZIONE:",
+        statusOffline: "OFFLINE", statusAlert: "(!) AVVISO", awaitingStream: "> IN ATTESA DI FLUSSO DATI...", focusNode: "DETTAGLI NODO", noActiveGw: "NESSUN GATEWAY ATTIVO",
+        lblSysUptime: "Tempo di attività sistema", lblSwVersions: "Versioni Software", lblOtaUpdate: "Aggiornamento OTA", waitConfig: "IN ATTESA DELLA CONFIGURAZIONE...",
+        noDaemonData: "NESSUN DATO DAL DEMONE. RETENTATIVO...", cfgEmpty: "[!] MEMORIA CFG VUOTA", netError: "ERRORE DI RETE", noModesFound: "NESSUN MODO TROVATO NELLA CONFIGURAZIONE",
+        accessDenied: "[ ACCESSO NEGATO ]", savingRestart: "⏳ SALVATAGGIO & RIAVVIO IN CORSO...", stateUpdated: "✅ STATO AGGIORNATO CON SUCCESSO!",
+        phSearch: "CERCA ID/CALL...", btnGrid: "[ GRIGLIA ]", btnList: "[ LISTA ]"
     }
 };
 
@@ -82,8 +102,13 @@ function applyTranslations() {
         if (i18n[currentLang][key]) el.title = i18n[currentLang][key];
     });
     const newPassInput = document.getElementById('new-pass');
-    if (newPassInput && editingUserId) newPassInput.placeholder = t('phNewPass');
+    if (newPassInput && typeof editingUserId !== 'undefined' && editingUserId) newPassInput.placeholder = t('phNewPass');
     else if (newPassInput) newPassInput.placeholder = t('phPass');
+    
+    const searchInput = document.getElementById('node-search');
+    if (searchInput) searchInput.placeholder = t('phSearch') || 'SEARCH ID/CALL...';
+    
+    if (typeof applyViewMode === 'function') applyViewMode();
 }
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
