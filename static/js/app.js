@@ -1385,9 +1385,18 @@ async function checkPushStatus() {
 
 function urlB64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i); return outputArray; }
 
-async function checkServerUpdate() {
+async function checkServerUpdate(force = false) {
     if (!isAuthenticated || me.role !== 'admin') return;
-    try { const res = await fetch('/api/server_update/check'); if (!res.ok) return; const data = await res.json(); const btn = document.getElementById('server-update-btn'); if (btn) { btn.style.display = data.update_available ? 'inline-block' : 'none'; } } catch (e) { console.error(e); }
+    try { 
+        const url = force ? '/api/server_update/check?force=1' : '/api/server_update/check';
+        const res = await fetch(url); 
+        if (!res.ok) return; 
+        const data = await res.json(); 
+        const btn = document.getElementById('server-update-btn'); 
+        if (btn) { 
+            btn.style.display = data.update_available ? 'inline-block' : 'none'; 
+        } 
+    } catch (e) { console.error(e); }
 }
 
 function confirmServerUpdate() {

@@ -375,9 +375,10 @@ def get_server_update_status():
     if not auth or auth['role'] != 'admin':
         return err("Non autorizzato", 403)
     
-    # Eseguiamo il controllo sincrono (ci mette max 1-2 secondi) ogni ora
-    # In questo modo il frontend riceve subito il risultato VERO, non quello della cache precedente
-    if time.time() - LAST_GITEA_CHECK_TIME > 3600:
+    force_check = request.args.get('force') == '1'
+    
+    # Eseguiamo il controllo sincrono se è passata 1 ora OPPURE se forzato dal client
+    if force_check or (time.time() - LAST_GITEA_CHECK_TIME > 3600):
         try:
             subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
             local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
