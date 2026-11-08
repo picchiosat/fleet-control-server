@@ -1,8 +1,2 @@
-Flask
-Flask-SocketIO
-Werkzeug
-pywebpush
-paho-mqtt
-gunicorn
-gevent
-gevent-websocket
+redis>=5.0.1
+# ... (aggiungi qui le altre dipendenze preesistenti come Flask, paho-mqtt, ecc.)

@@ -3,6 +3,7 @@ import json
 import time
 import threading
 import sqlite3
+import redis
 from contextlib import closing
 from flask_socketio import SocketIO
 from core.config import CACHE_FILE, DB_PATH, DMR_IDS_PATH, NXDN_IDS_PATH, logger, web_cfg
@@ -34,8 +35,20 @@ def notify_update(event='dati_aggiornati'):
     timer.daemon = True
     timer.start()
 
+# --- REDIS CLIENT & NAMESPACE ---
+REDIS_URL = os.getenv("REDIS_URL", web_cfg.get("redis_url", "redis://localhost:6379/0"))
+try:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception as e:
+    logger.error(f"Errore connessione Redis ({REDIS_URL}): {e}")
+    redis_client = None
+
+NAMESPACE = "fleet:node:"
+
 # --- STATI GLOBALI IN MEMORIA ---
 START_TIME = time.time()
+state_lock = threading.RLock()
+
 client_states = {}
 device_configs = {}
 client_telemetry = {}
@@ -128,6 +141,109 @@ def seed_last_seen():
     except Exception as e:
         logger.error(f"seed_last_seen: {e}")
 
+# --- FUNZIONI DI GESTIONE STATO & REDIS ---
+def update_node_state(node_id: str, payload: dict) -> None:
+    """Aggiorna lo stato del nodo sia in memoria locale che su Redis in modo sicuro."""
+    if not node_id:
+        return
+        
+    with state_lock:
+        current = client_states.get(node_id)
+        # Se lo stato attuale è una stringa semplice, convertilo in dizionario
+        if not isinstance(current, dict):
+            current = {"status": current} if isinstance(current, str) else {}
+            client_states[node_id] = current
+            
+        if isinstance(payload, dict):
+            current.update(payload)
+        elif isinstance(payload, str):
+            current["status"] = payload
+        
+    touch_seen(node_id, 'mqtt')
+    
+    # Scrittura asincrona/pipeline su Redis
+    if redis_client:
+        try:
+            key = f"{NAMESPACE}{node_id}"
+            if isinstance(payload, dict):
+                flat_payload = {
+                    k: (json.dumps(v) if isinstance(v, (dict, list)) else str(v))
+                    for k, v in payload.items()
+                }
+            else:
+                flat_payload = {"status": str(payload)}
+
+            if flat_payload:
+                pipeline = redis_client.pipeline()
+                pipeline.hset(key, mapping=flat_payload)
+                pipeline.execute()
+        except Exception as e:
+            logger.error(f"Errore update Redis nodo {node_id}: {e}")
+            
+    notify_update()            
+
+def get_node_state(node_id: str) -> dict:
+    """Recupera lo stato del nodo da Redis, con fallback sulla memoria locale."""
+    if redis_client:
+        try:
+            key = f"{NAMESPACE}{node_id}"
+            data = redis_client.hgetall(key)
+            if data:
+                for k, v in data.items():
+                    try:
+                        if str(v).startswith(("{", "[")):
+                            data[k] = json.loads(v)
+                    except (ValueError, TypeError):
+                        pass
+                return data
+        except Exception as e:
+            logger.error(f"Errore lettura Redis nodo {node_id}: {e}")
+            
+    with state_lock:
+        return dict(client_states.get(node_id, {}))
+
+def get_all_nodes() -> dict:
+    """Scansiona tutti i nodi registrati in Redis o memoria."""
+    if redis_client:
+        try:
+            nodes = {}
+            for key in redis_client.scan_iter(match=f"{NAMESPACE}*"):
+                node_id = key.split(":")[-1]
+                nodes[node_id] = get_node_state(node_id)
+            if nodes:
+                return nodes
+        except Exception as e:
+            logger.error(f"Errore get_all_nodes Redis: {e}")
+            
+    with state_lock:
+        return dict(client_states)
+
+def delete_node(node_id: str) -> None:
+    """Rimuove il nodo da Redis e dalla memoria locale."""
+    with state_lock:
+        client_states.pop(node_id, None)
+        
+    if redis_client:
+        try:
+            key = f"{NAMESPACE}{node_id}"
+            redis_client.delete(key)
+        except Exception as e:
+            logger.error(f"Errore delete Redis nodo {node_id}: {e}")
+            
+    notify_update()
+
+def clear_all_nodes() -> None:
+    """Svuota la cache nodi da Redis e memoria locale (usato al boot)."""
+    with state_lock:
+        client_states.clear()
+        
+    if redis_client:
+        try:
+            for key in redis_client.scan_iter(match=f"{NAMESPACE}*"):
+                redis_client.delete(key)
+        except Exception as e:
+            logger.error(f"Errore clear_all_nodes Redis: {e}")
+
 # --- DATABASE ID DMR / NXDN ---
 user_db = {}
 nxdn_db = {}
@@ -141,7 +257,7 @@ def load_ids():
             for l in f:
                 l = l.replace('"', '')
                 if ',' in l: p = l.strip().split(',')
-                elif '\t' in l: p = l.strip().split('\t')
+                elif '	' in l: p = l.strip().split('	')
                 elif ';' in l: p = l.strip().split(';')
                 else: p = l.strip().split()
 
@@ -151,7 +267,7 @@ def load_ids():
     if os.path.exists(NXDN_IDS_PATH):
         with open(NXDN_IDS_PATH, 'r', encoding='utf-8', errors='ignore') as f:
             for l in f:
-                sep = '\t' if '\t' in l else (',' if ',' in l else ';')
+                sep = '	' if '	' in l else (',' if ',' in l else ';')
                 p = l.strip().split(sep)
                 if len(p) >= 2 and p[0].strip().isdigit():
                     new_nxdn[p[0].strip()] = p[1].strip()

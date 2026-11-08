@@ -7,12 +7,13 @@ import threading
 import time
 from contextlib import closing
 from flask import Flask, render_template, request, jsonify
-from flask_socketio import emit
+from flask_socketio import emit, SocketIO
 
 # --- IMPORT MODULI CORE ---
 from core.config import BASE_DIR, get_secret_key, web_cfg, logger
-from core.database import init_db
+from core.database import init_db, get_last_known_states
 import core.state as state
+from core.state import clear_all_nodes, update_node_state
 
 # --- IMPORT SERVIZI ---
 from services.push_service import push_worker
@@ -39,11 +40,30 @@ app.config.update(
 )
 
 # Collegamento SocketIO
-state.socketio.init_app(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+
+# Rendiamo disponibile l'istanza globale socketio nel modulo state
+# in modo che gli altri servizi (mqtt_service, push_service, api_routes) 
+# che importano `from core.state import socketio` continuino a funzionare.
+state.socketio = socketio
 
 # Registrazione Blueprint
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_bp)
+
+# Aggiungi la funzione di sincronizzazione
+def init_fleet_state():
+    """Bootloader: sincronizza Redis con il DB all'avvio del worker."""
+    app.logger.info("Inizializzazione stato flotta su Redis...")
+    clear_all_nodes()
+    
+    last_states = get_last_known_states()
+    for node_id, data in last_states.items():
+        data["status"] = "RECONNECTING"
+        update_node_state(node_id, data)
+
+# Esegui la sincronizzazione prima di far partire i servizi
+init_fleet_state()
 
 # Security Headers
 @app.after_request
@@ -78,7 +98,7 @@ SERVER_COMMIT = get_git_commit()
 def index():
     return render_template('index.html', git_commit=SERVER_COMMIT)
 
-@state.socketio.on('connect')
+@socketio.on('connect')
 def handle_connect():
     state.connected_web_clients.add(request.sid)
     
@@ -95,16 +115,16 @@ def handle_connect():
     
     # Prepariamo la lista unica degli utenti loggati attivi (togliendo i duplicati se un utente ha più tab aperti)
     logged_names = list(set(state.active_logged_users.values()))
-    state.socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
+    socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
 
-@state.socketio.on('disconnect')
+@socketio.on('disconnect')
 def handle_disconnect():
     state.connected_web_clients.discard(request.sid)
     state.active_logged_users.pop(request.sid, None)
     state.socket_auth.pop(request.sid, None)
     
     logged_names = list(set(state.active_logged_users.values()))
-    state.socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
+    socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
 
 def _lookup_auth(username):
     """Ruolo/nodi aggiornati di un utente (usato per rivalidare i socket gia' connessi)."""
@@ -134,4 +154,4 @@ logger.info(f"🚀 Fleet Control Console modulare pronta (Git Rev: {SERVER_COMMI
 
 if __name__ == '__main__':
     port = int(web_cfg.get('port', 9000))
-    state.socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port)

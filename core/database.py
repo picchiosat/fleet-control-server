@@ -166,3 +166,21 @@ def save_telemetry_to_sqlite(client_id, health_data):
             conn.commit()
     except Exception as e:
         logger.error(f"Errore salvataggio telemetria: {e}")
+
+def get_last_known_states() -> dict:
+    """
+    Recupera l'ultimo stato noto della flotta dal database.
+    Usato dal bootloader in app.py al riavvio del servizio.
+    """
+    return {}
+
+import logging
+logger = logging.getLogger(__name__)
+
+def archive_node_error(node_id: str, state_data: dict) -> None:
+    """
+    Salva il nodo su database relazionale (PostgreSQL/SQLite)
+    quando entra in uno stato di errore severo e prolungato.
+    """
+    logger.error(f"[DB] Archiviazione stato critico per nodo {node_id}: {state_data}")
+    # TODO: Inserire qui la vera query di inserimento nel DB

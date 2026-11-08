@@ -20,6 +20,7 @@
         ],
         "tls": false
     },
+
     "web_admin": {
         "default_user": "admin",
         "default_pass": "admin123"
@@ -45,6 +46,7 @@
     "last_heard_limit": 60,
     "web": {
         "port": 9000,
+        "redis_url": "redis://localhost:6379/0",
         "cookie_secure": false,
         "session_hours": 12,
         "trust_proxy": false,

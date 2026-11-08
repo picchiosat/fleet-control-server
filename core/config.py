@@ -5,6 +5,10 @@ import logging
 import threading
 from logging.handlers import RotatingFileHandler
 
+settings = {
+    "REDIS_URL": os.getenv("REDIS_URL", "redis://localhost:6379/0")
+}
+
 # --- PERCORSI DINAMICI ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

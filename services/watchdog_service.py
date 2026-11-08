@@ -1,88 +1,46 @@
 import time
-import sqlite3
-from contextlib import closing
-from core.config import DB_PATH, logger
-import core.state as state
-from services.push_service import broadcast_push_notification
+import json
+import logging
+from core.state import get_all_nodes, update_node_state, delete_node, last_seen as global_last_seen
+from core.database import archive_node_error
 
-watchdog_notified = {}
-
-def run_diagnostics():
-    new_warnings = {}
-    
-    # 1. Analisi Hardware (Temperatura e Spazio Disco)
-    for cid, health in list(state.device_health.items()):
-        node_warns = []
-        state_up = str(state.client_states.get(cid, '')).upper()
-        if 'OFF' in state_up or state_up == '':
-            continue
-            
-        temp = health.get('temp', 0)
-        disk = health.get('disk', 0)
-        
-        # Allarme Temperatura CPU (Soglia 75°C, rientro 68°C)
-        key_temp = f"{cid}_TEMP"
-        if temp >= 75.0:
-            node_warns.append(f"🌡️ Alta Temperatura ({temp}°C)")
-            if not watchdog_notified.get(key_temp):
-                broadcast_push_notification(f"🌡️ ALLARME TERMICO: {cid.upper()}", f"CPU surriscaldata a {temp}°C! Verificare ventilazione.", cid=cid)
-                watchdog_notified[key_temp] = True
-        elif temp < 68.0 and watchdog_notified.get(key_temp):
-            broadcast_push_notification(f"✅ TEMPERATURA OK: {cid.upper()}", f"Temperatura CPU rientrata a {temp}°C.", cid=cid)
-            del watchdog_notified[key_temp]
-
-        # Allarme Spazio Disco (Soglia 90%, rientro 85%)
-        key_disk = f"{cid}_DISK"
-        if disk >= 90.0:
-            node_warns.append(f"💾 Spazio Disco Quasi Pieno ({disk}%)")
-            if not watchdog_notified.get(key_disk):
-                broadcast_push_notification(f"💾 DISCO CRITICO: {cid.upper()}", f"Utilizzo disco al {disk}%. Rischio blocco log MMDVM.", cid=cid)
-                watchdog_notified[key_disk] = True
-        elif disk < 85.0 and watchdog_notified.get(key_disk):
-            del watchdog_notified[key_disk]
-
-        if node_warns:
-            new_warnings.setdefault(cid, []).extend(node_warns)
-
-    # 2. Analisi Radio RF (Media BER sulle ultime 2 ore, solo transiti RF locali)
-    try:
-        with closing(sqlite3.connect(DB_PATH, timeout=10)) as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                SELECT LOWER(client_id), AVG(ber), COUNT(*) 
-                FROM radio_logs 
-                WHERE timestamp >= datetime('now', 'localtime', '-5 minutes') 
-                  AND source_id NOT LIKE '🌐%' 
-                  AND (source_conn IS NULL OR LOWER(source_conn) != 'network')
-                GROUP BY LOWER(client_id)
-            """)
-            rows = cur.fetchall()
-            
-            for cid, avg_ber, cnt in rows:
-                key_ber = f"{cid}_BER"
-                if cnt >= 2 and avg_ber is not None and avg_ber >= 5.0:
-                    new_warnings.setdefault(cid, []).append(f"⚠️ Alto BER RF ({avg_ber:.1f}%)")
-                    if not watchdog_notified.get(key_ber):
-                        broadcast_push_notification(f"⚠️ ANOMALIA RF: {cid.upper()}", f"Rilevato BER medio del {avg_ber:.1f}% negli ultimi {cnt} passaggi RF.", cid=cid)
-                        watchdog_notified[key_ber] = True
-                elif avg_ber is not None and avg_ber < 3.0:
-                    if watchdog_notified.get(key_ber):
-                        del watchdog_notified[key_ber]
-    except Exception as e:
-        logger.error(f"Errore diagnostica BER Watchdog: {e}")
-
-    # Aggiorna il dizionario globale condiviso preservando i riferimenti in memoria
-    changed = new_warnings != state.active_warnings
-    state.active_warnings.clear()
-    state.active_warnings.update(new_warnings)
-    if changed:
-        state.notify_update()
+logger = logging.getLogger(__name__)
 
 def watchdog_loop():
-    time.sleep(15)  # Attesa iniziale all'avvio
+    logger.info("Watchdog service started.")
     while True:
         try:
-            run_diagnostics()
+            now = time.time()
+            nodes = get_all_nodes()
+
+            for node_id, state in nodes.items():
+                # 1. Normalizza lo stato se è una stringa (es. "ONLINE" o JSON serializzato)
+                if isinstance(state, str):
+                    try:
+                        state = json.loads(state)
+                    except Exception:
+                        state = {"status": state}
+                elif not isinstance(state, dict):
+                    continue
+
+                # 2. Recupera last_seen (dal dict, dalla mappa globale di state.py o now)
+                node_seen = global_last_seen.get(node_id, {})
+                last_seen_ts = max(node_seen.values()) if node_seen else now
+                last_seen = float(state.get("last_seen") or last_seen_ts)
+                status = state.get("status", "UNKNOWN")
+
+                # 3. Rilevamento disconnessione (nessun heartbeat per 60 secondi)
+                if now - last_seen > 60 and status not in ["OFFLINE", "ERROR"]:
+                    update_node_state(node_id, {"status": "OFFLINE"})
+                    logger.warning(f"Nodo {node_id} marcato come OFFLINE (timeout heartbeat)")
+
+                # 4. Archiviazione errori critici (in errore per più di 5 minuti)
+                if status == "ERROR" and (now - last_seen > 300):
+                    archive_node_error(node_id, state)
+                    delete_node(node_id)
+                    logger.error(f"Nodo {node_id} rimosso da Redis e archiviato su DB per errore prolungato.")
+
         except Exception as e:
-            logger.error(f"Errore nel loop del Watchdog: {e}")
-        time.sleep(60)
+            logger.error(f"Errore nel ciclo di watchdog: {e}")
+
+        time.sleep(10)
