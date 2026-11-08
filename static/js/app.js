@@ -150,7 +150,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { refreshLogs(); refreshStats(); }, 60000);
     checkServerUpdate();
     setInterval(checkServerUpdate, 3600000); 
-    refreshAprs();
+    // refreshAprs() moved to initUI to prevent race condition
     setInterval(cleanupAprsMarkers, 60000);
 });
 
@@ -526,6 +526,9 @@ async function initUI() {
         const response = await fetch('/api/clients');
         clients = await response.json();
         clients = clients.filter(c => /^[A-Za-z0-9_\-]+$/.test(String(c.id)));
+        
+        // Ricarica APRS solo adesso che conosciamo l'elenco dei nodi della flotta
+        refreshAprs();
 
         const statSelect = document.getElementById('stat-node-filter');
         if (statSelect) {
@@ -1304,23 +1307,38 @@ function plotAprsOnMap(msg) {
     const pos = parseAprsPosition(msg.payload);
     if (!pos) return;
 
-    const source = msg.source;
-    const sourceBase = source.split('-')[0].toLowerCase();
-    
-    // Escludiamo dalla mappa i pacchetti provenienti dai nodi della flotta
+    // Se la lista dei nodi non è ancora pronta, rimanda il rendering
+    if (!clients || clients.length === 0) return;
+
+    const source = (msg.source || "").toUpperCase();
+    const sourceClean = source.replace(/[^A-Z0-9]/g, '');
+    const sourceBase = source.split('-')[0].trim().toLowerCase();
+
+    // Esclusione nodi della flotta (statici / registrati)
     let isFleetNode = false;
     for (let i = 0; i < clients.length; i++) {
-        let cid = clients[i].id.toLowerCase();
-        let cname = (clients[i].name || "").split('-')[0].toLowerCase();
+        const c = clients[i];
+        const cid = (c.id || "").toLowerCase();
+        const cname = (c.name || "").split('-')[0].trim().toLowerCase();
+        
         let ccall = "";
         if (latestStatesData && latestStatesData.general && latestStatesData.general[cid]) {
-            ccall = (latestStatesData.general[cid].callsign || "").split('-')[0].toLowerCase();
+            ccall = (latestStatesData.general[cid].callsign || "").split('-')[0].trim().toLowerCase();
         }
+
+        // Match su ID nodo, nominativo radio o nome configurato
         if (sourceBase === cid || sourceBase === cname || (ccall && sourceBase === ccall)) {
             isFleetNode = true;
             break;
         }
+
+        // Controllo se il nodo ha già coordinate fisse assegnate nella flotta
+        if (c.lat && c.lon && (sourceClean.startsWith(cid.toUpperCase()) || (ccall && sourceClean.startsWith(ccall.toUpperCase())))) {
+            isFleetNode = true;
+            break;
+        }
     }
+
     if (isFleetNode) return;
     
     if (aprsMarkers[source] && fleetMap) {
