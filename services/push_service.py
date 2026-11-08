@@ -4,16 +4,9 @@ from contextlib import closing
 from pywebpush import webpush, WebPushException
 from core.config import config, logger
 from core.database import db_connect
+from core.permissions import node_allowed  # noqa: F401  (re-export per compatibilita')
 
 push_queue = queue.Queue(maxsize=200)
-
-def node_allowed(role, allowed_nodes, cid):
-    if role == 'admin':
-        return True
-    allowed = (allowed_nodes or '').strip().lower()
-    if allowed == 'all':
-        return True
-    return cid in [x.strip().lower() for x in allowed.split(',') if x.strip()]
 
 def broadcast_push_notification(title, body, cid=None):
     if not config.get('webpush'):

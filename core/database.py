@@ -95,6 +95,13 @@ def init_db():
 
 def save_to_sqlite(client_id, data, protocol="DMR"):
     conn = sqlite3.connect(DB_PATH, timeout=10)
+    try:
+        _save_to_sqlite(conn, client_id, data, protocol)
+    finally:
+        conn.close()
+    notify_update('log_aggiornato')
+
+def _save_to_sqlite(conn, client_id, data, protocol):
     c = conn.cursor()
     
     rssi_val = 0
@@ -110,8 +117,6 @@ def save_to_sqlite(client_id, data, protocol="DMR"):
                data.get('slot', 0), round(data.get('duration', 0), 1), round(data.get('ber', 0), 2), 
                str(data.get('src_ext', '')), rssi_val, str(data.get('source', '')), str(data.get('mode', ''))))
     conn.commit()
-    conn.close()
-    notify_update('log_aggiornato')
 
 def audit(username, client_id, command):
     try:
@@ -133,9 +138,23 @@ def prune_old_data():
             n1 = c.rowcount
             c.execute("DELETE FROM audit_logs WHERE timestamp < datetime('now', 'localtime', ?)", (f"-{audit_days} days",))
             n2 = c.rowcount
+            # Telemetria e backup config non venivano mai potati (default generosi, configurabili)
+            tele_days = int(cfg.get("telemetry_retention_days", 90))
+            n3 = 0
+            if tele_days > 0:
+                c.execute("DELETE FROM telemetry_logs WHERE timestamp < datetime('now', 'localtime', ?)", (f"-{tele_days} days",))
+                n3 = c.rowcount
+            keep = int(cfg.get("config_backups_keep", 100))
+            n4 = 0
+            if keep > 0:
+                c.execute("""DELETE FROM config_backups WHERE id NOT IN (
+                                 SELECT id FROM config_backups b
+                                 WHERE b.client_id = config_backups.client_id AND b.service = config_backups.service
+                                 ORDER BY id DESC LIMIT ?)""", (keep,))
+                n4 = c.rowcount
             conn.commit()
-        if n1 or n2:
-            logger.info(f"🧹 Pulizia DB: {n1} ascolti e {n2} audit rimossi.")
+        if n1 or n2 or n3 or n4:
+            logger.info(f"🧹 Pulizia DB: {n1} ascolti, {n2} audit, {n3} telemetrie e {n4} backup config rimossi.")
     except Exception as e:
         logger.error(f"❌ Errore pulizia DB: {e}")
 

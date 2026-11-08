@@ -17,7 +17,8 @@
             "devices/#",
             "data/#",
             "aprs-gateway/aprs"
-        ]
+        ],
+        "tls": false
     },
     "web_admin": {
         "default_user": "admin",
@@ -41,5 +42,18 @@
     },
     "log_max_mb": 50,
     "log_backup_count": 10,
-    "last_heard_limit": 60
+    "last_heard_limit": 60,
+    "web": {
+        "port": 9000,
+        "cookie_secure": false,
+        "session_hours": 12,
+        "trust_proxy": false,
+        "cors_origins": "*",
+        "require_login_for_read": false,
+        "ota_enabled": true
+    },
+    "retention_days": 90,
+    "audit_retention_days": 365,
+    "telemetry_retention_days": 90,
+    "config_backups_keep": 100
 }

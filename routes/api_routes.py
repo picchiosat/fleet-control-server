@@ -14,6 +14,7 @@ import core.state as state
 from services.mqtt_service import mqtt_publish
 from services.push_service import node_allowed
 from routes.auth_routes import get_auth, json_body, err
+from services.scheduler_service import PRIVILEGED_COMMANDS as SCHED_PRIVILEGED
 
 # --- AGGIUNTE PER GITEA BACKGROUND CHECK ---
 GLOBAL_SERVER_UPDATE_AVAILABLE = False
@@ -254,7 +255,7 @@ def update_nodes():
         return err("Non autorizzato", 403)
     if not mqtt_publish("devices/control/request", "update"):
         return err("Broker MQTT non raggiungibile", 503)
-    logger.info(f"討 REQ CONFIG inviata a tutta la flotta da {auth['username']}")
+    logger.info(f"🔄 REQ CONFIG inviata a tutta la flotta da {auth['username']}")
     audit(auth['username'], '*', 'REQ_CONFIG_ALL')
     return jsonify({"success": True})
 
@@ -411,6 +412,8 @@ def apply_server_update():
     auth = get_auth()
     if not auth or auth['role'] != 'admin':
         return err("Non autorizzato", 403)
+    if read_config().get('web', {}).get('ota_enabled', True) is False:
+        return err("Aggiornamento OTA disabilitato dalla configurazione", 403)
     
     try:
         audit(auth['username'], 'SERVER', 'SERVER_OTA_UPDATE')
@@ -660,6 +663,22 @@ def add_schedule():
     if not start_time or not end_time:
         return err("Date di inizio e fine obbligatorie")
 
+    # Validazione profili: stessa logica di /api/command (i comandi privilegiati solo per admin)
+    profiles_to_check = [target_profile] + ([restore_profile] if restore_profile != 'NONE' else [])
+    for prof in profiles_to_check:
+        if prof in SCHED_PRIVILEGED:
+            if auth['role'] != 'admin':
+                return err("Solo gli amministratori possono schedulare questo comando.", 403)
+        elif not (PROFILE_KEY_RE.match(prof) or prof in SIMPLE_COMMANDS):
+            return err("Profilo non valido")
+
+    # Validazione nodi target
+    if target_nodes != 'all':
+        node_list = [x.strip() for x in target_nodes.split(',') if x.strip()]
+        if not node_list or not all(CID_RE.match(x) for x in node_list):
+            return err("ID nodo non valido")
+        target_nodes = ','.join(node_list)
+
     # Verifica permessi per node_admin
     if auth['role'] == 'node_admin':
         allowed = set(x.strip().lower() for x in auth['allowed_nodes'].split(','))
@@ -701,7 +720,7 @@ def cancel_schedule(sid):
     try:
         with closing(db_connect(row=True)) as conn:
             c = conn.cursor()
-            c.execute("SELECT id, title, target_nodes, status, restore_profile FROM profile_schedules WHERE id = ?", (sid,))
+            c.execute("SELECT id, title, target_nodes, status, restore_profile, created_by FROM profile_schedules WHERE id = ?", (sid,))
             row = c.fetchone()
             if not row:
                 return err("Schedulazione non trovata", 404)
@@ -715,8 +734,9 @@ def cancel_schedule(sid):
 
             # Se era attiva, ripristina subito il profilo
             if row['status'] == 'ACTIVE' and row['restore_profile'] and row['restore_profile'] != 'NONE':
-                from services.scheduler_service import apply_scheduled_profile
-                apply_scheduled_profile(row['target_nodes'], row['restore_profile'], "CANCEL_RESTORE")
+                from services.scheduler_service import apply_scheduled_profile, _is_admin
+                apply_scheduled_profile(row['target_nodes'], row['restore_profile'], "CANCEL_RESTORE",
+                                        allow_privileged=_is_admin(conn, row['created_by']))
 
             conn.execute("UPDATE profile_schedules SET status = 'CANCELLED' WHERE id = ?", (sid,))
             conn.commit()

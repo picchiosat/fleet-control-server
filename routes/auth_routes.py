@@ -57,11 +57,20 @@ LOGIN_WINDOW_SEC = 300
 login_attempts = {}
 login_lock = threading.Lock()
 
+LOOPBACK_ADDRS = ('127.0.0.1', '::1')
+
 def client_ip():
+    fwd = request.headers.get('X-Forwarded-For', '')
     if config.get('web', {}).get('trust_proxy'):
-        fwd = request.headers.get('X-Forwarded-For', '')
         if fwd:
             return fwd.split(',')[0].strip()
+    elif fwd and request.remote_addr in LOOPBACK_ADDRS:
+        # Connessione dal proxy locale: solo lui puo' avere remote_addr loopback, quindi
+        # fidarsi dell'ultimo valore (quello aggiunto dal proxy) e' sicuro e evita che
+        # tutti gli utenti condividano 127.0.0.1 (lockout globale del login).
+        last = fwd.split(',')[-1].strip()
+        if last:
+            return last
     return request.remote_addr or 'unknown'
 
 def login_blocked(ip):

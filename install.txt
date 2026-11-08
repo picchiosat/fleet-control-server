@@ -36,7 +36,7 @@ Install project requirements:
 The server handles the web interface and user permissions.
 
 Steps:
-1. Configure 'config.json' using 'config.example.json'.
+1. Configure 'config.json' using 'config.json.example'.
 2. Enter MQTT credentials and VAPID keys.
 3. Define repeaters in the 'clients.json' file.
 4. Install production WSGI server packages (if not in requirements):
@@ -59,7 +59,7 @@ They will NOT work over standard HTTP.
 4. RUNNING AS A SERVICE (SYSTEMD)
 ------------------------------------------------------------
 ⚠️ IMPORTANT (VENV USERS): Before copying the service file, 
-open 'fleet-control.service' and ensure the paths point to your 
+open 'fleet-console.service' and ensure the paths point to your 
 virtual environment.
 
 Example:
@@ -110,7 +110,7 @@ Installa i requisiti del progetto:
 2. SETUP DEL SERVER
 ------------------------------------------------------------
 Passaggi:
-1. Configura 'config.json' partendo da 'config.example.json'.
+1. Configura 'config.json' partendo da 'config.json.example'.
 2. Inserisci credenziali MQTT e chiavi VAPID.
 3. Definisci i ripetitori in 'clients.json'.
 4. Avvia il server di produzione: 
@@ -128,7 +128,7 @@ Passaggi:
 4. ESECUZIONE COME SERVIZIO (SYSTEMD)
 ------------------------------------------------------------
 ⚠️ IMPORTANTE (PER UTENTI VENV): Prima di copiare il file di 
-servizio, apri 'fleet-control.service' e assicurati che i percorsi 
+servizio, apri 'fleet-console.service' e assicurati che i percorsi 
 puntino al tuo ambiente virtuale!
 
 Esempio:

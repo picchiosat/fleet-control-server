@@ -71,7 +71,7 @@ def on_message(client, userdata, msg):
             state.node_logs[cid].append(log_entry)
             
             # Inoltra in tempo reale via WebSocket
-            state.socketio.emit(f"live_log_{cid}", log_entry)
+            state.emit_to_authorized(f"live_log_{cid}", log_entry, cid=cid)
             
             # B) Parsa le versioni
             if cid not in state.node_versions:
@@ -134,7 +134,7 @@ def on_message(client, userdata, msg):
                     
                     state.aprs_msgs.append(aprs_data)
                     logger.info(f"📍 APRS (da log {svc_name}): {src_part} -> {dest_part}")
-                    state.socketio.emit('aprs_msg', aprs_data)
+                    state.emit_aprs(aprs_data)
             
             # NOTA: Rimosso il return incondizionato qui, perché il log deve completare la sua corsa
             # e non bloccare eventuali altre logiche!
@@ -399,7 +399,7 @@ def on_message(client, userdata, msg):
                     from collections import deque
                     state.aprs_msgs = deque(maxlen=100)
                 state.aprs_msgs.append(data)
-                state.socketio.emit('aprs_msg', data)
+                state.emit_aprs(data)
             except Exception as e:
                 logger.error(f"Errore parsing APRS: {e}")
 
@@ -527,6 +527,16 @@ def on_message(client, userdata, msg):
 mqtt_id = config.get('mqtt', {}).get('client_id', 'flask_backend_generic')
 mqtt_backend = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION2, mqtt_id)
 mqtt_backend.username_pw_set(config.get('mqtt', {}).get('user', ''), config.get('mqtt', {}).get('password', ''))
+# TLS opzionale (default: disattivato, comportamento invariato). In config.json:
+#   "mqtt": { ..., "port": 8883, "tls": true, "ca_certs": "/etc/ssl/certs/ca-certificates.crt" }
+if config.get('mqtt', {}).get('tls'):
+    import ssl
+    try:
+        mqtt_backend.tls_set(ca_certs=config.get('mqtt', {}).get('ca_certs') or None,
+                             cert_reqs=ssl.CERT_REQUIRED)
+        logger.info("🔒 MQTT: TLS abilitato")
+    except Exception as e:
+        logger.error(f"MQTT TLS non configurabile: {e}")
 mqtt_backend.on_connect = on_connect
 mqtt_backend.on_disconnect = on_disconnect
 mqtt_backend.on_message = on_message

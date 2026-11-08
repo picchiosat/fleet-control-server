@@ -4,7 +4,9 @@ gevent.monkey.patch_all()
 import os
 import subprocess
 import threading
-from flask import Flask, render_template, request
+import time
+from contextlib import closing
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import emit
 
 # --- IMPORT MODULI CORE ---
@@ -15,11 +17,12 @@ import core.state as state
 # --- IMPORT SERVIZI ---
 from services.push_service import push_worker
 from services.watchdog_service import watchdog_loop
-from services.scheduler_service import auto_update_ids
+from services.scheduler_service import auto_update_ids, schedule_loop
 import services.mqtt_service as mqtt_svc
 
 # --- IMPORT ROTTE / BLUEPRINTS ---
-from routes.auth_routes import auth_bp
+from routes.auth_routes import auth_bp, get_auth
+from core.database import db_connect
 from routes.api_routes import api_bp
 
 # Inizializzazione Flask
@@ -52,6 +55,17 @@ def add_security_headers(resp):
         resp.headers['Cache-Control'] = 'no-store'
     return resp
 
+# Se in config.json -> "web": {"require_login_for_read": true} le API di sola lettura richiedono il login.
+# Default: disattivato (la dashboard pubblica funziona come prima).
+READ_PROTECTED_PATHS = ('/api/states', '/api/logs', '/api/stats', '/api/clients')
+
+@app.before_request
+def enforce_read_login():
+    if web_cfg.get('require_login_for_read') and request.path in READ_PROTECTED_PATHS:
+        if not get_auth():
+            return jsonify({"success": False, "error": "Login richiesto"}), 401
+    return None
+
 def get_git_commit():
     try:
         return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
@@ -64,16 +78,18 @@ SERVER_COMMIT = get_git_commit()
 def index():
     return render_template('index.html', git_commit=SERVER_COMMIT)
 
-from flask import session
-
 @state.socketio.on('connect')
 def handle_connect():
     state.connected_web_clients.add(request.sid)
     
     # Se l'utente è loggato (session), associamo il suo username al SID
-    user = session.get('user')
-    if user:
-        state.active_logged_users[request.sid] = user
+    auth = get_auth()
+    if auth:
+        state.active_logged_users[request.sid] = auth['username']
+        state.socket_auth[request.sid] = {
+            "username": auth['username'], "role": auth['role'],
+            "allowed_nodes": auth['allowed_nodes'], "ts": time.time()
+        }
 
     emit('mqtt_status', {'connected': mqtt_svc.mqtt_connected_status})
     
@@ -85,9 +101,24 @@ def handle_connect():
 def handle_disconnect():
     state.connected_web_clients.discard(request.sid)
     state.active_logged_users.pop(request.sid, None)
+    state.socket_auth.pop(request.sid, None)
     
     logged_names = list(set(state.active_logged_users.values()))
     state.socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
+
+def _lookup_auth(username):
+    """Ruolo/nodi aggiornati di un utente (usato per rivalidare i socket gia' connessi)."""
+    try:
+        with closing(db_connect(row=True)) as conn:
+            row = conn.execute("SELECT role, allowed_nodes FROM users WHERE username = ?", (username,)).fetchone()
+        if not row:
+            return None
+        return {"role": row['role'], "allowed_nodes": row['allowed_nodes'] or ''}
+    except Exception as e:
+        logger.error(f"lookup auth socket: {e}")
+        return None
+
+state.auth_lookup = _lookup_auth
 
 # --- INIZIALIZZAZIONE SISTEMA & THREAD ---
 init_db()
@@ -95,11 +126,12 @@ state.seed_last_seen()
 mqtt_svc.start_mqtt()
 
 threading.Thread(target=auto_update_ids, daemon=True).start()
+threading.Thread(target=schedule_loop, daemon=True).start()
 threading.Thread(target=push_worker, daemon=True).start()
 threading.Thread(target=watchdog_loop, daemon=True).start()
 
 logger.info(f"🚀 Fleet Control Console modulare pronta (Git Rev: {SERVER_COMMIT})")
 
 if __name__ == '__main__':
-    port = int(config.get('web', {}).get('port', 9000)) if 'config' in locals() else 9000
+    port = int(web_cfg.get('port', 9000))
     state.socketio.run(app, host='0.0.0.0', port=port)

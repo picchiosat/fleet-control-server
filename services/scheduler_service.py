@@ -45,17 +45,33 @@ def auto_update_ids():
                 download_logic()
                 prune_old_data()
                 time.sleep(65)
-            
-            # Controllo schedulazioni profili
+        except Exception as e:
+            logger.error(f"⚠️ Errore nel thread aggiornamento ID: {e}")
+        time.sleep(15)
+
+def schedule_loop():
+    """Thread dedicato alle schedulazioni: non e' piu' bloccato dai download degli ID."""
+    while True:
+        try:
             check_profile_schedules()
         except Exception as e:
-            logger.error(f"⚠️ Errore nel thread scheduler: {e}")
+            logger.error(f"⚠️ Errore nel thread schedulazioni: {e}")
         time.sleep(15)
 
 from contextlib import closing
 from core.database import db_connect, audit
 
-def apply_scheduled_profile(target_nodes, profile, action_type="SWITCH"):
+# Comandi che le API riservano agli admin: una schedulazione li puo' inviare solo se creata da un admin.
+PRIVILEGED_COMMANDS = {'REBOOT', 'RESET_HAT', 'UPDATE_AGENT'}
+
+def _is_admin(conn, username):
+    row = conn.execute("SELECT role FROM users WHERE username = ?", (username,)).fetchone()
+    return bool(row) and row[0] == 'admin'
+
+def apply_scheduled_profile(target_nodes, profile, action_type="SWITCH", allow_privileged=False):
+    if str(profile).strip().upper() in PRIVILEGED_COMMANDS and not allow_privileged:
+        logger.warning(f"🚫 Scheduler: comando privilegiato '{profile}' ignorato (schedulazione non creata da un admin)")
+        return
     from services.mqtt_service import mqtt_publish
     from core.config import CLIENTS_PATH
     import json
@@ -111,7 +127,7 @@ def check_profile_schedules():
                 if status == 'SCHEDULED':
                     if st_norm <= now_str < end_norm:
                         logger.info(f"▶️ Avvio schedulazione ID {sid} - '{title}' -> Profilo {target_prof}")
-                        apply_scheduled_profile(nodes, target_prof, "START")
+                        apply_scheduled_profile(nodes, target_prof, "START", allow_privileged=_is_admin(conn, row['created_by']))
                         conn.execute("UPDATE profile_schedules SET status = 'ACTIVE' WHERE id = ?", (sid,))
                         conn.commit()
                         audit("SCHEDULER", nodes, f"START_SCHED_{sid}_{target_prof}")
@@ -125,7 +141,7 @@ def check_profile_schedules():
                     if now_str >= end_norm:
                         logger.info(f"⏹️ Fine schedulazione ID {sid} - '{title}' -> Ripristino {restore_prof}")
                         if restore_prof and restore_prof.upper() != 'NONE':
-                            apply_scheduled_profile(nodes, restore_prof, "RESTORE")
+                            apply_scheduled_profile(nodes, restore_prof, "RESTORE", allow_privileged=_is_admin(conn, row['created_by']))
                         conn.execute("UPDATE profile_schedules SET status = 'COMPLETED' WHERE id = ?", (sid,))
                         conn.commit()
                         audit("SCHEDULER", nodes, f"RESTORE_SCHED_{sid}_{restore_prof}")

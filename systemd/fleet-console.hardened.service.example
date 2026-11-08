@@ -1,0 +1,37 @@
+# VERSIONE PIU' SICURA (opzionale) del servizio. Il file fleet-console.service originale resta invariato.
+#
+# Preparazione (una tantum, da root):
+#   useradd --system --home /opt/fleet-control-server --shell /usr/sbin/nologin fleet
+#   chown -R fleet:fleet /opt/fleet-control-server
+#   cp systemd/fleet-console.hardened.service.example /etc/systemd/system/fleet-console.service
+#   systemctl daemon-reload && systemctl restart fleet-console
+#
+# Se usi un reverse proxy (consigliato) cambia anche il bind in 127.0.0.1:9000 qui sotto.
+# L'aggiornamento OTA (git pull) continua a funzionare perche' l'utente "fleet" possiede la cartella.
+[Unit]
+Description=Fleet Control Console - Central Hub
+After=network.target
+
+[Service]
+Type=simple
+User=fleet
+Group=fleet
+WorkingDirectory=/opt/fleet-control-server
+ExecStart=/opt/fleet-control-server/venv/bin/gunicorn -k "geventwebsocket.gunicorn.workers.GeventWebSocketWorker" -w 1 --graceful-timeout 2 --bind 0.0.0.0:9000 app:app
+TimeoutStopSec=3
+Restart=always
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/fleet-control-server
+
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=fleet-console
+
+[Install]
+WantedBy=multi-user.target
