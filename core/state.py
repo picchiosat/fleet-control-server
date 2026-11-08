@@ -48,6 +48,9 @@ gateway_states = {}
 active_warnings = {}
 active_calls = {}
 operating_modes = {}
+node_logs = {}  # In-memory circular buffer for live logs
+connected_web_clients = set()
+active_logged_users = {}
 
 # Caricamento iniziale cache telemetria
 if os.path.exists(CACHE_FILE):

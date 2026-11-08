@@ -50,6 +50,24 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS audit_logs
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME, username TEXT, 
                   client_id TEXT, command TEXT)''')
+                  
+    c.execute('''CREATE TABLE IF NOT EXISTS config_backups
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME, client_id TEXT,
+                  service TEXT, config_text TEXT, username TEXT)''')
+                  
+    c.execute('''CREATE TABLE IF NOT EXISTS telemetry_logs
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp DATETIME, client_id TEXT,
+                  cpu REAL, temp REAL, ram REAL, disk REAL)''')
+                  
+    c.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_logs_client_ts ON telemetry_logs(client_id, timestamp)")
+
+    c.execute('''CREATE TABLE IF NOT EXISTS profile_schedules
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, target_nodes TEXT,
+                  target_profile TEXT, restore_profile TEXT, start_time DATETIME,
+                  end_time DATETIME, status TEXT DEFAULT 'SCHEDULED', created_by TEXT,
+                  created_at DATETIME DEFAULT (datetime('now', 'localtime')))''')
+
+    c.execute("CREATE INDEX IF NOT EXISTS idx_sched_status_time ON profile_schedules(status, start_time, end_time)")
 
     c.execute("CREATE INDEX IF NOT EXISTS idx_radio_logs_ts ON radio_logs(timestamp)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_radio_logs_client_ts ON radio_logs(client_id, timestamp)")
@@ -120,3 +138,12 @@ def prune_old_data():
             logger.info(f"🧹 Pulizia DB: {n1} ascolti e {n2} audit rimossi.")
     except Exception as e:
         logger.error(f"❌ Errore pulizia DB: {e}")
+
+def save_telemetry_to_sqlite(client_id, health_data):
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute("INSERT INTO telemetry_logs (timestamp, client_id, cpu, temp, ram, disk) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?)",
+                         (client_id, health_data.get('cpu', 0), health_data.get('temp', 0), health_data.get('ram', 0), health_data.get('disk', 0)))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Errore salvataggio telemetria: {e}")

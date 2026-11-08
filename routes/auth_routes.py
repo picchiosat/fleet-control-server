@@ -12,7 +12,7 @@ from core.database import db_connect, audit
 auth_bp = Blueprint('auth', __name__)
 
 # --- COSTANTI & REGEX VALIDAZIONE ---
-VALID_ROLES = ('admin', 'operator')
+VALID_ROLES = ('admin', 'node_admin', 'operator')
 USERNAME_RE = re.compile(r'^[A-Za-z0-9_.@\-]{3,32}$')
 MIN_PASSWORD_LEN = 8
 

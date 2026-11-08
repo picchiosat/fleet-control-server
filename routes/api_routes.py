@@ -109,7 +109,9 @@ def get_states():
         "versions": clean_versions,
         "gateway_states": enriched_gateway_states,
         "warnings": state.active_warnings,
-        "modes": getattr(state, "operating_modes", {})
+        "modes": getattr(state, "operating_modes", {}),
+        "web_users": len(getattr(state, "connected_web_clients", [])),
+        "logged_users": list(set(getattr(state, "active_logged_users", {}).values()))
     })
 
 @api_bp.route('/api/stats')
@@ -132,7 +134,8 @@ def get_stats():
     top_tgs = [{"target": row[0], "count": row[1]} for row in c.fetchall()]
     
     c.execute(f"""SELECT source_id, COUNT(*) as cnt FROM radio_logs 
-                 WHERE source_id NOT LIKE '倹%' 
+                 WHERE source_id NOT LIKE '🌐%' 
+                 AND source_id NOT LIKE '%'
                  AND timestamp >= date('now', 'localtime') AND timestamp < date('now', 'localtime', '+1 day'){node_filter} 
                  GROUP BY source_id ORDER BY cnt DESC LIMIT 5""", params)
     top_calls = [{"call": row[0], "count": row[1]} for row in c.fetchall()]
@@ -185,7 +188,8 @@ def cmd():
     if not mqtt_publish(f"servizi/{cid}/cmnd", cmd_type):
         return err("Broker MQTT non raggiungibile - comando non inviato", 503)
 
-    audit(auth['username'], cid, cmd_type)
+    audit_label = f"SWITCH_PROFILE_{cmd_type.upper()}" if cmd_type in known_profile_keys(cid) else cmd_type
+    audit(auth['username'], cid, audit_label)
     state.client_telemetry[cid] = {"ts1": "[>] Inviato...", "ts2": "[>] Inviato...", "alt": ""}
     return jsonify({"success": True})
 
@@ -221,7 +225,7 @@ def global_cmd():
 @api_bp.route('/api/service_control', methods=['POST'])
 def service_control():
     auth = get_auth()
-    if not auth or auth['role'] != 'admin':
+    if not auth or (auth['role'] != 'admin' and auth['role'] != 'node_admin'):
         return err("Non autorizzato", 403)
 
     d = json_body()
@@ -323,7 +327,7 @@ def save_config_api():
 @api_bp.route('/api/config_file/<cid>/<service>', methods=['GET'])
 def get_config_file(cid, service):
     auth = get_auth()
-    if not auth or auth['role'] != 'admin':
+    if not auth or (auth['role'] != 'admin' and auth['role'] != 'node_admin'):
         return err("Non autorizzato", 403)
     cid = cid.lower()
     if not node_allowed(auth['role'], auth['allowed_nodes'], cid):
@@ -339,7 +343,7 @@ def get_config_file(cid, service):
 @api_bp.route('/api/config_file', methods=['POST'])
 def save_config_file():
     auth = get_auth()
-    if not auth or auth['role'] != 'admin':
+    if not auth or (auth['role'] != 'admin' and auth['role'] != 'node_admin'):
         return err("Non autorizzato", 403)
 
     d = json_body()
@@ -359,6 +363,15 @@ def save_config_file():
     if not mqtt_publish(f"devices/{cid}/config_set/{service}", json.dumps(new_config)):
         return err("Broker MQTT non raggiungibile", 503)
     audit(auth['username'], cid, f"EDIT_CONFIG_{service.upper()}")
+    
+    # Salva Backup
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute("INSERT INTO config_backups (timestamp, client_id, service, config_text, username) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?)",
+                         (cid, service, new_config['raw_text'], auth['username']))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Errore salvataggio backup config: {e}")
 
     if cid not in state.device_configs:
         state.device_configs[cid] = {}
@@ -380,11 +393,14 @@ def get_server_update_status():
     # Eseguiamo il controllo sincrono se è passata 1 ora OPPURE se forzato dal client
     if force_check or (time.time() - LAST_GITEA_CHECK_TIME > 3600):
         try:
-            subprocess.run(['git', 'fetch'], timeout=10, cwd=BASE_DIR)
-            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR).decode('utf-8').strip()
-            remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR).decode('utf-8').strip()
+            # Timeout molto basso per evitare di killare il worker Gunicorn
+            subprocess.run(['git', 'fetch'], timeout=2, cwd=BASE_DIR)
+            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=BASE_DIR, timeout=1).decode('utf-8').strip()
+            remote_hash = subprocess.check_output(['git', 'rev-parse', '@{u}'], cwd=BASE_DIR, timeout=1).decode('utf-8').strip()
             GLOBAL_SERVER_UPDATE_AVAILABLE = (local_hash != remote_hash)
             LAST_GITEA_CHECK_TIME = time.time()
+        except subprocess.TimeoutExpired:
+            logger.warning("Gitea check andato in timeout, ignorato per non bloccare Gunicorn.")
         except Exception as e:
             logger.error(f"Errore controllo Gitea: {e}")
             
@@ -449,3 +465,264 @@ def serve_sw():
 @api_bp.route('/icon-512.png')
 def serve_icon():
     return send_from_directory(BASE_DIR, 'icon-512.png')
+
+
+@api_bp.route('/api/logs/<cid>', methods=['GET'])
+def get_node_logs(cid):
+    auth = get_auth()
+    if not auth:
+        return err("Non autorizzato", 401)
+    
+    cid = cid.strip().lower()
+    if not node_allowed(auth['role'], auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
+        
+    logs = list(state.node_logs.get(cid, []))
+    return jsonify({"success": True, "logs": logs})
+
+@api_bp.route('/api/config_backups/<cid>/<service>', methods=['GET'])
+def get_config_backups(cid, service):
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Non autorizzato", 403)
+    
+    cid = cid.strip().lower()
+    if not node_allowed(auth['role'], auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
+        
+    try:
+        with closing(db_connect()) as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, timestamp, username FROM config_backups WHERE client_id = ? AND service = ? ORDER BY id DESC LIMIT 20", (cid, service))
+            rows = [{"id": r[0], "timestamp": r[1], "username": r[2]} for r in c.fetchall()]
+        return jsonify({"success": True, "backups": rows})
+    except Exception as e:
+        return err(str(e))
+
+@api_bp.route('/api/config_backups/<int:backup_id>', methods=['GET'])
+def get_config_backup_content(backup_id):
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Non autorizzato", 403)
+        
+    try:
+        with closing(db_connect()) as conn:
+            c = conn.cursor()
+            c.execute("SELECT client_id, config_text FROM config_backups WHERE id = ?", (backup_id,))
+            row = c.fetchone()
+            if not row:
+                return err("Backup non trovato", 404)
+            if not node_allowed(auth['role'], auth['allowed_nodes'], row[0]):
+                return err("Permesso negato", 403)
+            return jsonify({"success": True, "text": row[1]})
+    except Exception as e:
+        return err(str(e))
+
+import zipfile
+import io
+from flask import send_file
+
+@api_bp.route('/api/fleet_backup', methods=['GET'])
+def get_fleet_backup():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Non autorizzato", 403)
+    
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for cid, configs in state.device_configs.items():
+            for service, conf in configs.items():
+                if isinstance(conf, dict) and 'raw_text' in conf:
+                    zf.writestr(f"{cid}/{service.upper()}.ini", conf['raw_text'])
+    memory_file.seek(0)
+    audit(auth['username'], '-', "DOWNLOAD_FLEET_BACKUP")
+    return send_file(memory_file, download_name=f"fleet_configs_{time.strftime('%Y%m%d')}.zip", as_attachment=True)
+
+@api_bp.route('/api/analytics/<cid>', methods=['GET'])
+def get_analytics(cid):
+    auth = get_auth()
+    if not auth:
+        return err("Non autorizzato", 401)
+    
+    cid = cid.strip().lower()
+    if not node_allowed(auth['role'], auth['allowed_nodes'], cid):
+        return err("Permesso negato per questo nodo", 403)
+        
+    try:
+        hours = int(request.args.get('hours', 24))
+    except ValueError:
+        hours = 24
+
+    try:
+        with closing(db_connect()) as conn:
+            c = conn.cursor()
+            
+            # Telemetria: aggreghiamo per ora
+            c.execute(f"""SELECT strftime('%Y-%m-%d %H:00:00', timestamp) as hr, 
+                                 AVG(cpu), MAX(temp), AVG(ram)
+                          FROM telemetry_logs 
+                          WHERE client_id = ? AND timestamp >= datetime('now', 'localtime', ?) 
+                          GROUP BY hr ORDER BY hr""", (cid, f"-{hours} hours"))
+            telemetry_data = [{"time": r[0], "cpu": round(r[1], 1) if r[1] else 0, "temp": round(r[2], 1) if r[2] else 0, "ram": round(r[3], 1) if r[3] else 0} for r in c.fetchall()]
+            
+            # RF BER & Transiti (ignoriamo rete e beacon, prendiamo solo traffico vero locale)
+            c.execute(f"""SELECT strftime('%Y-%m-%d %H:00:00', timestamp) as hr, 
+                                 COUNT(*), AVG(ber), AVG(rssi)
+                          FROM radio_logs 
+                          WHERE LOWER(client_id) = ? AND timestamp >= datetime('now', 'localtime', ?)
+                            AND source_id NOT LIKE '🌐%' 
+                            AND source_id NOT LIKE '%'
+                            AND (LOWER(source_conn) = 'rf' OR source_conn = '')
+                          GROUP BY hr ORDER BY hr""", (cid, f"-{hours} hours"))
+            rf_data = [{"time": r[0], "count": r[1], "ber": round(r[2], 2) if r[2] else 0, "rssi": round(r[3], 1) if r[3] else 0} for r in c.fetchall()]
+            
+        return jsonify({"success": True, "telemetry": telemetry_data, "rf": rf_data})
+    except Exception as e:
+        logger.error(f"Analytics query error: {e}")
+        return err(str(e))
+
+@api_bp.route('/api/audit_logs', methods=['GET'])
+def get_audit_logs():
+    auth = get_auth()
+    if not auth or auth['role'] != 'admin':
+        return err("Non autorizzato", 403)
+        
+    try:
+        with closing(db_connect()) as conn:
+            c = conn.cursor()
+            c.execute("SELECT timestamp, username, client_id, command FROM audit_logs ORDER BY id DESC LIMIT 50")
+            rows = [{"time": r[0], "user": r[1], "node": r[2], "cmd": r[3]} for r in c.fetchall()]
+        return jsonify({"success": True, "logs": rows})
+    except Exception as e:
+        return err(str(e))
+
+@api_bp.route('/api/aprs', methods=['GET'])
+def get_aprs():
+    auth = get_auth()
+    if not auth:
+        return err("Non autorizzato", 401)
+    msgs = list(getattr(state, 'aprs_msgs', []))
+    # msgs è una lista di dizionari dal più vecchio al più nuovo, la restituiamo direttamente
+    return jsonify(msgs)
+
+# --- SCHEDULAZIONE PROFILI (CALENDAR SCHEDULER) ---
+
+@api_bp.route('/api/schedules', methods=['GET'])
+def get_schedules():
+    auth = get_auth()
+    if not auth or auth['role'] not in ('admin', 'node_admin'):
+        return err("Non autorizzato", 403)
+        
+    try:
+        with closing(db_connect(row=True)) as conn:
+            c = conn.cursor()
+            c.execute("""SELECT id, title, target_nodes, target_profile, restore_profile, 
+                                 start_time, end_time, status, created_by, created_at 
+                          FROM profile_schedules 
+                          ORDER BY id DESC LIMIT 50""")
+            rows = [dict(r) for r in c.fetchall()]
+            
+            # Filtro per node_admin se non ha 'all'
+            if auth['role'] == 'node_admin' and 'all' not in auth['allowed_nodes'].split(','):
+                allowed_set = set(x.strip().lower() for x in auth['allowed_nodes'].split(','))
+                filtered = []
+                for r in rows:
+                    t_nodes = set(x.strip().lower() for x in r['target_nodes'].split(','))
+                    if t_nodes.issubset(allowed_set):
+                        filtered.append(r)
+                rows = filtered
+                
+        return jsonify({"success": True, "schedules": rows})
+    except Exception as e:
+        logger.error(f"Errore caricamento schedulazioni: {e}")
+        return err(str(e))
+
+@api_bp.route('/api/schedules', methods=['POST'])
+def add_schedule():
+    auth = get_auth()
+    if not auth or auth['role'] not in ('admin', 'node_admin'):
+        return err("Non autorizzato", 403)
+
+    d = json_body()
+    title = str(d.get('title', '')).strip()
+    target_nodes = str(d.get('target_nodes', '')).strip().lower()
+    target_profile = str(d.get('target_profile', '')).strip().upper()
+    restore_profile = str(d.get('restore_profile', 'NONE')).strip().upper()
+    start_time = str(d.get('start_time', '')).strip()
+    end_time = str(d.get('end_time', '')).strip()
+
+    if not title:
+        return err("Titolo evento obbligatorio")
+    if not target_nodes:
+        return err("Nodi target obbligatori")
+    if not target_profile:
+        return err("Profilo target obbligatorio")
+    if not start_time or not end_time:
+        return err("Date di inizio e fine obbligatorie")
+
+    # Verifica permessi per node_admin
+    if auth['role'] == 'node_admin':
+        allowed = set(x.strip().lower() for x in auth['allowed_nodes'].split(','))
+        if 'all' not in allowed:
+            if target_nodes == 'all':
+                return err("Come Node Admin non puoi schedulare su tutta la flotta", 403)
+            req_nodes = set(x.strip().lower() for x in target_nodes.split(','))
+            if not req_nodes.issubset(allowed):
+                return err("Non hai i permessi per tutti i nodi selezionati", 403)
+
+    # Normalizza formati orari (accetta 'YYYY-MM-DDTHH:MM' o 'YYYY-MM-DD HH:MM')
+    st_norm = start_time.replace('T', ' ')
+    if len(st_norm) == 16: st_norm += ':00'
+    end_norm = end_time.replace('T', ' ')
+    if len(end_norm) == 16: end_norm += ':00'
+
+    if st_norm >= end_norm:
+        return err("L'orario di fine deve essere successivo a quello di inizio")
+
+    try:
+        with closing(db_connect()) as conn:
+            conn.execute("""INSERT INTO profile_schedules 
+                             (title, target_nodes, target_profile, restore_profile, start_time, end_time, status, created_by) 
+                             VALUES (?, ?, ?, ?, ?, ?, 'SCHEDULED', ?)""",
+                         (title, target_nodes, target_profile, restore_profile, st_norm, end_norm, auth['username']))
+            conn.commit()
+        audit(auth['username'], target_nodes, f"CREATE_SCHED_{title}_{target_profile}")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Errore salvataggio schedulazione: {e}")
+        return err(str(e))
+
+@api_bp.route('/api/schedules/<int:sid>', methods=['DELETE'])
+def cancel_schedule(sid):
+    auth = get_auth()
+    if not auth or auth['role'] not in ('admin', 'node_admin'):
+        return err("Non autorizzato", 403)
+
+    try:
+        with closing(db_connect(row=True)) as conn:
+            c = conn.cursor()
+            c.execute("SELECT id, title, target_nodes, status, restore_profile FROM profile_schedules WHERE id = ?", (sid,))
+            row = c.fetchone()
+            if not row:
+                return err("Schedulazione non trovata", 404)
+
+            # Controllo permessi node_admin
+            if auth['role'] == 'node_admin' and 'all' not in auth['allowed_nodes'].split(','):
+                allowed = set(x.strip().lower() for x in auth['allowed_nodes'].split(','))
+                t_nodes = set(x.strip().lower() for x in row['target_nodes'].split(','))
+                if not t_nodes.issubset(allowed):
+                    return err("Non autorizzato per questa schedulazione", 403)
+
+            # Se era attiva, ripristina subito il profilo
+            if row['status'] == 'ACTIVE' and row['restore_profile'] and row['restore_profile'] != 'NONE':
+                from services.scheduler_service import apply_scheduled_profile
+                apply_scheduled_profile(row['target_nodes'], row['restore_profile'], "CANCEL_RESTORE")
+
+            conn.execute("UPDATE profile_schedules SET status = 'CANCELLED' WHERE id = ?", (sid,))
+            conn.commit()
+
+        audit(auth['username'], row['target_nodes'], f"CANCEL_SCHED_{sid}_{row['title']}")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Errore annullamento schedulazione: {e}")
+        return err(str(e))

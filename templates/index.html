@@ -25,18 +25,18 @@
 </head>
 <body>
 
-<div id="top-bar-container" style="border-bottom: 2px solid var(--border-main); background: var(--bg-main, #04102e);">
-    <div id="top-bar" style="display: flex; justify-content: space-between; align-items: stretch; padding: 0; min-height: 90px; flex-wrap: wrap;">
+<div id="top-bar-container" style="border-bottom: 2px solid var(--border-main); background: var(--bg-main, #04102e); padding: 0; margin-bottom: 25px;">
+    <div id="top-bar" style="display: flex; justify-content: space-between; align-items: stretch; padding: 0; min-height: 90px; width: 100%; max-width: 100%; box-sizing: border-box;">
         
-        <!-- HEADER SX: BANNER CON RIEMPIMENTO ASSOLUTO A FILO -->
-        <div id="master-banner-container" style="display: none; flex: 0 0 45%; max-width: 45%; border-right: 2px solid var(--border-main); background: #020b1e; align-items: stretch; justify-content: stretch; padding: 0; box-sizing: border-box; overflow: hidden;">
-            <img src="/static/banners/banner.png" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;"
+        <!-- HEADER SX: BANNER ANCORATO SENZA CROP -->
+        <div id="master-banner-container" style="display: none; flex: 0 0 42%; max-width: 42%; border-right: 2px solid var(--border-main); background: #020b1e; align-items: center; justify-content: center; padding: 0; box-sizing: border-box; overflow: hidden;">
+            <img src="/static/banners/banner.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center; display: block;"
                  onload="this.parentElement.style.display='flex';"
                  onerror="this.parentElement.style.display='none';">
         </div>
 
         <!-- HEADER DX: STRUTTURA FLUIDA A 3 RIGHE -->
-        <div id="header-right-controls" style="flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; padding: 12px 20px; box-sizing: border-box; background: rgba(0, 15, 45, 0.25); min-width: 350px;">
+        <div id="header-right-controls" style="flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; padding: 10px 18px; box-sizing: border-box; background: rgba(0, 15, 45, 0.25); min-width: 350px;">
             
             <!-- RIGA 1: BRAND E OROLOGIO -->
             <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px; border-bottom: 1px dashed var(--border-light, rgba(255,255,255,0.15)); padding-bottom: 4px;">
@@ -44,22 +44,25 @@
                 <span id="live-clock" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--primary); letter-spacing: 1px;">SYS_TIME: --:--:--</span>
             </div>
 
-            <!-- RIGA 2: TASTI DI NAVIGAZIONE -->
-            <div class="nav-tabs" style="display: flex; flex-wrap: wrap; gap: 8px; border: none; margin: 0; padding: 0; width: 100%;">
-                <button class="nav-tab active" onclick="switchView('home')" id="tab-home" style="flex: 1; min-width: 80px; padding: 6px 0; font-size: 0.85rem; font-weight: bold; letter-spacing: 1.5px; text-align: center; border-radius: 4px;">HOME</button>
-                <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes" style="flex: 1; min-width: 80px; padding: 6px 0; font-size: 0.85rem; font-weight: bold; letter-spacing: 1.5px; text-align: center; border-radius: 4px;">NODES</button>
-                <button class="nav-tab" onclick="switchView('map')" id="tab-map" style="flex: 1; min-width: 80px; padding: 6px 0; font-size: 0.85rem; font-weight: bold; letter-spacing: 1.5px; text-align: center; border-radius: 4px;">MAP</button>
-                <button class="nav-tab" onclick="switchView('aprs')" id="tab-aprs" style="flex: 1; min-width: 80px; padding: 6px 0; font-size: 0.85rem; font-weight: bold; letter-spacing: 1.5px; text-align: center; border-radius: 4px;">APRS</button>
+            <!-- RIGA 2: TASTI DI NAVIGAZIONE (SX) + BADGES (DX) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;">
+                <div class="nav-tabs" style="display: flex; gap: 6px; border: none; margin: 0; padding: 0;">
+                    <button class="nav-tab active" onclick="switchView('home')" id="tab-home" style="padding: 6px 14px; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; border-radius: 4px;">HOME</button>
+                    <button class="nav-tab" onclick="switchView('nodes')" id="tab-nodes" style="padding: 6px 14px; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; border-radius: 4px;">NODES</button>
+                    <button class="nav-tab" onclick="switchView('map')" id="tab-map" style="padding: 6px 14px; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; border-radius: 4px;">MAP</button>
+                    <button class="nav-tab" onclick="switchView('aprs')" id="tab-aprs" style="padding: 6px 14px; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; border-radius: 4px;">APRS</button>
+                </div>
+                <div class="top-bar-right" style="display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; justify-content: flex-end;">
+                    <span id="mqtt-badge" class="mqtt-badge mqtt-offline" style="padding: 4px 8px; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">MQTT: CHK</span>
+                    <span id="users-badge" class="mqtt-badge" style="padding: 4px 8px; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px; border-color: var(--primary); color: var(--primary); cursor: pointer;" title="Operatori attivi (clicca per info)" onclick="showActiveUsers()">👥 <span id="active-users-count">1</span></span>
+                    <button class="theme-switch" id="layout-btn" onclick="cycleLayout()" title="Cambia Layout" style="padding: 4px 8px; font-size: 0.75rem;">[ L: BLU ]</button>
+                    <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang" style="padding: 4px 8px; font-size: 0.75rem;">ITA</button>
+                    <button class="theme-switch" id="push-btn" onclick="subscribeToPush()" style="padding: 4px 8px; font-size: 0.75rem;">PUSH</button>
+                </div>
             </div>
 
-            <!-- RIGA 3: BADGES E TASTI ADMIN -->
-            <div class="top-bar-right" style="display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; border: none; margin: 0; padding: 0; width: 100%;">
-                <span id="mqtt-badge" class="mqtt-badge mqtt-offline" style="padding: 4px 10px; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">MQTT: CHK</span>
-                <button class="theme-switch" id="layout-btn" onclick="cycleLayout()" title="Cambia Layout" style="padding: 4px 10px; font-size: 0.75rem;">[ L: BLU ]</button>
-                <button class="theme-switch" id="lang-btn" onclick="toggleLang()" data-i18n-title="ttLang" style="padding: 4px 10px; font-size: 0.75rem;">ITA</button>
-                <button class="theme-switch" id="push-btn" onclick="subscribeToPush()" style="padding: 4px 10px; font-size: 0.75rem;">PUSH</button>
-                <div id="auth-container" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-content: flex-end;"></div>
-            </div>
+            <!-- RIGA 3: UTENTE E CONTROLLI AMMINISTRATIVI (DX) -->
+            <div id="auth-container" style="display: flex; justify-content: flex-end; align-items: center; width: 100%; margin: 0; padding: 0;"></div>
 
         </div>
     </div>
@@ -174,6 +177,34 @@
                     </thead>
                     <tbody id="focus-lastheard-body"></tbody>
                 </table>
+            </div>
+        </div>
+        
+        <!-- FOCUS ANALYTICS -->
+        <div style="margin-top: 30px; border-top: 1px dashed var(--border-light); padding-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; color: var(--text-main); font-weight: 300; font-size: 1.3rem; letter-spacing: 2px;">
+                    <span data-i18n="titleAnalytics">[ NODE_ANALYTICS ]</span> <span id="analytics-time-label" style="color: var(--primary);">24H</span>
+                </h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <button class="filter-pill" onclick="setAnalyticsTimeframe(12)" id="btn-ana-12">12H</button>
+                    <button class="filter-pill active" onclick="setAnalyticsTimeframe(24)" id="btn-ana-24">24H</button>
+                    <button class="filter-pill" onclick="setAnalyticsTimeframe(48)" id="btn-ana-48">48H</button>
+                    <button class="filter-pill" onclick="setAnalyticsTimeframe(168)" id="btn-ana-168">7D</button>
+                    <div style="width: 1px; background: var(--border-light); margin: 0 5px; height: 20px;"></div>
+                    <button class="btn-cmd" onclick="loadNodeAnalytics()" style="width: auto; padding: 4px 12px; flex: none;" data-i18n="btnRefreshBracket">[ REFRESH ]</button>
+                </div>
+            </div>
+            
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+                <!-- Telemetria HW (CPU / Temp) -->
+                <div class="card" style="border-width: 1px !important; padding: 15px; height: 250px;">
+                    <canvas id="chart-hw"></canvas>
+                </div>
+                <!-- Stat RF (Transiti / BER) -->
+                <div class="card" style="border-width: 1px !important; padding: 15px; height: 250px;">
+                    <canvas id="chart-rf"></canvas>
+                </div>
             </div>
         </div>
         
@@ -318,36 +349,59 @@
 </div>
 
 <div id="admin-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width:900px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:20px;">
-            <h2 style="margin:0; color:var(--text-main); font-weight:300;" data-i18n="adminTitle">[ SYS_ADMIN ]</h2>
+    <div class="modal-content" style="max-width:1200px; width:95%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:20px; flex-wrap: wrap; gap: 10px;">
+            <div style="display:flex; align-items:center; gap: 15px;">
+                <h2 style="margin:0; color:var(--text-main); font-weight:300;" data-i18n="adminTitle">[ SYS_ADMIN ]</h2>
+                <div id="admin-action-btns" style="display:flex; gap: 10px;"></div>
+            </div>
             <button onclick="closeAdmin()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:15px; align-items:center; border: 1px solid var(--border-light);">
             <input type="text" id="new-user" placeholder="USR" style="flex:1; min-width:120px;">
             <input type="password" id="new-pass" placeholder="PWD" style="flex:1; min-width:120px;">
-            <select id="new-role" style="flex:none; width: 80px;"><option value="operator" data-i18n="roleOp">OP</option><option value="admin">ADM</option></select>
+            <select id="new-role" style="flex:none; width: auto;"><option value="operator" data-i18n="roleOp">OP</option><option value="node_admin">N_ADM</option><option value="admin">ADM</option></select>
             <input type="text" id="new-nodes" placeholder="NODES (IR3UIC,IR3Q)" style="flex:2; min-width:150px;">
             <button id="btn-user-submit" onclick="submitUser()" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important; flex:none; width: 80px;" data-i18n="btnAdd">ADD</button>
             <button id="btn-user-cancel" onclick="cancelEdit()" class="btn-cmd" style="display:none; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <div style="margin-bottom:20px; background:rgba(0,0,0,0.2); padding:20px; border: 1px solid var(--border-light);">
-            <h4 style="margin:0 0 15px 0; color:var(--primary); font-weight:300;" data-i18n="adminDBSync">[ DB_SYNC_CFG ]</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_DMR (.dat):</label><input type="text" id="url-dmr-input" style="width:100%;"></div>
-                <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_NXDN (.csv):</label><input type="text" id="url-nxdn-input" style="width:100%;"></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; align-items: start;">
+            <!-- COLONNA SINISTRA: Impostazioni & Utenti -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="background:rgba(0,0,0,0.2); padding:20px; border: 1px solid var(--border-light);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed var(--border-main); padding-bottom: 15px; margin-bottom: 20px;">
+                        <h4 style="margin:0; color:var(--primary); font-weight:300;" data-i18n="adminDBSync">[ DB_SYNC_CFG ]</h4>
+                        <a href="/api/fleet_backup" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; text-decoration:none; display:flex; font-size: 0.75rem; padding: 6px 12px; width: auto; flex: none;" data-i18n="btnDownloadZip">[ DOWNLOAD_ALL_CFG_ZIP ]</a>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_DMR (.dat):</label><input type="text" id="url-dmr-input" style="width:100%;"></div>
+                        <div><label style="font-size:0.8rem; font-weight:300; display:block; margin-bottom:5px; color:var(--text-muted);">URL_NXDN (.csv):</label><input type="text" id="url-nxdn-input" style="width:100%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-light); padding-top:15px;">
+                        <div style="display:flex; align-items:center; gap:10px;"><label style="font-size:0.8rem; font-weight:300;" data-i18n="adminTime">CRON_TIME:</label><input type="time" id="update-time-input"></div>
+                        <button onclick="saveSettings()" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; max-width: 250px; flex: none;" data-i18n="adminSave">SAVE_CFG</button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; text-align:left;">
+                        <thead style="background: transparent;"><tr><th>ID</th><th data-i18n="thUser">USR</th><th data-i18n="thRole">ROLE</th><th data-i18n="thNodes">NODES</th><th style="text-align:center;" data-i18n="thActs">CMD</th></tr></thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed var(--border-light); padding-top:15px;">
-                <div style="display:flex; align-items:center; gap:10px;"><label style="font-size:0.8rem; font-weight:300;" data-i18n="adminTime">CRON_TIME:</label><input type="time" id="update-time-input"></div>
-                <button onclick="saveSettings()" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; max-width: 250px; flex: none;" data-i18n="adminSave">SAVE_CFG</button>
+
+            <!-- COLONNA DESTRA: Security Audit Logs -->
+            <div style="background:rgba(0,0,0,0.2); padding:20px; border: 1px solid var(--border-light); height: 100%; box-sizing: border-box; display: flex; flex-direction: column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px dashed var(--border-main); padding-bottom: 15px; margin-bottom: 15px;">
+                    <h4 style="margin:0; color:var(--accent); font-weight:300;" data-i18n="titleAuditLogs">[ SECURITY_AUDIT_LOGS ]</h4>
+                    <button onclick="loadAuditLogs()" class="btn-cmd" style="padding: 4px 10px; font-size: 0.75rem; width: auto; flex: none;" data-i18n="btnRefresh">REFRESH</button>
+                </div>
+                <div id="audit-logs-container" style="flex: 1; min-height: 250px; max-height: 500px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.6; padding-right: 5px;">
+                    <span style="color: var(--text-muted);" data-i18n="waitLoading">In attesa di caricamento...</span>
+                </div>
             </div>
         </div>
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; text-align:left;">
-                <thead style="background: transparent;"><tr><th>ID</th><th data-i18n="thUser">USR</th><th data-i18n="thRole">ROLE</th><th data-i18n="thNodes">NODES</th><th style="text-align:center;" data-i18n="thActs">CMD</th></tr></thead>
-                <tbody id="users-table-body"></tbody>
-            </table>
-        </div>
+
     </div>
 </div>
 
@@ -377,10 +431,23 @@
             <h3 style="margin:0; color:var(--accent); font-weight:300;">[ <span data-i18n="modEditTitle">EDIT:</span> <span id="editor-title" style="color:var(--text-main);"></span> ]</h3>
             <button onclick="closeEditorModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
         </div>
-        <textarea id="config-textarea" spellcheck="false" style="width:100%; height:55vh; background:rgba(0,0,0,0.3); color:var(--text-main); font-family:'JetBrains Mono', monospace; font-size:0.85rem; padding:15px; border:1px solid var(--border-light); resize:none; outline:none; margin-top: 15px;"></textarea>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <div style="display:flex; gap: 10px; align-items: center;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="lblHistory">STORICO:</span>
+                <select id="config-history-select" onchange="loadHistoryConfig()" style="font-size: 0.8rem; padding: 4px 10px;">
+                    <option value="" data-i18n="optCurrentUnsaved">Attuale (Non salvata)</option>
+                </select>
+            </div>
+            <button onclick="previewConfigDiff()" class="btn-cmd" style="border-color:var(--accent); color:var(--accent) !important; width: auto; padding: 4px 15px; flex: none;" data-i18n="btnPreviewDiff">[ PREVIEW_DIFF ]</button>
+        </div>
+        <div id="diff-view" style="display:none; width:100%; height:55vh; overflow-y:auto; background:rgba(0,0,0,0.4); font-family:'JetBrains Mono', monospace; font-size:0.85rem; border:1px solid var(--border-main); padding: 15px; white-space: pre-wrap; line-height: 1.4;"></div>
+        <textarea id="config-textarea" spellcheck="false" style="width:100%; height:55vh; background:rgba(0,0,0,0.3); color:var(--text-main); font-family:'JetBrains Mono', monospace; font-size:0.85rem; padding:15px; border:1px solid var(--border-light); resize:none; outline:none;"></textarea>
         <div style="display:flex; justify-content:space-between; margin-top:20px; align-items:center;">
             <span id="editor-status" style="font-size:0.9rem; font-weight:300; font-family:'JetBrains Mono',monospace;"></span>
-            <button onclick="saveConfig()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; max-width: 250px; flex: none;" data-i18n="btnSave">WRITE_FILE</button>
+            <div style="display:flex; gap:10px;">
+                <button id="btn-cancel-diff" onclick="cancelDiff()" class="btn-cmd" style="display:none; border-color:var(--text-muted); color:var(--text-muted) !important;" data-i18n="btnCancelDiff">ANNULLA</button>
+                <button id="btn-save-cfg" onclick="saveConfig()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; max-width: 250px; flex: none;" data-i18n="btnSave">WRITE_FILE</button>
+            </div>
         </div>
     </div>
 </div>
@@ -436,7 +503,33 @@
     </div>
 </div>
 
-<div id="update-modal" class="modal-overlay">
+
+    <!-- Live Log Modal -->
+<div id="log-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width:900px; padding: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+            <h2 style="margin:0; color:var(--success); font-weight:300;"><span data-i18n="liveLogTitle">[ LIVE_LOG: </span> <span id="log-modal-title" style="color:var(--text-main);"></span> ]</h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="log-service-filter" style="width: auto; padding: 4px 10px; font-size: 0.85rem;" onchange="renderLogs()">
+                    <option value="ALL" data-i18n="filterAll">ALL DAEMONS</option>
+                    <option value="mmdvm">MMDVMHost</option>
+                    <option value="dmrgateway">DMRGateway</option>
+                    <option value="ysfgateway">YSFGateway</option>
+                    <option value="dstargateway">DStarGateway</option>
+                    <option value="nxdngateway">NXDNGateway</option>
+                    <option value="p25gateway">P25Gateway</option>
+                </select>
+                <button class="btn-cmd" onclick="toggleAutoScroll()" id="btn-autoscroll" style="border-color:var(--accent); color:var(--accent) !important; padding: 4px 10px;" data-i18n="btnScrollOn">SCROLL: ON</button>
+                <button class="btn-cmd" onclick="clearLogs()" style="border-color:var(--danger); color:var(--danger) !important; padding: 4px 10px;" data-i18n="btnClear">CLEAR</button>
+                <button onclick="closeLogModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
+            </div>
+        </div>
+        <div id="log-console" class="terminal-log" style="height: 500px; max-height: 500px; font-size: 0.85rem; border: 1px solid var(--border-light); padding: 15px; background: rgba(0,0,0,0.4);">
+        </div>
+    </div>
+</div>
+
+    <div id="update-modal" class="modal-overlay">
     <div class="modal-content" style="max-width:400px; text-align:center;">
         <h2 style="margin-top:0; color:var(--primary); border-bottom: 1px dashed var(--border-main); padding-bottom: 10px; font-weight:300;" data-i18n="modUpdateTitle">[ GBL_UPDATE ]</h2>
         <p style="margin-bottom:25px; font-weight: 300;" data-i18n="confUpdate">REQ DATA?</p>
@@ -457,7 +550,78 @@
     </div>
 </div>
 
+
+<div id="schedule-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width:1050px; width:95%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border-main); padding-bottom:10px; margin-bottom:20px;">
+            <h2 style="margin:0; color:var(--text-main); font-weight:300;" data-i18n="schedTitle">[ CALENDAR_PROFILE_SCHEDULER ]</h2>
+            <button onclick="closeScheduleModal()" class="btn-cmd" style="border-color:var(--danger); color:var(--danger) !important; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">X</button>
+        </div>
+        
+        <!-- FORM CREAZIONE EVENTO -->
+        <div style="background:rgba(0,0,0,0.2); padding:15px; border:1px solid var(--border-light); margin-bottom:20px;">
+            <h4 style="margin:0 0 15px 0; color:var(--primary); font-weight:300;" data-i18n="schedNew">[ NEW_SCHEDULED_EVENT ]</h4>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:15px;">
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedTitle">EVENT_TITLE:</label>
+                    <input type="text" id="sched-title" placeholder="Es. Net Regionale / Esercitazione" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedNodes">TARGET_NODES:</label>
+                    <select id="sched-nodes-select" style="width:100%;"></select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedTargetProf">TARGET_PROFILE:</label>
+                    <select id="sched-target-prof" style="width:100%;">
+                        <option value="B">B (Profilo B)</option>
+                        <option value="A">A (Profilo A)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedRestoreProf">RESTORE_PROFILE:</label>
+                    <select id="sched-restore-prof" style="width:100%;">
+                        <option value="A">A (Profilo A)</option>
+                        <option value="B">B (Profilo B)</option>
+                        <option value="NONE" data-i18n="optNone">NONE (Leave active)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedStart">START_TIME:</label>
+                    <input type="datetime-local" id="sched-start" style="width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px;" data-i18n="lblSchedEnd">END_TIME:</label>
+                    <input type="datetime-local" id="sched-end" style="width:100%;">
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <button onclick="submitSchedule()" class="btn-cmd" style="border-color:var(--success); color:var(--success) !important; width:auto; padding:6px 20px; font-size:0.85rem; display:inline-block; flex:none;" data-i18n="btnAddSched">CREATE_SCHEDULE</button>
+            </div>
+        </div>
+
+        <!-- TABELLA SCHEDULAZIONI -->
+        <div style="overflow-x:auto; max-height:300px;">
+            <table style="width:100%; border-collapse:collapse; text-align:left;">
+                <thead style="background: transparent;">
+                    <tr>
+                        <th data-i18n="thSchedTitle">TITLE</th>
+                        <th data-i18n="thSchedNodes">NODES</th>
+                        <th data-i18n="thSchedProf">PROFILE</th>
+                        <th data-i18n="thSchedStart">START</th>
+                        <th data-i18n="thSchedEnd">END</th>
+                        <th data-i18n="thSchedStatus">STATUS</th>
+                        <th style="text-align:right;" data-i18n="thSchedActs">CMD</th>
+                    </tr>
+                </thead>
+                <tbody id="schedules-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- LIBRERIE ESTERNE -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 

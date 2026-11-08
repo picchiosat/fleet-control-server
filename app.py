@@ -64,9 +64,30 @@ SERVER_COMMIT = get_git_commit()
 def index():
     return render_template('index.html', git_commit=SERVER_COMMIT)
 
+from flask import session
+
 @state.socketio.on('connect')
 def handle_connect():
+    state.connected_web_clients.add(request.sid)
+    
+    # Se l'utente è loggato (session), associamo il suo username al SID
+    user = session.get('user')
+    if user:
+        state.active_logged_users[request.sid] = user
+
     emit('mqtt_status', {'connected': mqtt_svc.mqtt_connected_status})
+    
+    # Prepariamo la lista unica degli utenti loggati attivi (togliendo i duplicati se un utente ha più tab aperti)
+    logged_names = list(set(state.active_logged_users.values()))
+    state.socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
+
+@state.socketio.on('disconnect')
+def handle_disconnect():
+    state.connected_web_clients.discard(request.sid)
+    state.active_logged_users.pop(request.sid, None)
+    
+    logged_names = list(set(state.active_logged_users.values()))
+    state.socketio.emit('web_users_count', {'count': len(state.connected_web_clients), 'users': logged_names})
 
 # --- INIZIALIZZAZIONE SISTEMA & THREAD ---
 init_db()

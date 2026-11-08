@@ -1,8 +1,9 @@
 import json
 import re
+import time
 from paho.mqtt import client as mqtt_client
 from core.config import config, logger
-from core.database import save_to_sqlite
+from core.database import save_to_sqlite, save_telemetry_to_sqlite
 import core.state as state
 from services.push_service import broadcast_push_notification
 
@@ -24,6 +25,9 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
         topics_list = config.get('mqtt', {}).get('topics', default_topics)
         subscribe_list = [(topic, 0) for topic in topics_list]
         subscribe_list.append(("+/+/log", 0))
+        subscribe_list.append(("/+/+/log", 0))
+        subscribe_list.append(("+/+/Log", 0))
+        subscribe_list.append(("/+/+/Log", 0))
         
         client.subscribe(subscribe_list)
         logger.info(f"Sottoscritto a {len(subscribe_list)} topic MQTT.")
@@ -40,7 +44,7 @@ def on_disconnect(client, userdata, disconnect_flags, reason_code, properties=No
 
 def on_message(client, userdata, msg):
     try:
-        topic = msg.topic
+        topic = msg.topic.strip('/')
         payload = msg.payload.decode('utf-8', errors='replace').strip()
         parts = topic.split('/')
         if len(parts) < 2:
@@ -50,8 +54,26 @@ def on_message(client, userdata, msg):
         p0 = parts[0].lower().replace('-', '')
         p2 = parts[2].lower().replace('-', '') if len(parts) > 2 else ""
 
-        # --- 1. LOG SOFTWARE & FIRMWARE ---
+        # --- 1. LOG SOFTWARE, FIRMWARE & LIVE STREAM ---
         if len(parts) >= 3 and parts[2].lower() == 'log':
+            svc_name = p0
+            
+            # A) Salva in memoria per il Live Log
+            if cid not in state.node_logs:
+                from collections import deque
+                state.node_logs[cid] = deque(maxlen=100)
+                
+            log_entry = {
+                "time": time.strftime("%H:%M:%S"),
+                "service": svc_name,
+                "text": payload
+            }
+            state.node_logs[cid].append(log_entry)
+            
+            # Inoltra in tempo reale via WebSocket
+            state.socketio.emit(f"live_log_{cid}", log_entry)
+            
+            # B) Parsa le versioni
             if cid not in state.node_versions:
                 state.node_versions[cid] = {}
             
@@ -84,6 +106,38 @@ def on_message(client, userdata, msg):
                     if "GitID" not in state.node_versions[cid][last_prog]:
                         state.node_versions[cid][last_prog] += f" (GitID #{git_id})"
                         state.notify_update()
+            
+            # C) Estrazione APRS/DPRS raw dai log dei Gateway
+            if ('DPRS' in payload or 'APRS' in payload) and '>' in payload and ':' in payload:
+                # Es: I: 2026-11-08 12:30:58.615 DPRS    IV3JDV  /ID51    IV3JDV-9    IV3JDV-9>API51,DSTAR*:/115922h4503.75N/00731.49E[034/002/
+                m_aprs = re.search(r'([A-Z0-9\-]{3,9})>([^:]+):(.+)', payload)
+                if m_aprs:
+                    src_part = m_aprs.group(1).strip()
+                    header_part = m_aprs.group(2).strip()
+                    pld_part = m_aprs.group(3).strip()
+                    
+                    header_tokens = header_part.split(",")
+                    dest_part = header_tokens[0]
+                    path_str = ",".join(header_tokens[1:]) if len(header_tokens) > 1 else ""
+                    
+                    aprs_data = {
+                        "source": src_part,
+                        "dest": dest_part,
+                        "path": path_str,
+                        "payload": pld_part,
+                        "time": time.strftime("%H:%M:%S")
+                    }
+                    
+                    if not hasattr(state, 'aprs_msgs'):
+                        from collections import deque
+                        state.aprs_msgs = deque(maxlen=100)
+                    
+                    state.aprs_msgs.append(aprs_data)
+                    logger.info(f"📍 APRS (da log {svc_name}): {src_part} -> {dest_part}")
+                    state.socketio.emit('aprs_msg', aprs_data)
+            
+            # NOTA: Rimosso il return incondizionato qui, perché il log deve completare la sua corsa
+            # e non bloccare eventuali altre logiche!
             return
 
         # Aggiornamento timestamp last_seen
@@ -160,6 +214,16 @@ def on_message(client, userdata, msg):
 
                 health_changed = state.device_health.get(cid) != new_health
                 state.device_health[cid] = new_health
+                
+                # Salvataggio storico nel DB (campionamento max 1 volta ogni 15 minuti)
+                now_ts = time.time()
+                last_save = getattr(state, 'last_telemetry_save', {}).get(cid, 0)
+                if now_ts - last_save >= 900:  # 15 minuti (900 secondi)
+                    save_telemetry_to_sqlite(cid, new_health)
+                    if not hasattr(state, 'last_telemetry_save'):
+                        state.last_telemetry_save = {}
+                    state.last_telemetry_save[cid] = now_ts
+                
                 if health_changed:
                     state.notify_update()
 
@@ -331,6 +395,10 @@ def on_message(client, userdata, msg):
                     logger.warning(f"Formato APRS non decodificato: {payload}")
                 
                 logger.info(f"📍 Inoltro pacchetto APRS al frontend: {data['source']} -> {data['dest']} via [{data['path']}]")
+                if not hasattr(state, 'aprs_msgs'):
+                    from collections import deque
+                    state.aprs_msgs = deque(maxlen=100)
+                state.aprs_msgs.append(data)
                 state.socketio.emit('aprs_msg', data)
             except Exception as e:
                 logger.error(f"Errore parsing APRS: {e}")

@@ -1,5 +1,5 @@
 ============================================================
-       INSTALLATION GUIDE - FLEET CONTROL CONSOLE (SERVER)
+       INSTALLATION GUIDE - FLEET CONTROL CONSOLE (v6.0.0)
 ============================================================
 
 ------------------------------------------------------------
@@ -74,7 +74,7 @@ Configuration:
 4. Start service:  systemctl start fleet-console
 
 ============================================================
-       GUIDA ALL'INSTALLAZIONE - SERVER (ITALIANO)
+       GUIDA ALL'INSTALLAZIONE - SERVER v6.0.0 (ITALIANO)
 ============================================================
 
 ------------------------------------------------------------

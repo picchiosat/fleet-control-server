@@ -1,4 +1,4 @@
-# 📡 Fleet Control Console - Server (Central Hub)
+# 📡 Fleet Control Console - Server (Central Hub) v6.0.0
 
 🌍 *[Read in English](#english) | 🇮🇹 [Leggi in Italiano](#italiano)*
 
@@ -14,60 +14,49 @@
 > ℹ️ **Note:** This is the Central Server repository. To monitor remote repeaters, you must install the [Fleet Control Agent](https://git.arifvg.it/iv3jdv/fleet-node-agent.git) on each node.
 
 ### 🏗️ Architecture & Technology Stack
-The server acts as the brain of the network, built on a highly scalable foundation (v5.0+):
+The server acts as the brain of the network, built on a highly scalable foundation (v6.0.0):
 * **Modular Backend:** Completely decoupled architecture (`core/`, `services/`, `routes/`) for high maintainability and robust background task handling.
 * **Core Engine:** Flask (Python) with `gevent` for high-concurrency WebSocket handling.
-* **Database:** SQLite (WAL mode) for robust User Management, Audit Logs, and Radio Traffic storage.
+* **Database:** SQLite (WAL mode) for robust User Management, Audit Logs, Schedules, and Radio Traffic storage.
 * **Communication:** MQTT for instant data routing + WebSockets (SocketIO) for zero-latency UI updates.
-* **Frontend:** Vanilla JS with a modern *Glassmorphism Borderless Executive* NOC (Network Operations Center) design and fully separated logic (`app.js`, `modals.js`). Full i18n (Internationalization) support.
+* **Frontend:** Vanilla JS with a modern *Glassmorphism Borderless Executive* NOC (Network Operations Center) design. Full i18n (Internationalization) support for English and Italian.
 
-### ✨ Ultimate Features
+### ✨ Ultimate Features (v6.0.0)
 
-#### 🛡️ Proactive Diagnostics (Watchdog) & Global Alerts
-* **Hardware Monitoring:** Continuous analysis of remote CPU temperatures and disk space saturation. Automatically triggers Push Notifications before critical failures occur.
-* **RF Anomaly Detection:** Real-time monitoring of local RF BER (Bit Error Rate). Detects hardware RF degradation on local transits and alerts admins instantly.
-* **Global Service Alerts (v5.3+):** Daemon crashes (e.g., `SVC KO: MMDVMHOST`) are instantly propagated to the global Dashboard grid and interactive Fleet Map for immediate visibility.
+#### 🗓️ Calendar Profile Scheduler [NEW]
+* Plan automated profile switches (e.g., Regional Nets, Contests, Civil Defense drills) across multiple nodes.
+* Seamless background execution: the system automatically triggers the `Target Profile` at the specified start time and gracefully falls back to the `Restore Profile` once the event ends.
 
-#### ⚡ Zero-Latency Real-Time Dashboard
-* **WebSocket Powered:** The dashboard updates instantly upon radio traffic or telemetry changes. No heavy HTTP polling, no page reloads.
-* **Live MQTT Status:** A real-time badge continuously monitors the connection to the MQTT broker.
-* **PWA Ready:** Install the dashboard as a Progressive Web App on iOS/Android for a native, full-screen mobile experience with offline asset caching.
+#### 🗺️ Tactical APRS Map [NEW]
+* Real-time GIS map showing both your fixed repeater locations and **roaming APRS stations**.
+* Automatically extracts and parses APRS payloads from gateway logs.
+* Features a smart Garbage Collector that automatically cleans up roaming pins after 2 hours of inactivity.
 
-#### 🔔 Web Push Notifications
-* Get instant, native alerts directly on your desktop or mobile device when:
-  * A node goes offline or comes back online.
-  * A critical system daemon crashes (Auto-healing failed).
-  * The Watchdog detects thermal warnings, disk full alerts, or high RF BER.
-* Works securely even when the web app is closed or in the background.
+#### 🛠️ Advanced Remote Control & Visual Diff [NEW]
+* **Time Machine Config Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface, with the ability to rollback to previous historical backups.
+* **Semantic Visual Diff:** Compare your local unsaved edits against the running config with a rich Green/Red semantic diff viewer before safely committing changes to the node.
+* **OTA Server Updates:** Apply server-side Git updates directly from the admin dashboard without SSH access.
+* **Service Management & Hardware:** Start/Stop/Restart remote daemons, trigger physical OS reboots, or hard GPIO resets of the MMDVM HAT.
 
-#### 🛠️ Advanced Remote Control & Maintenance
-* **OTA Server Updates:** Apply server-side Git updates with a single click directly from the admin dashboard (Over-The-Air) without SSH access, featuring a synchronous, cache-bypassing update checker.
-* **Remote .INI Editor:** Edit daemon configuration files (e.g., MMDVMHost.ini) directly from the web interface.
-* **Service Management:** Start, Stop, or Restart remote system daemons.
-* **Scoped Global Overrides:** Switch profiles (e.g., Profile A/B) simultaneously on multiple nodes, dynamically scoped to the operator's authorized repeaters.
-* **Hardware Interventions:** Trigger a physical OS reboot or a hard GPIO reset of the MMDVM HAT directly from the web panel.
+#### 📈 Dynamic Analytics & Monitoring [NEW]
+* **Timeframe Analytics:** Interactive historical charts (Chart.js) for CPU/Temp and RF Transits/BER. Zoom dynamically across 12H, 24H, 48H, or 7D timeframes with smart axis labeling.
+* **Live WebSocket Console:** Zero-latency terminal streams for node daemons. Real-time active operator tracking (see who is logged in and managing the dashboard).
+* **Proactive Diagnostics (Watchdog):** Continuous analysis of remote CPU temperatures, disk space, and RF BER. Triggers automated Web Push Notifications.
 
-#### 📊 Unified Monitoring & Statistics
-* **Interactive Fleet Map:** Real-time GIS map showing repeater locations, online/offline status, active TX states (pulsing pins), and active watchdog/service warnings.
-* **Live Heard Log:** A centralized view of radio traffic across the entire network, auto-resolving DMR and NXDN IDs into callsigns.
-* **Software & Firmware Tracking:** Instantly view MMDVM firmware versions and Pi-Star/Gateway component versions for each node.
-* **Daily Analytics:** Automatically tracks Top Talkgroups, Top Callsigns, Average duration, and daily transit counts.
-
-#### 🔐 Security & Access Control
-* **Strict Role-Based Access Control (RBAC):** True Zero-Trust architecture. 
-* **Granular Permissions:** Node management (reboots, config edits, service controls) is strictly bound to explicitly assigned nodes in `allowed_nodes`, uniformly enforced for both *Operators* and *Admins*.
-* **System Administration:** Admins retain exclusive rights to global server settings and user management, separated from node-level control.
-* **Audit Trail:** Every critical action is securely logged with username, timestamp, and target node.
+#### 🔐 Strict Security & Access Control
+* **Role-Based Access Control (RBAC):** True Zero-Trust architecture. Node management is bound to explicitly assigned nodes (`allowed_nodes`) for both *Operators* and *Node Admins*.
+* **System Administration:** Admins retain exclusive rights to global server settings, schedules, and user management.
+* **Security Audit Trail:** Every critical action (reboots, config edits, schedules) is securely logged with username, timestamp, and target node.
 
 ### ⚠️ Security Requirement: HTTPS
-Please note that **Web Push Notifications** and the **Service Worker** require a secure connection to function. For security reasons, modern browsers only enable these features over **HTTPS**. If you are accessing the console via HTTP (outside of `localhost`), the "Push" button and notification registration will not work. We recommend using a reverse proxy (like Nginx, Caddy, or Traefik) with an SSL certificate.
+**Web Push Notifications** and the **Service Worker** require a secure connection. Modern browsers only enable these features over **HTTPS**. We recommend using a reverse proxy (like Nginx, Caddy, or Apache) with an SSL certificate.
 
 ### ⚠️ Reverse Proxy & WebSocket Configuration
-If you expose the Fleet Console through a reverse proxy like **Apache** on a public IP (HTTPS), standard HTTP proxying will drop Socket.IO real-time connections. You must enable the WebSocket tunnel in Apache:
+If using a reverse proxy like **Apache** on HTTPS, you must enable WebSocket tunneling:
 ```bash
 sudo a2enmod proxy_wstunnel rewrite headers
 ```
-And insert the **Rewrite** rules *before* the `ProxyPass` directives inside your `<VirtualHost *:443>` block:
+Insert the **Rewrite** rules *before* the `ProxyPass` directives in your `<VirtualHost *:443>`:
 ```apache
 RewriteEngine On
 RewriteCond %{HTTP:Upgrade} =websocket [NC]
@@ -81,166 +70,47 @@ ProxyPassReverse /socket.io/ ws://127.0.0.1:9000/socket.io/
 ProxyPass / http://127.0.0.1:9000/
 ProxyPassReverse / http://127.0.0.1:9000/
 ```
-
-### 🚀 Installation Guide
-
-#### 0. Root Privileges
-All installation steps must be executed as the `root` user.
-```bash
-apt update
-apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python3-venv
-```
-#### 1. Clone Repository
-Clone the repository into the /opt directory to ensure all systemd paths work correctly:
-```bash
-git clone https://git.arifvg.it/iv3jdv/fleet-control-server.git /opt/fleet-control-server
-cd /opt/fleet-control-server
-```
-#### 2. Virtual Environment Setup (Recommended)
-To prevent conflicts with OS packages (PEP 668), create an isolated environment:
-```bash
-cd /opt/fleet-control-server
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-```
-
-#### 3. Configuration
-1. Copy `config.example.json` to `config.json`.
-2. Configure your MQTT broker credentials.
-3. Define your repeaters in `clients.json`.
-4. Generate VAPID keys at [vapidkeys.com](https://vapidkeys.com/) and add them to `config.json` to enable Web Push notifications. *(Note: Push notifications require HTTPS).*
-5. Configure dynamic log rotation sizes (`log_max_mb` and `log_backup_count`) directly in `config.json` to manage disk space.
-
-#### 4. Running as a Service
-To run the server continuously in production using Gunicorn:
-```bash
-cp fleet-console.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable fleet-console
-systemctl start fleet-console
-```
-*(Ensure the `.service` file points to the `gunicorn` executable inside your `venv`)*.
 
 ---
 
 <a name="italiano"></a>
 ## 🇮🇹 Italiano
 
-**Fleet Control Console** è una dashboard di comando e controllo (C2) professionale in tempo reale, progettata per le reti di ripetitori radioamatoriali (MMDVM). Questo repository contiene il **Server (Central Hub)**, che fornisce un'interfaccia web centralizzata per monitorare e gestire una flotta di nodi digitali remoti (DMR, NXDN, YSF, P25).
+**Fleet Control Console** è una dashboard di comando e controllo (C2) professionale in tempo reale, progettata per le reti di ripetitori radioamatoriali (MMDVM). Questo repository contiene il **Server (Central Hub)**, che fornisce un'interfaccia web centralizzata per monitorare e gestire una flotta di nodi digitali remoti.
 
 > ℹ️ **Nota:** Questo è il repository del Server Centrale. Per monitorare i ripetitori, devi installare il [Fleet Control Agent](https://git.arifvg.it/iv3jdv/fleet-node-agent.git) su ciascun nodo remoto.
 
-### 🏗️ Architettura e Tecnologie
-Il server agisce da cervello della rete, basato su fondamenta altamente scalabili (v5.0+):
-* **Backend Modulare:** Architettura completamente disaccoppiata (`core/`, `services/`, `routes/`) per un'elevata manutenibilità e gestione robusta dei task in background.
+### 🏗️ Architettura e Tecnologie (v6.0.0)
+* **Backend Modulare:** Architettura completamente disaccoppiata (`core/`, `services/`, `routes/`) per un'elevata manutenibilità e gestione asincrona.
 * **Motore Core:** Flask (Python) con `gevent` per la gestione ad alta concorrenza dei WebSocket.
-* **Database:** SQLite (in modalità WAL) per gestire in sicurezza Utenti, Log operativi e traffico radio.
-* **Comunicazione:** MQTT per il routing istantaneo dei dati + WebSockets (SocketIO) per aggiornare la UI a latenza zero.
-* **Frontend:** Vanilla JS con layout *Borderless Executive* in stile NOC (Network Operations Center), logica completamente separata (`app.js`, `modals.js`) e supporto nativo **i18n** (internazionalizzazione multilingua dinamica).
+* **Database:** SQLite (in modalità WAL) per gestire Utenti, Log Sicurezza, Schedulazioni e traffico radio.
+* **Frontend Bilingue:** Vanilla JS con layout *Borderless Executive* in stile NOC. Traduzioni dinamiche (Inglese/Italiano) attivabili in tempo reale.
 
-### ✨ Funzionalità Principali
+### ✨ Funzionalità Principali v6.0.0
 
-#### 🛡️ Diagnostica Proattiva (Watchdog) & Avvisi Globali
-* **Monitoraggio Hardware:** Analisi continua delle temperature CPU e della saturazione disco da remoto. Innesca automaticamente notifiche Push prima che si verifichino guasti critici.
-* **Rilevamento Anomalie RF:** Monitoraggio in tempo reale del BER (Bit Error Rate) sul traffico RF locale. Rileva il degrado hardware in radiofrequenza avvisando istantaneamente gli amministratori.
-* **Propagazione Service Alerts (v5.3+):** Il crash di un demone remoto (es. `SVC KO: MMDVMHOST`) viene segnalato in tempo reale sulla griglia principale e sulla Mappa di Flotta, senza dover ispezionare il singolo nodo.
+#### 🗓️ Calendario Pianificazione Profili [NUOVO]
+* Schedula i cambi di profilo automatici (es. Net Regionali, Contest, Esercitazioni) su nodi multipli.
+* Esecuzione in background: il sistema innesca il `Profilo Target` all'orario di inizio e ripristina automaticamente il `Profilo di Ritorno` alla scadenza della finestra temporale.
 
-#### ⚡ Dashboard Real-Time a Latenza Zero
-* **Motore WebSocket:** La dashboard scatta all'istante al passaggio di traffico radio o ai cambi di telemetria. Nessun polling HTTP pesante, nessun refresh della pagina.
-* **Stato MQTT Live:** Un badge in tempo reale monitora continuamente la connessione al broker MQTT.
-* **PWA Ready:** Installabile su smartphone Android e iOS come Progressive Web App per un'esperienza nativa a schermo intero con cache offline intelligente.
+#### 🗺️ Mappa Tattica APRS [NUOVO]
+* Mappa GIS in tempo reale che mostra sia i ripetitori fissi che i **passanti APRS in mobilità**.
+* Intercetta e formatta istantaneamente i payload APRS dai log dei gateway.
+* Include un sistema di pulizia automatica (Garbage Collector) che rimuove i pin mobili dopo 2 ore di inattività.
 
-#### 🔔 Notifiche Web Push
-* Ricevi avvisi nativi e immediati su PC o smartphone quando:
-  * Un nodo va offline o torna operativo.
-  * Un demone di sistema remoto si blocca (fallimento auto-healing).
-  * Il Watchdog rileva allarmi termici, disco pieno o anomalie BER.
-* Funzionano in modo sicuro anche quando la web app è chiusa o in background.
+#### 🛠️ Editor Avanzato & Visual Diff [NUOVO]
+* **Editor Config .INI "Macchina del Tempo":** Modifica i file operativi direttamente dal pannello web, con possibilità di ripristinare i backup storici salvati automaticamente nel database.
+* **Visual Diff Semantico:** Controlla visivamente le differenze (in verde le aggiunte, in rosso le rimozioni) tra le tue modifiche in bozza e la configurazione attualmente in esecuzione prima di salvare.
+* **Interventi Hardware & Servizi:** Avvia/arresta demoni, forza il riavvio del SO o esegui un reset hardware GPIO sulla scheda MMDVM.
 
-#### 🛠️ Controllo Remoto & Manutenzione Avanzata
-* **Aggiornamenti Server OTA:** Applica gli aggiornamenti del server tramite Git direttamente dalla dashboard (Over-The-Air) con un clic. Controllo aggiornamenti sincrono e possibilità di bypass della cache di sicurezza.
-* **Editor .INI Remoto:** Modifica i file di configurazione (es. MMDVMHost.ini) direttamente dal pannello web.
-* **Gestione Demoni:** Avvia, arresta o riavvia i servizi di sistema remoti.
-* **Override Globali Scoped:** Cambia i profili operativi simultaneamente su più nodi, filtrati dinamicamente in base ai nodi assegnati all'operatore in uso.
-* **Interventi Hardware:** Innesca un riavvio del sistema operativo o un reset fisico (tramite pin GPIO) della scheda MMDVM.
-
-#### 📊 Monitoraggio & Statistiche
-* **Mappa Interattiva di Flotta:** Mappa GIS in tempo reale che mostra la posizione dei ripetitori, stato online/offline, trasmissione attiva (pin lampeggianti) e allarmi diagnostici di servizio in corso.
-* **Log Ascolti Live:** Vista unificata in tempo reale del traffico radio di tutta la rete, con traduzione automatica degli ID DMR e NXDN in nominativi.
-* **Tracciamento Versioni:** Controlla all'istante le versioni firmware MMDVM e software a bordo di ciascun nodo.
-* **Analisi Giornaliera:** Statistiche automatiche su Top Talkgroups, Top Callsign, durata media e numero totale di transiti.
+#### 📈 Analitiche Dinamiche & Console Live [NUOVO]
+* **Grafici Temporali:** Analizza l'andamento di CPU/Temp e Transiti/BER esplorando finestre temporali dinamiche da 12 Ore fino a 7 Giorni, con rendering fluido via Chart.js.
+* **Console WebSocket:** Terminale a latenza zero per analizzare i log dei demoni.
+* **Tracciamento Operatori:** Visualizza in tempo reale quali amministratori sono connessi e operativi sulla dashboard.
+* **Watchdog Proattivo:** Analisi continua di surriscaldamenti e degrado RF, con avvisi inviati via notifiche Web Push.
 
 #### 🔐 Sicurezza e Controllo Accessi
-* **Strict Role-Based Access Control (RBAC):** Architettura Zero-Trust reale. La gestione del sistema (System Admin) è nettamente separata dalla gestione dei nodi.
-* **Permessi Granulari Ferrei:** Anche un utente `admin` può interagire o configurare *esclusivamente* i nodi che gli sono stati esplicitamente assegnati nella lista `allowed_nodes`, con barriera di sicurezza verificata lato backend ad ogni chiamata API.
-* **Audit Trail:** Ogni azione critica (riavvii, modifiche file, gestione demoni) viene registrata con data, ora, utente e nodo di destinazione.
+* **Role-Based Access Control (RBAC):** Gestione nodi limitata esclusivamente ai ripetitori assegnati (`allowed_nodes`) per Operatori e `node_admin`.
+* **Audit Trail di Sicurezza:** Ogni comando operativo e configurazione viene tracciato con timestamp, utente e obiettivo.
 
 ### ⚠️ Sicurezza Richiesta: HTTPS
-Si prega di notare che le **Notifiche Web Push** e il **Service Worker** richiedono una connessione sicura per funzionare. Per motivi di sicurezza, i browser moderni abilitano queste funzionalità solo su **HTTPS**. Se accedi alla console via HTTP (al di fuori di `localhost`), il tasto "Push" e la registrazione delle notifiche non saranno attivi. Si consiglia l'uso di un reverse proxy (come Nginx, Caddy o Traefik) con certificato SSL.
-
-### ⚠️ Configurazione Reverse Proxy & WebSocket
-Se esponi la Fleet Console tramite un reverse proxy come **Apache** su IP pubblico (HTTPS), il proxy HTTP standard farà cadere continuamente la connessione in tempo reale di Socket.IO.
-Devi abilitare il tunnel WebSocket in Apache:
-```bash
-sudo a2enmod proxy_wstunnel rewrite headers
-```
-E inserire le regole di **Rewrite** *prima* del `ProxyPass` all'interno del tuo blocco `<VirtualHost *:443>`:
-```apache
-RewriteEngine On
-RewriteCond %{HTTP:Upgrade} =websocket [NC]
-RewriteRule /(.*)           ws://127.0.0.1:9000/$1 [P,L]
-RewriteCond %{HTTP:Upgrade} !=websocket [NC]
-RewriteRule /(.*)           http://127.0.0.1:9000/$1 [P,L]
-
-ProxyPass /socket.io/ ws://127.0.0.1:9000/socket.io/
-ProxyPassReverse /socket.io/ ws://127.0.0.1:9000/socket.io/
-
-ProxyPass / http://127.0.0.1:9000/
-ProxyPassReverse / http://127.0.0.1:9000/
-```
-
-### 🚀 Guida all'Installazione
-
-#### 0. Privilegi di Root
-Tutti i passaggi di installazione devono essere eseguiti come utente `root`.
-```bash
-apt update
-apt install build-essential python3-dev libssl-dev libffi-dev python3-pip python3-venv
-```
-#### 1. Clonazione dei Repository
-Clona il repository nella cartella /opt per assicurarti che tutti i percorsi dei servizi systemd siano corretti:
-```bash
-git clone https://git.arifvg.it/iv3jdv/fleet-control-server.git /opt/fleet-control-server
-cd /opt/fleet-control-server
-```
-#### 2. Setup Ambiente Virtuale (Consigliato)
-Per evitare conflitti con i pacchetti di sistema (regola PEP 668), crea una "bolla" isolata:
-```bash
-cd /opt/fleet-control-server
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-```
-
-#### 3. Configurazione Base
-1. Copia `config.example.json` in `config.json`.
-2. Inserisci le credenziali del broker MQTT.
-3. Definisci i ripetitori nel file `clients.json`.
-4. Genera le chiavi VAPID su [vapidkeys.com](https://vapidkeys.com/) e inseriscile in `config.json` per attivare le notifiche Push. *(Attenzione: le notifiche Push richiedono obbligatoriamente un certificato HTTPS).*
-5. Configura le dimensioni della rotazione dei log (`log_max_mb` e `log_backup_count`) direttamente nel `config.json` per gestire lo spazio su disco.
-
-#### 4. Esecuzione come Servizio (systemd)
-Per eseguire il server in produzione in modo continuo e stabile con Gunicorn:
-```bash
-cp fleet-console.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable fleet-console
-systemctl start fleet-console
-```
-*(Assicurati che il file `.service` punti all'eseguibile `gunicorn` situato all'interno della cartella `venv`).*
-
----
-*Created by IV3JDV @ ARIFVG - 2026*
+Le **Notifiche Web Push** e il **Service Worker** richiedono obbligatoriamente una connessione HTTPS per funzionare. Si consiglia l'uso di un reverse proxy (come Apache o Nginx) con certificato SSL Let's Encrypt.

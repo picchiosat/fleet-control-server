@@ -9,7 +9,8 @@ function updateClock() {
 }
 
 // --- VARIABILI GLOBALI E UI VIEW ---
-let clients = []; 
+let clients = [];
+let activeLoggedUsers = []; 
 let me = { logged_in: false, user: '', role: '', allowed_nodes: '' }; 
 let isAuthenticated = false; 
 let usersCache = {}; 
@@ -24,6 +25,7 @@ let searchQuery = '';
 let viewMode = localStorage.getItem('fleetViewMode') || 'grid';
 let fleetMap = null; 
 let mapMarkers = {};
+let aprsMarkers = {};
 
 let currentFocusedNode = null;
 let currentMmdvmConfig = "";
@@ -125,7 +127,8 @@ function openNodeFocus(clientId) {
     }
     
     refreshStates(); 
-    refreshLogs();   
+    refreshLogs();
+    setTimeout(loadNodeAnalytics, 300);
 }
 
 function closeNodeFocus() {
@@ -148,6 +151,7 @@ window.addEventListener('DOMContentLoaded', () => {
     checkServerUpdate();
     setInterval(checkServerUpdate, 3600000); 
     refreshAprs();
+    setInterval(cleanupAprsMarkers, 60000);
 });
 
 // --- FUNZIONI FILTRO E LAYOUT ---
@@ -206,6 +210,16 @@ function applyFilters() {
         
         card.style.display = show ? 'flex' : 'none';
     });
+}
+
+
+function showActiveUsers() {
+    if (!activeLoggedUsers || activeLoggedUsers.length === 0) {
+        customAlert("[ USERS ]", "Nessun operatore attualmente loggato.");
+        return;
+    }
+    const html = activeLoggedUsers.map(u => `<div style="padding: 5px; border-bottom: 1px dashed var(--border-light); color: var(--success); font-family: 'JetBrains Mono'; font-size: 0.9rem;">🟢 ${esc(u.toUpperCase())}</div>`).join('');
+    customAlert("[ SYS_OPS_ONLINE ]", html);
 }
 
 function fmtAge(sec) {
@@ -533,29 +547,25 @@ async function initUI() {
             const hasAllNodes = allowedList.includes('all');
             const canOverride = hasAllNodes;
 
-            let actionBtns = '';
-            if (role === 'admin') {
-                actionBtns += `<button id="server-update-btn" onclick="confirmServerUpdate()" class="auth-btn" style="border-color:var(--danger); color:var(--danger) !important; display:none;" title="Aggiornamento Server Disponibile">[ UPD_SERVER ]</button>`;
-                actionBtns += `<button onclick="sendGlobalUpdate()" class="auth-btn" style="color:var(--accent);" data-i18n-title="ttReqCfg" title="${t('ttReqCfg')}">[ ${t('btnReqCfg')} ]</button>`;
+            // 1. Nella barra principale in alto teniamo SOLO [ SYS_ADM ], UTENTE e CONTROLLI SESSIONE
+            let topBarAdminBtn = '';
+            if (role === 'admin' || role === 'node_admin') {
+                topBarAdminBtn = `<button onclick="openAdmin()" class="auth-btn" style="color:var(--primary);" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">[ ${t('btnAdmin')} ]</button>`;
             }
-            if (canOverride) {
-                actionBtns += `<button onclick="triggerGlobalEmergency()" class="auth-btn" style="color:var(--danger);" data-i18n-title="ttGlobal" title="${t('ttGlobal')}">[ ${t('btnGlobal')} ]</button>`;
-            }
-            if (role === 'admin') {
-                actionBtns += `<button onclick="openAdmin()" class="auth-btn" style="color:var(--primary);" data-i18n-title="ttAdmin" title="${t('ttAdmin')}">[ ${t('btnAdmin')} ]</button>`;
-            }
-            
-            authContainer.innerHTML = `${actionBtns}
-                                       <span style="font-weight:300; font-size:0.85rem; margin: 0 10px; font-family:'JetBrains Mono', monospace; color:var(--primary);">USR: ${esc(String(me.user).toUpperCase())}</span>
-                                       <button onclick="changeMyPassword()" class="auth-btn" data-i18n-title="ttPass" title="${t('ttPass')}">[ ${t('btnPass')} ]</button>
-                                       <button onclick="logout()" class="auth-btn" data-i18n-title="ttLogout" title="${t('ttLogout')}">[ ${t('btnLogout')} ]</button>`;
+
+            authContainer.innerHTML = `<div style="display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:nowrap; width:100%;">
+                                           ${topBarAdminBtn}
+                                           <span style="font-weight:400; font-size:0.75rem; margin: 0 4px; font-family:'JetBrains Mono', monospace; color:var(--primary); white-space:nowrap; letter-spacing: 1px;">USR: ${esc(String(me.user).toUpperCase())}</span>
+                                           <button onclick="changeMyPassword()" class="auth-btn" data-i18n-title="ttPass" title="${t('ttPass')}" style="padding:4px 10px; font-size:0.75rem;">[ ${t('btnPass')} ]</button>
+                                           <button onclick="logout()" class="auth-btn" data-i18n-title="ttLogout" title="${t('ttLogout')}" style="padding:4px 10px; font-size:0.75rem;">[ ${t('btnLogout')} ]</button>
+                                       </div>`;
         } else {
             authContainer.innerHTML = `<button onclick="openLoginModal()" class="auth-btn" style="color:var(--success);">[ AUTH ]</button>`;
         }
 
         grid.innerHTML = clients.map(c => {
             let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
-            let showReboot = (role === 'admin' && canControl); 
+            let showReboot = (role === 'admin' || role === 'node_admin') && canControl; 
 
             return `
                 <div class="card" id="card-${c.id}" data-status="offline" data-gateways="" data-loc="" data-has-warn="false">
@@ -619,6 +629,7 @@ async function initUI() {
                             <button class="btn-cmd" style="border-color: var(--primary); color: var(--primary) !important;" title="Versioni Software" onclick="openVersionsModal('${c.id}')">INFO</button>
                             <button id="btn-svc-${c.id}" class="btn-cmd" style="border-color: var(--text-main);" title="${t('ttSvc')}" onclick="openServicesModal('${c.id}')">${t('btnSvc')}</button>
                             <button class="btn-cmd" style="border-color: var(--accent); color: var(--accent) !important;" title="${t('ttFile')}" onclick="openConfigsModal('${c.id}')">${t('btnFile')}</button>
+                            <button class="btn-cmd" style="border-color: var(--success); color: var(--success) !important;" title="${t('liveTerminal')}" onclick="openLogModal('${c.id}')">LOG</button>
                             <button class="btn-cmd" style="border-color: var(--danger); color: var(--danger) !important;" title="${t('ttHat')}" onclick="confirmHatReset('${c.id}')">${t('btnHat')}</button>
                             <button class="btn-cmd" style="border-color: var(--danger); color: var(--danger) !important;" title="${t('ttBoot')}" onclick="confirmReboot('${c.id}')">${t('btnBoot')}</button>
                             <button id="btn-ota-${c.id}" class="btn-cmd" style="border-color: var(--primary); color: var(--primary) !important;" title="Update OTA" onclick="confirmUpdateAgent('${c.id}')">OTA</button>
@@ -742,6 +753,13 @@ function initOrUpdateMap() {
         fleetMap.fitBounds(bounds, { padding: [40, 40] });
         fleetMap._hasFitted = true;
     }
+    
+    // Assicurati che i marker APRS siano renderizzati
+    for (const [src, data] of Object.entries(aprsMarkers)) {
+        if (!fleetMap.hasLayer(data.marker)) {
+            data.marker.addTo(fleetMap);
+        }
+    }
 }
 
 async function refreshStates() {
@@ -749,6 +767,18 @@ async function refreshStates() {
         const res = await fetch('/api/states'); const data = await res.json();
         latestStatesData = data;
         globalVersionsData = data.versions || {};
+        if (data.web_users !== undefined) {
+            const uEl = document.getElementById('active-users-count');
+            if (uEl) uEl.innerText = data.web_users;
+            const uBadge = document.getElementById('users-badge');
+            if (uBadge) {
+                uBadge.style.cursor = 'pointer';
+                uBadge.onclick = showActiveUsers;
+            }
+        }
+        if (data.logged_users !== undefined) {
+            activeLoggedUsers = data.logged_users;
+        }
 
         clients.forEach(c => {
             try {
@@ -766,7 +796,7 @@ async function refreshStates() {
                 const role = me.role || '';
                 const allowedList = String(me.allowed_nodes || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
                 let canControl = isAuthenticated && (allowedList.includes('all') || allowedList.includes(c.id.toLowerCase()));
-                let showReboot = (role === 'admin' && canControl); 
+                let showReboot = (role === 'admin' || role === 'node_admin') && canControl; 
 
                 let isTx = false; 
                 let activeModeColor = "var(--primary)"; 
@@ -1205,6 +1235,7 @@ async function refreshStates() {
                                  btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--primary); color: var(--primary) !important;" onclick="openVersionsModal('${c.id}')">[ INFO ]</button>`;
                                  btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--text-main);" onclick="openServicesModal('${c.id}')">[ SVC ]</button>`;
                                  btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--accent); color: var(--accent) !important;" onclick="openConfigsModal('${c.id}')">[ CFG ]</button>`;
+                                 btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--success); color: var(--success) !important;" onclick="openLogModal('${c.id}')">[ LOG ]</button>`;
                                  btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmHatReset('${c.id}')">[ HAT ]</button>`;
                                  btnHtml += `<button class="btn-cmd" style="padding: 12px 25px; font-size: 1.1rem; flex: none; width: auto; border-color: var(--danger); color: var(--danger) !important;" onclick="confirmReboot('${c.id}')">[ RBT ]</button>`;
                                  let otaColor = (healthObj && healthObj.agent_update_available) ? 'var(--danger)' : 'var(--primary)';
@@ -1242,9 +1273,96 @@ async function refreshAprs() {
         let html = "";
         logs.forEach(msg => {
             html += formatAprsRow(msg);
+            plotAprsOnMap(msg); // Popola mappa all'avvio
         });
         tbody.innerHTML = html;
     } catch (e) { console.error(e); }
+}
+
+
+function parseAprsPosition(payload) {
+    // Cerca pattern standard APRS (es. 4603.25N/01315.60E)
+    const posRegex = /([0-9]{2})([0-9]{2}\.[0-9]{1,2})([NS])(.)([0-1][0-9]{2})([0-9]{2}\.[0-9]{1,2})([EOW])/i;
+    const match = payload.match(posRegex);
+    if (match) {
+        let latDeg = parseInt(match[1], 10);
+        let latMin = parseFloat(match[2]);
+        let lat = latDeg + (latMin / 60.0);
+        if (match[3].toUpperCase() === 'S') lat = -lat;
+        
+        let lonDeg = parseInt(match[5], 10);
+        let lonMin = parseFloat(match[6]);
+        let lon = lonDeg + (lonMin / 60.0);
+        if (match[7].toUpperCase() === 'W' || match[7].toUpperCase() === 'O') lon = -lon;
+        
+        return { lat, lon };
+    }
+    return null;
+}
+
+function plotAprsOnMap(msg) {
+    const pos = parseAprsPosition(msg.payload);
+    if (!pos) return;
+
+    const source = msg.source;
+    const sourceBase = source.split('-')[0].toLowerCase();
+    
+    // Escludiamo dalla mappa i pacchetti provenienti dai nodi della flotta
+    let isFleetNode = false;
+    for (let i = 0; i < clients.length; i++) {
+        let cid = clients[i].id.toLowerCase();
+        let cname = (clients[i].name || "").split('-')[0].toLowerCase();
+        let ccall = "";
+        if (latestStatesData && latestStatesData.general && latestStatesData.general[cid]) {
+            ccall = (latestStatesData.general[cid].callsign || "").split('-')[0].toLowerCase();
+        }
+        if (sourceBase === cid || sourceBase === cname || (ccall && sourceBase === ccall)) {
+            isFleetNode = true;
+            break;
+        }
+    }
+    if (isFleetNode) return;
+    
+    if (aprsMarkers[source] && fleetMap) {
+        fleetMap.removeLayer(aprsMarkers[source].marker);
+    }
+
+    const customIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="width: 14px; height: 14px; background-color: #f97316; border-radius: 50%; border: 2px solid #04102e; box-shadow: 0 0 10px rgba(249, 115, 22, 0.8);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+    });
+
+    const popupContent = `
+        <div style="font-family: 'JetBrains Mono', monospace; min-width: 150px;">
+            <div style="font-weight: bold; color: #f97316; margin-bottom: 5px;">${esc(source)} <span style="font-size:0.7rem; color:var(--text-muted);">(APRS)</span></div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">${esc(msg.time)} via ${esc(msg.path.split(',')[0])}</div>
+            <div style="font-size: 0.75rem; color: var(--text-main); word-wrap: break-word; margin-bottom: 8px;">${esc(msg.payload)}</div>
+            <a href="https://aprs.fi/info/a/${encodeURIComponent(source)}" target="_blank" class="btn-cmd" style="padding: 2px 6px; font-size: 0.7rem; width: 100%; border-color: #f97316; color: #f97316 !important; text-align: center; text-decoration: none; display: block; box-sizing: border-box;">[ APRS.FI ]</a>
+        </div>
+    `;
+
+    const marker = L.marker([pos.lat, pos.lon], { icon: customIcon }).bindPopup(popupContent);
+
+    aprsMarkers[source] = {
+        marker: marker,
+        timestamp: Date.now()
+    };
+    
+    if (fleetMap) {
+        marker.addTo(fleetMap);
+    }
+}
+
+function cleanupAprsMarkers() {
+    const now = Date.now();
+    for (const [src, data] of Object.entries(aprsMarkers)) {
+        if (now - data.timestamp > 7200000) { // 2 ore
+            if (fleetMap) fleetMap.removeLayer(data.marker);
+            delete aprsMarkers[src];
+        }
+    }
 }
 
 function formatAprsRow(msg) {
@@ -1269,6 +1387,7 @@ function addLiveAprs(msg) {
     if (tbody.children.length > 100) {
         tbody.removeChild(tbody.lastChild);
     }
+    plotAprsOnMap(msg);
 }
 
 async function refreshLogs() {
@@ -1410,10 +1529,126 @@ const refreshStatesSoon = debounce(refreshStates, 300);
 const refreshLogsSoon = debounce(() => { refreshLogs(); refreshStats(); }, 500);
 
 if (typeof io !== 'undefined') {
-    const socket = io();
-    socket.on('mqtt_status', function(data) { const badge = document.getElementById('mqtt-badge'); if (badge) { if (data.connected) { badge.innerText = "MQTT: OK"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: ERR"; badge.className = "mqtt-badge mqtt-offline"; } } });
-    socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
-    socket.on('dati_aggiornati', refreshStatesSoon); 
-    socket.on('log_aggiornato', refreshLogsSoon);      
-    socket.on('aprs_msg', function(data) { addLiveAprs(data); });
+    window.socket = io();
+    window.socket.on('mqtt_status', function(data) { const badge = document.getElementById('mqtt-badge'); if (badge) { if (data.connected) { badge.innerText = "MQTT: OK"; badge.className = "mqtt-badge mqtt-online"; } else { badge.innerText = "MQTT: ERR"; badge.className = "mqtt-badge mqtt-offline"; } } });
+    window.socket.on('connect', () => { refreshStates(); refreshLogs(); refreshStats(); });
+    window.socket.on('dati_aggiornati', refreshStatesSoon); 
+    window.socket.on('log_aggiornato', refreshLogsSoon);      
+    window.socket.on('aprs_msg', function(data) { addLiveAprs(data); });
+    window.socket.on('web_users_count', function(data) {
+        const el = document.getElementById('active-users-count');
+        if (el && data && data.count !== undefined) {
+            el.innerText = data.count;
+        }
+        if (data && data.users) {
+            activeLoggedUsers = data.users;
+        }
+    });
+}
+
+
+
+// --- LOGICA ANALYTICS E CHART.JS ---
+let hwChart = null;
+let rfChart = null;
+let currentAnalyticsHours = 24;
+
+Chart.defaults.color = 'rgba(255, 255, 255, 0.6)';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+function setAnalyticsTimeframe(hours) {
+    currentAnalyticsHours = hours;
+    
+    // Update active class on pills
+    [12, 24, 48, 168].forEach(h => {
+        const btn = document.getElementById('btn-ana-' + h);
+        if (btn) {
+            if (h === hours) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+    
+    // Update label text
+    const labelEl = document.getElementById('analytics-time-label');
+    if (labelEl) {
+        labelEl.innerText = hours === 168 ? '7D' : hours + 'H';
+    }
+    
+    // Reload data
+    loadNodeAnalytics();
+}
+
+async function loadNodeAnalytics() {
+    if (!currentFocusedNode) return;
+    try {
+        const res = await fetch(`/api/analytics/${currentFocusedNode}?hours=${currentAnalyticsHours}`);
+        const data = await res.json();
+        
+        if (!data.success) return;
+        
+        // Dati Telemetria (Ore o Giorni/Ore)
+        const formatLabel = (dTime) => {
+            if (currentAnalyticsHours > 48) {
+                const parts = dTime.split(' ');
+                const dateParts = parts[0].split('-'); // YYYY-MM-DD
+                return `${dateParts[2]}/${dateParts[1]} ${parts[1].substring(0, 5)}`;
+            }
+            return dTime.split(' ')[1].substring(0, 5);
+        };
+        const hwLabels = data.telemetry.map(d => formatLabel(d.time));
+        const tempD = data.telemetry.map(d => d.temp);
+        const cpuD = data.telemetry.map(d => d.cpu);
+        
+        if (hwChart) hwChart.destroy();
+        const ctxHw = document.getElementById('chart-hw').getContext('2d');
+        hwChart = new Chart(ctxHw, {
+            type: 'line',
+            data: {
+                labels: hwLabels,
+                datasets: [
+                    { label: t('chartTemp'), data: tempD, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
+                    { label: t('chartCpu'), data: cpuD, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, min: 20 },
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0, max: 100 }
+                }
+            }
+        });
+        
+        // Dati RF
+        const rfLabels = data.rf.map(d => formatLabel(d.time));
+        const countD = data.rf.map(d => d.count);
+        const berD = data.rf.map(d => d.ber);
+        
+        if (rfChart) rfChart.destroy();
+        const ctxRf = document.getElementById('chart-rf').getContext('2d');
+        rfChart = new Chart(ctxRf, {
+            type: 'bar',
+            data: {
+                labels: rfLabels,
+                datasets: [
+                    { label: t('chartTransits'), data: countD, backgroundColor: '#10b981', yAxisID: 'y' },
+                    { label: t('chartBer'), data: berD, type: 'line', borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.3, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, min: 0 },
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
+                }
+            }
+        });
+
+    } catch (e) { console.error("Error loading analytics:", e); }
 }

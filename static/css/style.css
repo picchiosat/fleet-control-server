@@ -31,8 +31,8 @@ body {
 #top-bar { padding: 12px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px; border: 1px solid var(--border-main); width: 100%; max-width: 1400px; background: rgba(6, 36, 111, 0.5); }
 .title-brand { font-size: 1.2rem; font-weight: 300; letter-spacing: 4px; color: var(--text-main); text-transform: uppercase; white-space: nowrap; flex-shrink: 0; margin-right: 10px;}
 
-.nav-tabs { display: flex; gap: 10px; flex: 1 1 auto; min-width: 250px; flex-wrap: wrap; justify-content: flex-start; margin-left: 0;}
-.nav-tab { background: transparent; border: 1px solid transparent; color: var(--text-muted); font-size: 0.85rem; font-weight: 300; letter-spacing: 2px; cursor: pointer; padding: 6px 16px; transition: all 0.2s ease; text-transform: uppercase; white-space: nowrap;}
+.nav-tabs { display: flex; gap: 10px; flex-wrap: nowrap; justify-content: flex-start; margin-left: 0;}
+.nav-tab { background: transparent; border: 1px solid transparent; color: var(--text-muted); font-size: 0.85rem; font-weight: 300; letter-spacing: 2px; cursor: pointer; padding: 6px 14px; transition: all 0.2s ease; text-transform: uppercase; white-space: nowrap;}
 .nav-tab:hover { color: var(--text-main); border: 1px solid var(--border-light); }
 .nav-tab.active { color: var(--text-main); border: 1px solid var(--border-main); }
 
@@ -40,7 +40,7 @@ body {
 .theme-switch:hover { background: rgba(255,255,255,0.1); }
 
 /* Container for right side items (auth and other buttons) */
-.top-bar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; flex: 1 1 auto; }
+.top-bar-right { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; flex: none; }
 
 /* FILTRI E CONTROLLI VIEW */
 .filter-bar { background: rgba(6, 36, 111, 0.90); border: 1px solid var(--border-main); padding: 10px 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 20px; }
